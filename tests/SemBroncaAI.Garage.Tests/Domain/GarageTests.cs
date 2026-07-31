@@ -43,4 +43,49 @@ public class GarageTests
             .And.ParamName.Should()
             .Be("name");
     }
+    [Fact]
+    public void Should_Deactivate_Garage()
+    {
+        var garage = new GarageEntity(
+            "Oficina do João",
+            "12345678000199",
+            "11999999999",
+            "contato@oficina.com");
+
+        garage.Deactivate();
+
+        garage.Active.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Should_Activate_Garage()
+    {
+        var garage = new GarageEntity(
+            "Oficina do João",
+            "12345678000199",
+            "11999999999",
+            "contato@oficina.com");
+
+        garage.Deactivate();
+        garage.Activate();
+
+        garage.Active.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Should_Change_Contact_Information()
+    {
+        var garage = new GarageEntity(
+            "Oficina do João",
+            "12345678000199",
+            "11999999999",
+            "contato@oficina.com");
+
+        garage.ChangeContactInformation(
+            "11888888888",
+            "novo@oficina.com");
+
+        garage.Phone.Should().Be("11888888888");
+        garage.Email.Should().Be("novo@oficina.com");
+    }
 }

@@ -29,4 +29,22 @@ public sealed class Garage : Entity
         Active = true;
         CreatedAt = DateTime.UtcNow;
     }
+
+    public void Deactivate()
+    {
+        Active = false;
+    }
+
+    public void Activate()
+    {
+        Active = true;
+    }
+
+    public void ChangeContactInformation(
+        string phone,
+        string email)
+    {
+        Phone = phone;
+        Email = email;
+    }
 }
