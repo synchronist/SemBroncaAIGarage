@@ -1,0 +1,6 @@
+@SemBroncaAI.Garage.Api_HostAddress = http://localhost:5183
+
+GET {{SemBroncaAI.Garage.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

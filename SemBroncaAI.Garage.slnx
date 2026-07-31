@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SemBroncaAI.Garage.Api/SemBroncaAI.Garage.Api.csproj" />
+    <Project Path="src/SemBroncaAI.Garage.Application/SemBroncaAI.Garage.Application.csproj" />
+    <Project Path="src/SemBroncaAI.Garage.Domain/SemBroncaAI.Garage.Domain.csproj" />
+    <Project Path="src/SemBroncaAI.Garage.Infrastructure/SemBroncaAI.Garage.Infrastructure.csproj" />
+    <Project Path="src/SemBroncaAI.Garage.SharedKernel/SemBroncaAI.Garage.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SemBroncaAI.Garage.Tests/SemBroncaAI.Garage.Tests.csproj" />
+  </Folder>
+</Solution>
