@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SemBroncaAI.Garage.Domain.Interfaces;
-using GarageEntity = global::SemBroncaAI.Garage.Domain.Entities.Garage;
+using SemBroncaAI.Garage.Domain.Entities;
 
 namespace SemBroncaAI.Garage.Infrastructure.Persistence;
 
@@ -12,6 +12,7 @@ public sealed class GarageDbContext : DbContext, IUnitOfWork
     }
 
     public DbSet<GarageEntity> Garages => Set<GarageEntity>();
+    public DbSet<CustomerEntity> Customers => Set<CustomerEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

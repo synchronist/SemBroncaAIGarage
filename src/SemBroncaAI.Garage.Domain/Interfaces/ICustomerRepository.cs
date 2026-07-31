@@ -1,21 +1,23 @@
-using SemBroncaAI.Garage.Domain.Entities;
+﻿using SemBroncaAI.Garage.Domain.Entities;
 
 namespace SemBroncaAI.Garage.Application.Abstractions.Persistence;
 
-public interface IGarageRepository
+public interface ICustomerRepository
 {
     Task AddAsync(
-        GarageEntity garage,
+        CustomerEntity customer,
         CancellationToken cancellationToken = default);
 
     Task<bool> ExistsByDocumentAsync(
+        Guid garageId,
         string document,
         CancellationToken cancellationToken = default);
 
-    Task<GarageEntity?> GetByIdAsync(
+    Task<CustomerEntity?> GetByIdAsync(
         Guid id,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<GarageEntity>> GetAllAsync(
+    Task<IReadOnlyList<CustomerEntity>> GetAllAsync(
+        Guid garageId,
         CancellationToken cancellationToken = default);
 }

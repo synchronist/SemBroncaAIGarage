@@ -2,7 +2,7 @@ using SemBroncaAI.Garage.Domain.Common;
 
 namespace SemBroncaAI.Garage.Domain.Entities;
 
-public sealed class Garage : Entity
+public sealed class GarageEntity : Entity
 {
     public string Name { get; private set; }
     public string Document { get; private set; }
@@ -11,7 +11,7 @@ public sealed class Garage : Entity
     public bool Active { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
-    public Garage(
+    public GarageEntity(
         string name,
         string document,
         string phone,

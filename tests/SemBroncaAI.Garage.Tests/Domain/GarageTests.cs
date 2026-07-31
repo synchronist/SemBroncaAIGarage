@@ -1,5 +1,5 @@
 using FluentAssertions;
-using GarageEntity = SemBroncaAI.Garage.Domain.Entities.Garage;
+using GarageEntity = SemBroncaAI.Garage.Domain.Entities.GarageEntity;
 
 namespace SemBroncaAI.Garage.Tests.Domain;
 

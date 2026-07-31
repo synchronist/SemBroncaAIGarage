@@ -1,31 +1,54 @@
 using Microsoft.EntityFrameworkCore;
-using GarageEntity = global::SemBroncaAI.Garage.Domain.Entities.Garage;
-using SemBroncaAI.Garage.Domain.Interfaces;
+using SemBroncaAI.Garage.Application.Abstractions.Persistence;
+using SemBroncaAI.Garage.Domain.Entities;
 using SemBroncaAI.Garage.Infrastructure.Persistence;
 
 namespace SemBroncaAI.Garage.Infrastructure.Repositories;
 
 public sealed class GarageRepository : IGarageRepository
 {
-    private readonly GarageDbContext _context;
+    private readonly GarageDbContext _dbContext;
 
-    public GarageRepository(GarageDbContext context)
+    public GarageRepository(GarageDbContext dbContext)
     {
-        _context = context;
+        _dbContext = dbContext;
     }
 
     public async Task AddAsync(
         GarageEntity garage,
         CancellationToken cancellationToken = default)
     {
-        await _context.Garages.AddAsync(garage, cancellationToken);
+        await _dbContext.Garages.AddAsync(
+            garage,
+            cancellationToken);
     }
 
-    public async Task<bool> ExistsByDocumentAsync(
+    public Task<bool> ExistsByDocumentAsync(
         string document,
         CancellationToken cancellationToken = default)
     {
-        return await _context.Garages
-            .AnyAsync(x => x.Document == document, cancellationToken);
+        return _dbContext.Garages.AnyAsync(
+            garage => garage.Document == document,
+            cancellationToken);
+    }
+
+    public async Task<GarageEntity?> GetByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Garages
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                garage => garage.Id == id,
+                cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<GarageEntity>> GetAllAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Garages
+            .AsNoTracking()
+            .OrderBy(garage => garage.Name)
+            .ToListAsync(cancellationToken);
     }
 }

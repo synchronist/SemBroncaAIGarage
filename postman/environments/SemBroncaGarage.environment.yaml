@@ -2,3 +2,5 @@ name: SemBroncaGarage
 values:
   - key: localUrl
     value: ''
+  - key: localUrlGarage
+    value: ''

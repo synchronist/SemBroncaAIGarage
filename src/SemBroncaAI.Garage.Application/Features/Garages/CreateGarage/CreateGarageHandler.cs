@@ -1,5 +1,6 @@
-﻿using GarageEntity = global::SemBroncaAI.Garage.Domain.Entities.Garage;
+﻿using SemBroncaAI.Garage.Domain.Entities;
 using SemBroncaAI.Garage.Domain.Interfaces;
+using SemBroncaAI.Garage.Application.Abstractions.Persistence;
 
 namespace SemBroncaAI.Garage.Application.Features.Garages.CreateGarage;
 
