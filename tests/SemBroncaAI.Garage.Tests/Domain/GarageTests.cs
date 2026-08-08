@@ -1,5 +1,6 @@
-using FluentAssertions;
-using GarageEntity = SemBroncaAI.Garage.Domain.Entities.GarageEntity;
+using Shouldly;
+using GarageEntity =
+    SemBroncaAI.Garage.Domain.Entities.Garage.GarageEntity;
 
 namespace SemBroncaAI.Garage.Tests.Domain;
 
@@ -14,13 +15,14 @@ public class GarageTests
             "11999999999",
             "contato@oficina.com");
 
-        garage.Id.Should().NotBeEmpty();
-        garage.Name.Should().Be("Oficina do João");
-        garage.Document.Should().Be("12345678000199");
-        garage.Phone.Should().Be("11999999999");
-        garage.Email.Should().Be("contato@oficina.com");
-        garage.Active.Should().BeTrue();
-        garage.CreatedAt.Should().BeCloseTo(
+        garage.Id.ShouldNotBe(Guid.Empty);
+        garage.Name.ShouldBe("Oficina do João");
+        garage.Document.ShouldBe("12345678000199");
+        garage.Phone.ShouldBe("11999999999");
+        garage.Email.ShouldBe("contato@oficina.com");
+        garage.Active.ShouldBeTrue();
+
+        garage.CreatedAt.ShouldBe(
             DateTime.UtcNow,
             TimeSpan.FromSeconds(2));
     }
@@ -31,18 +33,19 @@ public class GarageTests
     [InlineData("   ")]
     public void Should_Throw_When_Name_Is_Empty(string invalidName)
     {
-        var action = () => new GarageEntity(
-            invalidName,
-            "12345678000199",
-            "11999999999",
-            "contato@oficina.com");
+        var exception = Should.Throw<ArgumentException>(() =>
+            new GarageEntity(
+                invalidName,
+                "12345678000199",
+                "11999999999",
+                "contato@oficina.com"));
 
-        action.Should()
-            .Throw<ArgumentException>()
-            .WithMessage("*nome da oficina é obrigatório*")
-            .And.ParamName.Should()
-            .Be("name");
+        exception.Message.ShouldContain(
+            "nome da oficina é obrigatório");
+
+        exception.ParamName.ShouldBe("name");
     }
+
     [Fact]
     public void Should_Deactivate_Garage()
     {
@@ -54,7 +57,7 @@ public class GarageTests
 
         garage.Deactivate();
 
-        garage.Active.Should().BeFalse();
+        garage.Active.ShouldBeFalse();
     }
 
     [Fact]
@@ -69,7 +72,7 @@ public class GarageTests
         garage.Deactivate();
         garage.Activate();
 
-        garage.Active.Should().BeTrue();
+        garage.Active.ShouldBeTrue();
     }
 
     [Fact]
@@ -85,7 +88,7 @@ public class GarageTests
             "11888888888",
             "novo@oficina.com");
 
-        garage.Phone.Should().Be("11888888888");
-        garage.Email.Should().Be("novo@oficina.com");
+        garage.Phone.ShouldBe("11888888888");
+        garage.Email.ShouldBe("novo@oficina.com");
     }
 }

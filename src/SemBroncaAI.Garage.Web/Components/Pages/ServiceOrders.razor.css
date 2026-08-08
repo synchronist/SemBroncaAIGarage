@@ -1,0 +1,308 @@
+.orders-page {
+    max-width: 1180px;
+    margin: 0 auto;
+}
+
+.orders-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+    .orders-header h1 {
+        margin: 0;
+        font-size: 28px;
+        color: #111827;
+    }
+
+    .orders-header p {
+        margin: 6px 0 0;
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+/* TOOLBAR */
+
+.orders-toolbar {
+    padding: 20px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+}
+
+.orders-search {
+    width: 100%;
+}
+
+.status-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.status-filter {
+    padding: 7px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 120ms ease;
+}
+
+    .status-filter:hover {
+        background: #f8fafc;
+        color: #334155;
+    }
+
+    .status-filter.active {
+        border-color: #fed7aa;
+        background: #fff7ed;
+        color: #ea580c;
+    }
+
+/* RESUMO */
+
+.orders-summary {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin: 20px 0 10px;
+    color: #64748b;
+}
+
+    .orders-summary strong {
+        font-size: 17px;
+        color: #111827;
+    }
+
+    .orders-summary span {
+        font-size: 11px;
+    }
+
+/* LISTA */
+
+.orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.order-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 18px 20px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+    .order-card:hover {
+        border-color: #fed7aa;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+        transform: translateY(-1px);
+    }
+
+.order-card-left {
+    min-width: 0;
+    flex: 1;
+}
+
+.order-number {
+    margin-bottom: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+}
+
+.vehicle-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+    .vehicle-line strong {
+        font-size: 17px;
+        color: #ea580c;
+    }
+
+    .vehicle-line span {
+        font-size: 13px;
+        font-weight: 600;
+        color: #334155;
+    }
+
+.customer-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 7px;
+    font-size: 11px;
+    color: #64748b;
+}
+
+.complaint-preview {
+    max-width: 680px;
+    overflow: hidden;
+    margin-top: 9px;
+    font-size: 11px;
+    color: #94a3b8;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.order-card-right {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: minmax(130px, auto) 120px 90px;
+    align-items: center;
+    gap: 20px;
+}
+
+.order-date {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+    .order-date small {
+        font-size: 9px;
+        color: #94a3b8;
+    }
+
+    .order-date strong {
+        font-size: 10px;
+        color: #475569;
+    }
+
+/* STATUS */
+
+.order-status {
+    display: inline-flex;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.status-received {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.status-diagnosis {
+    background: #fff7ed;
+    color: #ea580c;
+}
+
+.status-waitingapproval {
+    background: #fefce8;
+    color: #a16207;
+}
+
+.status-inprogress {
+    background: #eef2ff;
+    color: #4f46e5;
+}
+
+.status-waitingparts {
+    background: #faf5ff;
+    color: #9333ea;
+}
+
+.status-finished {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.status-delivered {
+    background: #f0fdf4;
+    color: #15803d;
+}
+
+.status-cancelled {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+/* ESTADOS */
+
+.orders-loading,
+.orders-empty {
+    min-height: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+    color: #94a3b8;
+}
+
+    .orders-empty h2 {
+        margin: 4px 0 0;
+        font-size: 17px;
+        color: #475569;
+    }
+
+    .orders-empty p {
+        margin: 0;
+        font-size: 11px;
+    }
+
+/* PAGINAÇÃO */
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 22px;
+}
+
+    .pagination span {
+        font-size: 11px;
+        color: #64748b;
+    }
+
+/* RESPONSIVO */
+
+@media (max-width: 1000px) {
+    .order-card {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .order-card-right {
+        width: 100%;
+        grid-template-columns: 1fr 1fr auto;
+    }
+}
+
+@media (max-width: 700px) {
+    .orders-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .order-card-right {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .vehicle-line {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 3px;
+    }
+}

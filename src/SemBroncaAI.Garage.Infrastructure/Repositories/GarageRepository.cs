@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SemBroncaAI.Garage.Application.Abstractions.Persistence;
-using SemBroncaAI.Garage.Domain.Entities;
+using SemBroncaAI.Garage.Domain.Entities.Garage;
 using SemBroncaAI.Garage.Infrastructure.Persistence;
 
 namespace SemBroncaAI.Garage.Infrastructure.Repositories;
@@ -41,7 +41,9 @@ public sealed class GarageRepository : IGarageRepository
             .FirstOrDefaultAsync(
                 garage => garage.Id == id,
                 cancellationToken);
+
     }
+
 
     public async Task<IReadOnlyList<GarageEntity>> GetAllAsync(
         CancellationToken cancellationToken = default)

@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SemBroncaAI.Garage.Application.Abstractions.Persistence;
-using SemBroncaAI.Garage.Domain.Entities;
+using SemBroncaAI.Garage.Domain.Entities.Customer;
 
 namespace SemBroncaAI.Garage.Infrastructure.Persistence.Repositories;
 

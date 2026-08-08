@@ -1,17 +1,17 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using SemBroncaAI.Garage.Application.Abstractions.Persistence;
-using SemBroncaAI.Garage.Application.Features.Customers.CreateCustomer;
+using SemBroncaAI.Garage.Application.Features.Garages.CreateGarage;
 
 namespace SemBroncaAI.Garage.Api.Controllers;
 
 [ApiController]
-[Route("api/customers")]
-public sealed class CustomersController : ControllerBase
+[Route("api/garages")]
+public sealed class GaragesController : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Create(
-        [FromBody] CreateCustomerCommand command,
-        [FromServices] CreateCustomerHandler handler,
+        [FromBody] CreateGarageCommand command,
+        [FromServices] CreateGarageHandler handler,
         CancellationToken cancellationToken)
     {
         try
@@ -36,35 +36,33 @@ public sealed class CustomersController : ControllerBase
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
-        [FromQuery] Guid garageId,
-        [FromServices] ICustomerRepository customerRepository,
+        [FromServices] IGarageRepository garageRepository,
         CancellationToken cancellationToken)
     {
-        var customers = await customerRepository.GetAllAsync(
-            garageId,
+        var garages = await garageRepository.GetAllAsync(
             cancellationToken);
 
-        return Ok(customers);
+        return Ok(garages);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(
         Guid id,
-        [FromServices] ICustomerRepository customerRepository,
+        [FromServices] IGarageRepository garageRepository,
         CancellationToken cancellationToken)
     {
-        var customer = await customerRepository.GetByIdAsync(
+        var garage = await garageRepository.GetByIdAsync(
             id,
             cancellationToken);
 
-        if (customer is null)
+        if (garage is null)
         {
             return NotFound(new
             {
-                message = "Cliente n�o encontrado."
+                message = "Oficina não encontrada."
             });
         }
 
-        return Ok(customer);
+        return Ok(garage);
     }
 }

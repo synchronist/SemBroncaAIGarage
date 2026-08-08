@@ -1,0 +1,554 @@
+﻿@page "/"
+
+@using SemBroncaAI.Garage.Web.Models
+@using SemBroncaAI.Garage.Web.Services
+
+@inject LookupService LookupService
+@inject IConfiguration Configuration
+@inject ServiceOrderService ServiceOrderService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Receber veículo</PageTitle>
+
+<div class="receive-page">
+
+    <div class="receive-header">
+
+        <div>
+            <h1>Receber veículo</h1>
+
+            <p>
+                Localize o veículo, registre o relato e abra a ordem de serviço.
+            </p>
+        </div>
+
+        <MudChip T="string"
+                 Variant="Variant.Outlined"
+                 Color="Color.Default"
+                 Icon="@Icons.Material.Filled.AutoAwesome">
+            OS será gerada automaticamente
+        </MudChip>
+
+    </div>
+
+    <MudButton OnClick="TestSnackbar">
+        Testar mensagem
+    </MudButton>
+    <section class="search-section">
+
+        <label>
+            Pesquisar placa, cliente, telefone ou número da OS
+        </label>
+
+        <div class="lookup-container">
+
+            <MudTextField T="string"
+                          Value="@_searchText"
+                          ValueChanged="OnSearchChanged"
+                          Immediate="true"
+                          Placeholder="Digite ao menos 3 caracteres..."
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          FullWidth="true"
+                          Class="main-search" />
+
+            @if (_isSearching)
+            {
+                <div class="lookup-loading">
+                    <MudProgressCircular
+                        Indeterminate="true"
+                        Size="Size.Small" />
+
+                    <span>Pesquisando...</span>
+                </div>
+            }
+
+            @if (_showResults && !_isSearching)
+            {
+                <div class="lookup-dropdown">
+
+                    @if (_results.Count > 0)
+                    {
+                        @foreach (var result in _results)
+                        {
+                            <button type="button"
+                                    class="lookup-result"
+                                    @onclick="() => SelectVehicle(result)">
+
+                                <div class="lookup-result-icon">
+                                    <MudIcon
+                                        Icon="@Icons.Material.Filled.DirectionsCar"
+                                        Size="Size.Small" />
+                                </div>
+
+                                <div class="lookup-result-content">
+
+                                    <div class="lookup-result-main">
+                                        <strong>@result.Plate</strong>
+
+                                        <span>
+                                            @result.Brand @result.Model
+                                            @result.Year
+                                        </span>
+                                    </div>
+
+                                    <div class="lookup-result-customer">
+                                        @result.CustomerName
+                                        ·
+                                        @FormatPhone(result.CustomerPhone)
+                                    </div>
+
+                                </div>
+
+                                <MudIcon
+                                    Icon="@Icons.Material.Filled.ChevronRight"
+                                    Size="Size.Small" />
+
+                            </button>
+                        }
+                    }
+                    else
+                    {
+                        <div class="lookup-empty">
+                            <strong>Nenhum veículo encontrado</strong>
+
+                            <span>
+                                Você poderá cadastrar um novo cliente e veículo aqui.
+                            </span>
+                        </div>
+                    }
+
+                </div>
+            }
+
+        </div>
+
+        <span class="search-hint">
+            Digite ao menos 3 caracteres para pesquisar.
+        </span>
+
+    </section>
+
+    @if (_selectedVehicle is null)
+    {
+        <section class="empty-state">
+
+            <MudIcon
+                Icon="@Icons.Material.Filled.DirectionsCar"
+                Size="Size.Large"
+                Class="empty-icon" />
+
+            <h2>Nenhum veículo selecionado</h2>
+
+            <p>
+                Pesquise por placa, cliente, telefone ou número da OS
+                para começar.
+            </p>
+
+        </section>
+    }
+    else
+    {
+        <section class="selected-content">
+
+            <div class="information-grid">
+
+                <div class="information-card">
+
+                    <div class="card-title">
+                        <MudIcon
+                            Icon="@Icons.Material.Filled.PersonOutline"
+                            Size="Size.Small" />
+
+                        <span>Cliente</span>
+                    </div>
+
+                    <strong class="card-main-value">
+                        @_selectedVehicle.CustomerName
+                    </strong>
+
+                    <div class="card-information">
+                        <span>
+                            <small>Telefone</small>
+                            @FormatPhone(_selectedVehicle.CustomerPhone)
+                        </span>
+
+                        <span>
+                            <small>Documento</small>
+                            @_selectedVehicle.CustomerDocument
+                        </span>
+
+                        <span>
+                            <small>E-mail</small>
+                            @_selectedVehicle.CustomerEmail
+                        </span>
+                    </div>
+
+                </div>
+
+                <div class="information-card">
+
+                    <div class="card-title">
+                        <MudIcon
+                            Icon="@Icons.Material.Filled.DirectionsCar"
+                            Size="Size.Small" />
+
+                        <span>Veículo</span>
+                    </div>
+
+                    <div class="vehicle-title">
+                        <strong>@_selectedVehicle.Plate</strong>
+
+                        <span>
+                            @_selectedVehicle.Brand
+                            @_selectedVehicle.Model
+                        </span>
+                    </div>
+
+                    <div class="card-information vehicle-information">
+
+                        <span>
+                            <small>Versão</small>
+                            @_selectedVehicle.Version
+                        </span>
+
+                        <span>
+                            <small>Ano</small>
+                            @_selectedVehicle.Year
+                        </span>
+
+                        <span>
+                            <small>Cor</small>
+                            @_selectedVehicle.Color
+                        </span>
+
+                        <span>
+                            <small>Combustível</small>
+                            @_selectedVehicle.Fuel
+                        </span>
+
+                    </div>
+
+                    <div class="mileage">
+                        <label>Quilometragem atual</label>
+
+                        <MudNumericField T="int"
+                                         @bind-Value="_mileage"
+                                         Variant="Variant.Outlined"
+                                         Min="0"
+                                         HideSpinButtons="true"
+                                         Adornment="Adornment.End"
+                                         AdornmentText="km" />
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="complaint-card">
+
+                <div class="card-title">
+                    <MudIcon
+                        Icon="@Icons.Material.Filled.Description"
+                        Size="Size.Small" />
+
+                    <span>Relato do cliente</span>
+                </div>
+
+                <MudTextField T="string"
+                              @bind-Value="_customerComplaint"
+                              Immediate="true"
+                              Placeholder="Digite ou dite o que precisa ser verificado..."
+                              Variant="Variant.Outlined"
+                              Lines="5"
+                              FullWidth="true" />
+
+                <div class="complaint-actions">
+
+                    <MudButton Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.Mic">
+                        Ditar relato
+                    </MudButton>
+
+                    <span>
+                        A transcrição por voz será adicionada nesta etapa depois.
+                    </span>
+
+                </div>
+
+            </div>
+
+        </section>
+    }
+
+    <div class="receive-footer">
+
+        <span>
+            @FooterMessage
+        </span>
+
+        <div class="footer-actions">
+
+            <MudButton Variant="Variant.Outlined"
+                       Disabled="@(!_hasChanges)">
+                Salvar rascunho
+            </MudButton>
+
+            <MudButton Variant="Variant.Outlined"
+                       Disabled="@(!CanReceive)"
+                       StartIcon="@Icons.Material.Filled.Print">
+                Receber e imprimir ficha
+            </MudButton>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="@(!CanReceive || _isReceiving)"
+                       StartIcon="@Icons.Material.Filled.Check"
+                       OnClick="ReceiveVehicleAsync">
+
+                @if (_isReceiving)
+                {
+                    <MudProgressCircular Indeterminate="true"
+                                         Size="Size.Small"
+                                         Class="me-2" />
+
+                    <span>Recebendo...</span>
+                }
+                else
+                {
+                    <span>Receber veículo</span>
+                }
+
+            </MudButton>
+
+        </div>
+
+    </div>
+
+</div>
+
+@code {
+    private readonly List<LookupResult> _results = [];
+
+    private LookupResult? _selectedVehicle;
+
+    private CancellationTokenSource? _searchCancellation;
+
+    private Guid _garageId;
+
+    private string _searchText = string.Empty;
+
+    private string _customerComplaint = string.Empty;
+
+    private int _mileage;
+
+    private bool _isSearching;
+
+    private bool _showResults;
+
+    private bool _isReceiving;
+
+    private bool _hasChanges =>
+        _selectedVehicle is not null &&
+        (
+            !string.IsNullOrWhiteSpace(_customerComplaint) ||
+            _mileage != _selectedVehicle.Mileage
+        );
+
+    private bool CanReceive =>
+        _selectedVehicle is not null &&
+        !string.IsNullOrWhiteSpace(_customerComplaint) &&
+        _mileage >= 0;
+
+    private string FooterMessage =>
+        _selectedVehicle is null
+            ? "Selecione um veículo e preencha o relato para continuar."
+            : CanReceive
+                ? "Tudo pronto para receber o veículo."
+                : "Preencha o relato do cliente para continuar.";
+
+    protected override void OnInitialized()
+    {
+        var garageId =
+            Configuration["Garage:Id"];
+
+        if (!Guid.TryParse(
+                garageId,
+                out _garageId))
+        {
+            throw new InvalidOperationException(
+                "O identificador da oficina não foi configurado.");
+        }
+    }
+
+    private async Task OnSearchChanged(
+        string value)
+    {
+        _searchText = value;
+
+        _searchCancellation?.Cancel();
+        _searchCancellation?.Dispose();
+
+        _searchCancellation =
+            new CancellationTokenSource();
+
+        var cancellationToken =
+            _searchCancellation.Token;
+
+        _results.Clear();
+
+        if (string.IsNullOrWhiteSpace(value) ||
+            value.Trim().Length < 3)
+        {
+            _showResults = false;
+            _isSearching = false;
+
+            return;
+        }
+
+        try
+        {
+            _isSearching = true;
+            _showResults = false;
+
+            await Task.Delay(
+                300,
+                cancellationToken);
+
+            var results =
+                await LookupService.SearchAsync(
+                    _garageId,
+                    value.Trim(),
+                    cancellationToken);
+
+            _results.AddRange(results);
+
+            _showResults = true;
+        }
+        catch (OperationCanceledException)
+        {
+            // A busca foi substituída por uma nova digitação.
+        }
+        finally
+        {
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                _isSearching = false;
+            }
+        }
+    }
+
+    private void SelectVehicle(
+        LookupResult result)
+    {
+        _selectedVehicle = result;
+
+        _searchText =
+            $"{result.Plate} · {result.Brand} {result.Model}";
+
+        _mileage = result.Mileage;
+
+        _results.Clear();
+
+        _showResults = false;
+    }
+
+    private static string FormatPhone(
+        string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            return "Não informado";
+        }
+
+        var digits =
+            new string(
+                phone
+                    .Where(char.IsDigit)
+                    .ToArray());
+
+        return digits.Length switch
+        {
+            11 =>
+                $"({digits[..2]}) " +
+                $"{digits.Substring(2, 5)}-" +
+                $"{digits.Substring(7, 4)}",
+
+            10 =>
+                $"({digits[..2]}) " +
+                $"{digits.Substring(2, 4)}-" +
+                $"{digits.Substring(6, 4)}",
+
+            _ => phone
+        };
+    }
+
+    private async Task ReceiveVehicleAsync()
+    {
+        if (!CanReceive ||
+            _selectedVehicle is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _isReceiving = true;
+
+            var request =
+                new CreateServiceOrderRequest(
+                    _selectedVehicle.GarageId,
+                    _selectedVehicle.VehicleId,
+                    _customerComplaint.Trim());
+
+            var result =
+                await ServiceOrderService.CreateAsync(request);
+
+            Snackbar.Add(
+                $"OS nº {result.Number} criada com sucesso.",
+                Severity.Success);
+
+            Navigation.NavigateTo(
+                $"/service-orders/{result.Id}");
+        }
+        catch (HttpRequestException)
+        {
+            Snackbar.Add(
+                "Não foi possível criar a ordem de serviço.",
+                Severity.Error);
+        }
+        catch (Exception exception)
+        {
+            Snackbar.Add(
+                exception.Message,
+                Severity.Error);
+        }
+        finally
+        {
+            _isReceiving = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        _selectedVehicle = null;
+
+        _searchText = string.Empty;
+
+        _customerComplaint = string.Empty;
+
+        _mileage = 0;
+
+        _results.Clear();
+
+        _showResults = false;
+    }
+    private void TestSnackbar()
+    {
+        Snackbar.Add(
+            "Palmeiras! Snackbar funcionando.",
+            Severity.Success);
+    }
+}

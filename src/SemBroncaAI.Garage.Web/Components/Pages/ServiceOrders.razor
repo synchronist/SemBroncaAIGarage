@@ -1,0 +1,357 @@
+﻿@page "/service-orders"
+
+@using SemBroncaAI.Garage.Web.Models
+@using SemBroncaAI.Garage.Web.Services
+
+@inject ServiceOrderService ServiceOrderService
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Ordens de serviço</PageTitle>
+
+<div class="orders-page">
+
+    <div class="orders-header">
+        <div>
+            <h1>Ordens de serviço</h1>
+            <p>Acompanhe os veículos e o andamento dos serviços.</p>
+        </div>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="ReceiveVehicle">
+            Receber veículo
+        </MudButton>
+    </div>
+
+    <section class="orders-toolbar">
+
+        <MudTextField T="string"
+                      Value="@_search"
+                      ValueChanged="OnSearchChanged"
+                      Immediate="true"
+                      Placeholder="Buscar por OS, placa, veículo ou cliente..."
+                      Variant="Variant.Outlined"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Class="orders-search" />
+
+        <div class="status-filters">
+
+            @foreach (var filter in StatusFilters)
+            {
+                <button type="button"
+                        class="@GetFilterClass(filter.Value)"
+                        @onclick="() => SelectStatusAsync(filter.Value)">
+                    @filter.Label
+                </button>
+            }
+
+        </div>
+
+    </section>
+
+    @if (_isLoading)
+    {
+        <div class="orders-loading">
+            <MudProgressCircular Indeterminate="true"
+                                 Color="Color.Primary" />
+            <span>Carregando ordens...</span>
+        </div>
+    }
+    else if (_data is null || _data.Items.Count == 0)
+    {
+        <div class="orders-empty">
+            <MudIcon Icon="@Icons.Material.Filled.Assignment"
+                     Size="Size.Large" />
+
+            <h2>Nenhuma ordem encontrada</h2>
+
+            <p>
+                Ajuste os filtros ou receba um novo veículo.
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="orders-summary">
+            <strong>@_data.TotalItems</strong>
+            <span>
+                @(_data.TotalItems == 1
+                    ? "ordem encontrada"
+                    : "ordens encontradas")
+            </span>
+        </div>
+
+        <div class="orders-list">
+
+            @foreach (var order in _data.Items)
+            {
+                <article class="order-card"
+                         @onclick="() => OpenOrder(order.Id)">
+
+                    <div class="order-card-left">
+
+                        <div class="order-number">
+                            OS #@order.Number.ToString("D4")
+                        </div>
+
+                        <div class="vehicle-line">
+                            <strong>@order.Plate</strong>
+
+                            <span>
+                                @order.Brand @order.Model
+                                @if (!string.IsNullOrWhiteSpace(order.Version))
+                                {
+                                    <text> · @order.Version</text>
+                                }
+                            </span>
+                        </div>
+
+                        <div class="customer-line">
+                            <MudIcon Icon="@Icons.Material.Filled.PersonOutline"
+                                     Size="Size.Small" />
+                            @order.CustomerName
+                        </div>
+
+                        <div class="complaint-preview">
+                            @order.CustomerComplaint
+                        </div>
+
+                    </div>
+
+                    <div class="order-card-right">
+
+                        <span class="@GetStatusClass(order.Status)">
+                            @GetStatusLabel(order.Status)
+                        </span>
+
+                        <div class="order-date">
+                            <small>Entrada</small>
+                            <strong>
+                                @(order.CreatedAt
+                                    .ToLocalTime()
+                                    .ToString("dd/MM/yyyy HH:mm"))
+                            </strong>
+                        </div>
+
+                        <MudButton Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   OnClick="@(() => OpenOrder(order.Id))">
+                            Abrir OS
+                        </MudButton>
+
+                    </div>
+
+                </article>
+            }
+
+        </div>
+
+        @if (_data.TotalPages > 1)
+        {
+            <div class="pagination">
+
+                <MudButton Variant="Variant.Outlined"
+                           Disabled="@(_page <= 1)"
+                           OnClick="PreviousPageAsync">
+                    Anterior
+                </MudButton>
+
+                <span>
+                    Página @_page de @_data.TotalPages
+                </span>
+
+                <MudButton Variant="Variant.Outlined"
+                           Disabled="@(_page >= _data.TotalPages)"
+                           OnClick="NextPageAsync">
+                    Próxima
+                </MudButton>
+
+            </div>
+        }
+    }
+
+</div>
+
+@code {
+    private readonly List<StatusFilter> StatusFilters =
+    [
+        new("Todas", null),
+        new("Recebidas", "Received"),
+        new("Diagnóstico", "Diagnosis"),
+        new("Aprovação", "WaitingApproval"),
+        new("Em serviço", "InProgress"),
+        new("Aguardando peças", "WaitingParts"),
+        new("Finalizadas", "Finished"),
+        new("Entregues", "Delivered"),
+        new("Canceladas", "Cancelled")
+    ];
+
+    private CancellationTokenSource? _searchCancellation;
+
+    private ServiceOrderListModel? _data;
+
+    private Guid _garageId;
+
+    private string _search = string.Empty;
+
+    private string? _status;
+
+    private int _page = 1;
+
+    private const int PageSize = 10;
+
+    private bool _isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var garageId =
+            Configuration["Garage:Id"];
+
+        if (!Guid.TryParse(
+                garageId,
+                out _garageId))
+        {
+            throw new InvalidOperationException(
+                "O identificador da oficina não foi configurado.");
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _isLoading = true;
+
+            _data =
+                await ServiceOrderService.ListAsync(
+                    _garageId,
+                    _search,
+                    _status,
+                    _page,
+                    PageSize);
+        }
+        catch (Exception exception)
+        {
+            Snackbar.Add(
+                $"Não foi possível carregar as ordens: {exception.Message}",
+                Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnSearchChanged(
+        string value)
+    {
+        _search = value;
+
+        _searchCancellation?.Cancel();
+        _searchCancellation?.Dispose();
+
+        _searchCancellation =
+            new CancellationTokenSource();
+
+        try
+        {
+            await Task.Delay(
+                300,
+                _searchCancellation.Token);
+
+            _page = 1;
+
+            await LoadAsync();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task SelectStatusAsync(
+        string? status)
+    {
+        _status = status;
+        _page = 1;
+
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        if (_page <= 1)
+        {
+            return;
+        }
+
+        _page--;
+
+        await LoadAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_data is null ||
+            _page >= _data.TotalPages)
+        {
+            return;
+        }
+
+        _page++;
+
+        await LoadAsync();
+    }
+
+    private void OpenOrder(
+        Guid id)
+    {
+        Navigation.NavigateTo(
+            $"/service-orders/{id}");
+    }
+
+    private void ReceiveVehicle()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private string GetFilterClass(
+        string? status)
+    {
+        return _status == status
+            ? "status-filter active"
+            : "status-filter";
+    }
+
+    private static string GetStatusLabel(
+        string status)
+    {
+        return status switch
+        {
+            "Received" => "Recebido",
+            "Diagnosis" => "Em diagnóstico",
+            "WaitingApproval" => "Aguardando aprovação",
+            "InProgress" => "Em serviço",
+            "WaitingParts" => "Aguardando peças",
+            "Finished" => "Finalizado",
+            "Delivered" => "Entregue",
+            "Cancelled" => "Cancelado",
+            _ => status
+        };
+    }
+
+    private static string GetStatusClass(
+        string status)
+    {
+        return $"order-status status-{status.ToLowerInvariant()}";
+    }
+
+    private sealed record StatusFilter(
+        string Label,
+        string? Value);
+}

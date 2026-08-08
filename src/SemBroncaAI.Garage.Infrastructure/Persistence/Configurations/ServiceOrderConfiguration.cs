@@ -1,0 +1,46 @@
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using SemBroncaAI.Garage.Domain.Entities.ServiceOrder;
+
+namespace SemBroncaAI.Garage.Infrastructure.Persistence.Configurations;
+
+public sealed class ServiceOrderConfiguration
+    : IEntityTypeConfiguration<ServiceOrderEntity>
+{
+    public void Configure(EntityTypeBuilder<ServiceOrderEntity> builder)
+    {
+        builder.ToTable("ServiceOrders");
+
+        builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.Id)
+            .ValueGeneratedNever();
+
+        builder.Property(x => x.Number)
+            .IsRequired();
+
+        builder.Property(x => x.CustomerComplaint)
+            .HasMaxLength(1000)
+            .IsRequired();
+
+        builder.Property(x => x.Status)
+            .HasConversion<int>()
+            .IsRequired();
+
+        builder.Property(x => x.CreatedAt)
+            .IsRequired();
+
+        builder.HasOne(x => x.Garage)
+            .WithMany(x => x.ServiceOrders)
+            .HasForeignKey(x => x.GarageId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.Vehicle)
+            .WithMany(x => x.ServiceOrders)
+            .HasForeignKey(x => x.VehicleId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Navigation(x => x.History)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+    }
+}

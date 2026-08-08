@@ -1,0 +1,126 @@
+﻿@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+
+<div class="sbg-layout">
+
+    <aside class="sbg-sidebar">
+
+        <div class="sbg-brand">
+            <div class="sbg-brand-icon">
+                <MudIcon Icon="@Icons.Material.Filled.Build"
+                         Size="Size.Small" />
+            </div>
+
+            <div class="sbg-brand-text">
+                <strong>Oficina Modelo</strong>
+                <span>São Paulo — SP</span>
+            </div>
+        </div>
+
+        <nav class="sbg-menu">
+
+            <NavLink href="/"
+                     Match="NavLinkMatch.All"
+                     class="sbg-menu-item">
+                <MudIcon Icon="@Icons.Material.Filled.DirectionsCar"
+                         Size="Size.Small" />
+                <span>Receber veículo</span>
+            </NavLink>
+
+            <NavLink href="/service-orders"
+                     class="sbg-menu-item">
+                <MudIcon Icon="@Icons.Material.Filled.Assignment"
+                         Size="Size.Small" />
+                <span>Ordens de serviço</span>
+            </NavLink>
+
+            <NavLink href="/budgets"
+                     class="sbg-menu-item">
+                <MudIcon Icon="@Icons.Material.Filled.RequestQuote"
+                         Size="Size.Small" />
+                <span>Orçamentos</span>
+            </NavLink>
+
+            <NavLink href="/customers"
+                     class="sbg-menu-item">
+                <MudIcon Icon="@Icons.Material.Filled.PeopleOutline"
+                         Size="Size.Small" />
+                <span>Clientes</span>
+            </NavLink>
+
+            <NavLink href="/vehicles"
+                     class="sbg-menu-item">
+                <MudIcon Icon="@Icons.Material.Filled.DirectionsCarFilled"
+                         Size="Size.Small" />
+                <span>Veículos</span>
+            </NavLink>
+
+            <NavLink href="/settings"
+                     class="sbg-menu-item">
+                <MudIcon Icon="@Icons.Material.Filled.Settings"
+                         Size="Size.Small" />
+                <span>Configurações</span>
+            </NavLink>
+
+        </nav>
+
+        <div class="sbg-sidebar-footer">
+            Tecnologia SBGarage
+        </div>
+
+    </aside>
+
+    <div class="sbg-shell">
+
+        <header class="sbg-topbar">
+
+            <div></div>
+
+            <div class="sbg-topbar-actions">
+
+                <button class="sbg-icon-button"
+                        type="button"
+                        aria-label="Notificações">
+                    <MudIcon Icon="@Icons.Material.Filled.NotificationsNone"
+                             Size="Size.Small" />
+                </button>
+
+                <div class="sbg-user-avatar">
+                    JS
+                </div>
+
+                <div class="sbg-user-data">
+                    <strong>João Silva</strong>
+                    <span>Administrador</span>
+                </div>
+
+            </div>
+
+        </header>
+
+        <main class="sbg-main">
+            @Body
+        </main>
+
+    </div>
+
+</div>
+
+@code {
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#F97316",
+            Background = "#F7F8FA",
+            Surface = "#FFFFFF",
+            TextPrimary = "#111827",
+            TextSecondary = "#6B7280"
+        }
+    };
+}

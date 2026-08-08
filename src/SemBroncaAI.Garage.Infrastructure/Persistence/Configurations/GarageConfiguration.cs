@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using SemBroncaAI.Garage.Domain.Entities;
+using SemBroncaAI.Garage.Domain.Entities.Garage;
 
 namespace SemBroncaAI.Garage.Infrastructure.Persistence.Configurations;
 

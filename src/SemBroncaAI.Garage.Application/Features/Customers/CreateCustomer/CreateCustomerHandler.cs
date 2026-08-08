@@ -1,5 +1,5 @@
 ﻿using SemBroncaAI.Garage.Application.Abstractions.Persistence;
-using SemBroncaAI.Garage.Domain.Entities;
+using SemBroncaAI.Garage.Domain.Entities.Customer;
 using SemBroncaAI.Garage.Domain.Interfaces;
 
 namespace SemBroncaAI.Garage.Application.Features.Customers.CreateCustomer;

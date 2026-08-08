@@ -1,0 +1,792 @@
+﻿@page "/service-orders/{Id:guid}"
+
+@using SemBroncaAI.Garage.Web.Models
+@using SemBroncaAI.Garage.Web.Services
+
+@inject ServiceOrderService ServiceOrderService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Ordem de serviço</PageTitle>
+
+@if (_isLoading)
+{
+    <div class="loading-state">
+        <MudProgressCircular Indeterminate="true"
+                             Color="Color.Primary" />
+
+        <span>Carregando ordem de serviço...</span>
+    </div>
+}
+else if (_serviceOrder is null)
+{
+    <div class="not-found-state">
+        <MudIcon Icon="@Icons.Material.Filled.SearchOff"
+                 Size="Size.Large" />
+
+        <h2>Ordem de serviço não encontrada</h2>
+
+        <MudButton Variant="Variant.Outlined"
+                   OnClick="GoToServiceOrders">
+            Voltar
+        </MudButton>
+    </div>
+}
+else
+{
+    <div class="service-order-page">
+
+        <header class="order-header">
+
+            <div>
+                <button class="back-button"
+                        type="button"
+                        @onclick="GoToServiceOrders">
+
+                    <MudIcon Icon="@Icons.Material.Filled.ArrowBack"
+                             Size="Size.Small" />
+                </button>
+
+                <div>
+                    <span class="order-caption">
+                        Ordem de serviço
+                    </span>
+
+                    <h1>
+                        OS #@_serviceOrder.Number.ToString("D4")
+                    </h1>
+
+                    <span class="order-created">
+                        Aberta em
+                        @(_serviceOrder.CreatedAt
+                            .ToLocalTime()
+                            .ToString("dd/MM/yyyy 'às' HH:mm"))
+                    </span>
+                </div>
+            </div>
+
+            <span class="@GetStatusClass(_serviceOrder.Status)">
+                @GetStatusLabel(_serviceOrder.Status)
+            </span>
+
+        </header>
+
+        <section class="summary-grid">
+
+            <article class="summary-card">
+
+                <div class="section-title">
+                    <MudIcon Icon="@Icons.Material.Filled.DirectionsCar"
+                             Size="Size.Small" />
+
+                    <span>Veículo</span>
+                </div>
+
+                <div class="vehicle-summary-title">
+
+                    <strong>
+                        @_serviceOrder.Vehicle.Plate
+                    </strong>
+
+                    <span>
+                        @_serviceOrder.Vehicle.Brand
+                        @_serviceOrder.Vehicle.Model
+                    </span>
+
+                </div>
+
+                <div class="vehicle-summary-details">
+
+                    <span>
+                        @_serviceOrder.Vehicle.Version
+                    </span>
+
+                    <span>
+                        @_serviceOrder.Vehicle.Year
+                    </span>
+
+                    <span>
+                        @_serviceOrder.Vehicle.Color
+                    </span>
+
+                    <span>
+                        @_serviceOrder.Vehicle.Fuel
+                    </span>
+
+                </div>
+
+                <div class="vehicle-mileage">
+                    @_serviceOrder.Vehicle.Mileage.ToString("N0") km
+                </div>
+
+            </article>
+
+            <article class="summary-card">
+
+                <div class="section-title">
+
+                    <MudIcon Icon="@Icons.Material.Filled.PersonOutline"
+                             Size="Size.Small" />
+
+                    <span>Cliente</span>
+
+                </div>
+
+                <strong class="customer-name">
+                    @_serviceOrder.Customer.Name
+                </strong>
+
+                <div class="customer-details">
+
+                    <span>
+                        <small>Telefone</small>
+                        @FormatPhone(_serviceOrder.Customer.Phone)
+                    </span>
+
+                    <span>
+                        <small>Documento</small>
+                        @_serviceOrder.Customer.Document
+                    </span>
+
+                    <span>
+                        <small>E-mail</small>
+                        @_serviceOrder.Customer.Email
+                    </span>
+
+                </div>
+
+            </article>
+
+        </section>
+
+        <section class="content-card">
+
+            <div class="section-title">
+
+                <MudIcon Icon="@Icons.Material.Filled.Description"
+                         Size="Size.Small" />
+
+                <span>Relato do cliente</span>
+
+            </div>
+
+            <p class="complaint">
+                @_serviceOrder.CustomerComplaint
+            </p>
+
+        </section>
+
+
+        @if (_serviceOrder.Status == "Diagnosis" ||
+             _serviceOrder.Diagnosis is not null)
+        {
+            <section class="content-card diagnosis-card">
+
+                <div class="section-heading">
+
+                    <div class="section-title">
+
+                        <MudIcon Icon="@Icons.Material.Filled.Build"
+                                 Size="Size.Small" />
+
+                        <span>Diagnóstico do veículo</span>
+
+                    </div>
+
+                    @if (_serviceOrder.Diagnosis is not null)
+                    {
+                        <span class="diagnosis-saved">
+                            Diagnóstico salvo
+                        </span>
+                    }
+
+                </div>
+
+                @if (_serviceOrder.Status == "Diagnosis")
+                {
+                    <div class="diagnosis-form">
+
+                        <MudTextField T="string"
+                                      @bind-Value="_diagnosisDescription"
+                                      Label="O que foi identificado?"
+                                      Placeholder="Descreva o problema encontrado durante o diagnóstico..."
+                                      Variant="Variant.Outlined"
+                                      Lines="5"
+                                      Immediate="true" />
+
+                        <div class="internal-notes-field">
+
+                            <MudTextField T="string"
+                                          @bind-Value="_diagnosisInternalNotes"
+                                          Label="Observações internas"
+                                          Placeholder="Informações para a equipe da oficina..."
+                                          Variant="Variant.Outlined"
+                                          Lines="3"
+                                          Immediate="true" />
+
+                            <span>
+                                Uso interno da oficina. Estas observações não serão exibidas ao cliente.
+                            </span>
+
+                        </div>
+
+                        <div class="diagnosis-actions">
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Save"
+                                       Disabled="@(_isSavingDiagnosis ||
+                                                   string.IsNullOrWhiteSpace(_diagnosisDescription))"
+                                       OnClick="SaveDiagnosisAsync">
+
+                                @if (_isSavingDiagnosis)
+                                {
+                                    <MudProgressCircular Indeterminate="true"
+                                                         Size="Size.Small" />
+
+                                    <span>Salvando...</span>
+                                }
+                                else
+                                {
+                                    <span>
+                                        @(_serviceOrder.Diagnosis is null
+                                            ? "Salvar diagnóstico"
+                                            : "Atualizar diagnóstico")
+                                    </span>
+                                }
+
+                            </MudButton>
+
+                        </div>
+
+
+                    </div>
+                }
+                else if (_serviceOrder.Diagnosis is not null)
+                {
+                    <div class="diagnosis-readonly">
+
+                        <div>
+                            <small>Diagnóstico</small>
+
+                            <p>
+                                @_serviceOrder.Diagnosis.Description
+                            </p>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(
+                            _serviceOrder.Diagnosis.InternalNotes))
+                        {
+                            <div class="diagnosis-internal-readonly">
+
+                                <small>
+                                    Observações internas
+                                </small>
+
+                                <p>
+                                    @_serviceOrder.Diagnosis.InternalNotes
+                                </p>
+
+                            </div>
+                        }
+
+                    </div>
+                }
+
+            </section>
+        }
+
+        <section class="content-card">
+
+            <div class="section-heading">
+
+                <div class="section-title">
+
+                    <MudIcon Icon="@Icons.Material.Filled.History"
+                             Size="Size.Small" />
+
+                    <span>Histórico da ordem</span>
+
+                </div>
+
+                <span class="history-count">
+                    @_serviceOrder.History.Count registros
+                </span>
+
+            </div>
+
+            <div class="timeline">
+
+                @{
+                    var orderedHistory =
+                        _serviceOrder.History
+                            .OrderByDescending(
+                                item => item.CreatedAt);
+                }
+
+                @foreach (var history in orderedHistory)
+                {
+                    <div class="timeline-item">
+
+                        <div class="timeline-marker"></div>
+
+                        <div class="timeline-content">
+
+                            <div class="timeline-header">
+
+                                <strong>
+                                    @GetStatusLabel(history.ToStatus)
+                                </strong>
+
+                                <span>
+                                    @(history.CreatedAt
+                                        .ToLocalTime()
+                                        .ToString("dd/MM/yyyy HH:mm"))
+                                </span>
+
+                            </div>
+
+                            <p>
+                                @history.Description
+                            </p>
+
+                            @if (!string.IsNullOrWhiteSpace(
+                                history.FromStatus))
+                            {
+                                <small>
+                                    @GetStatusLabel(history.FromStatus!)
+                                    →
+                                    @GetStatusLabel(history.ToStatus)
+                                </small>
+                            }
+
+                        </div>
+
+                    </div>
+                }
+
+            </div>
+
+        </section>
+
+        <section class="action-card">
+
+            <div>
+
+                <span class="action-caption">
+                    Próxima etapa
+                </span>
+
+                <strong>
+                    @GetNextActionDescription()
+                </strong>
+
+            </div>
+
+            <div class="action-buttons">
+
+                @if (CanCancel)
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               Disabled="_isTransitioning"
+                               OnClick="CancelAsync">
+                        Cancelar OS
+                    </MudButton>
+                }
+
+                @if (HasPrimaryAction)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Disabled="@IsPrimaryActionDisabled"
+                               StartIcon="@GetPrimaryActionIcon()"
+                               OnClick="ExecutePrimaryActionAsync">
+
+                        @if (_isTransitioning)
+                        {
+                            <MudProgressCircular Indeterminate="true"
+                                                 Size="Size.Small" />
+                        }
+                        else
+                        {
+                            @GetPrimaryActionLabel()
+                        }
+
+                    </MudButton>
+                }
+
+            </div>
+
+        </section>
+
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private ServiceOrderDetailsModel? _serviceOrder;
+
+    private bool _isLoading = true;
+
+    private bool _isTransitioning;
+
+    private bool _isSavingDiagnosis;
+
+    private string _diagnosisDescription = string.Empty;
+
+    private string _diagnosisInternalNotes = string.Empty;
+
+    private bool HasPrimaryAction =>
+        _serviceOrder?.Status is
+            "Received" or
+            "Diagnosis" or
+            "WaitingApproval" or
+            "InProgress" or
+            "WaitingParts" or
+            "Finished";
+
+    private bool CanCancel =>
+        _serviceOrder?.Status is not
+            null and not
+            "Delivered" and not
+            "Cancelled";
+
+    private bool IsPrimaryActionDisabled =>
+        _isTransitioning ||
+        _isSavingDiagnosis ||
+        (_serviceOrder?.Status == "Diagnosis" &&
+         _serviceOrder.Diagnosis is null);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _isLoading = true;
+
+            _serviceOrder =
+                await ServiceOrderService.GetByIdAsync(Id);
+
+            if (_serviceOrder?.Diagnosis is not null)
+            {
+                _diagnosisDescription =
+                    _serviceOrder.Diagnosis.Description;
+
+                _diagnosisInternalNotes =
+                    _serviceOrder.Diagnosis.InternalNotes;
+            }
+            else
+            {
+                _diagnosisDescription = string.Empty;
+                _diagnosisInternalNotes = string.Empty;
+            }
+        }
+        catch (Exception exception)
+        {
+            Snackbar.Add(
+                exception.Message,
+                Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveDiagnosisAsync()
+    {
+        if (_serviceOrder is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(
+            _diagnosisDescription))
+        {
+            Snackbar.Add(
+                "Informe o diagnóstico do veículo.",
+                Severity.Warning);
+
+            return;
+        }
+
+        try
+        {
+            _isSavingDiagnosis = true;
+
+            await ServiceOrderService.SaveDiagnosisAsync(
+                Id,
+                _diagnosisDescription,
+                _diagnosisInternalNotes);
+
+            Snackbar.Add(
+                "Diagnóstico salvo com sucesso.",
+                Severity.Success);
+
+            await LoadAsync();
+        }
+        catch (HttpRequestException exception)
+        {
+            Snackbar.Add(
+                $"Não foi possível salvar o diagnóstico: {exception.Message}",
+                Severity.Error);
+        }
+        finally
+        {
+            _isSavingDiagnosis = false;
+        }
+    }
+
+
+    private async Task ExecutePrimaryActionAsync()
+    {
+        if (_serviceOrder is null)
+        {
+            return;
+        }
+
+        var action =
+            GetPrimaryActionRoute();
+
+        if (action is null)
+        {
+            return;
+        }
+
+        await ExecuteTransitionAsync(action);
+    }
+
+    private async Task CancelAsync()
+    {
+        await ExecuteTransitionAsync("cancel");
+    }
+
+    private async Task ExecuteTransitionAsync(
+        string action)
+    {
+        try
+        {
+            _isTransitioning = true;
+
+            await ServiceOrderService
+                .ExecuteTransitionAsync(
+                    Id,
+                    action);
+
+            Snackbar.Add(
+                "Ordem de serviço atualizada.",
+                Severity.Success);
+
+            await LoadAsync();
+        }
+        catch (HttpRequestException exception)
+        {
+            Snackbar.Add(
+                $"Não foi possível atualizar a OS: {exception.Message}",
+                Severity.Error);
+        }
+        finally
+        {
+            _isTransitioning = false;
+        }
+    }
+
+    private string? GetPrimaryActionRoute()
+    {
+        return _serviceOrder?.Status switch
+        {
+            "Received" =>
+                "start-diagnosis",
+
+            "Diagnosis" =>
+                "send-for-approval",
+
+            "WaitingApproval" =>
+                "start-service",
+
+            "InProgress" =>
+                "finish",
+
+            "WaitingParts" =>
+                "resume-service",
+
+            "Finished" =>
+                "deliver",
+
+            _ => null
+        };
+    }
+
+    private string GetPrimaryActionLabel()
+    {
+        return _serviceOrder?.Status switch
+        {
+            "Received" =>
+                "Iniciar diagnóstico",
+
+            "Diagnosis" =>
+                "Enviar para aprovação",
+
+            "WaitingApproval" =>
+                "Iniciar serviço",
+
+            "InProgress" =>
+                "Finalizar serviço",
+
+            "WaitingParts" =>
+                "Retomar serviço",
+
+            "Finished" =>
+                "Entregar veículo",
+
+            _ =>
+                "Atualizar"
+        };
+    }
+
+    private string GetNextActionDescription()
+    {
+        return _serviceOrder?.Status switch
+        {
+            "Received" =>
+                "O veículo está aguardando o início do diagnóstico.",
+
+            "Diagnosis" when _serviceOrder.Diagnosis is null =>
+                "Registre e salve o diagnóstico para continuar.",
+
+            "Diagnosis" =>
+                "Diagnóstico registrado. A OS pode ser enviada para aprovação.",
+
+            "WaitingApproval" =>
+                "Aguardando autorização do cliente.",
+
+            "InProgress" =>
+                "O serviço está sendo executado.",
+
+            "WaitingParts" =>
+                "A ordem está aguardando peças.",
+
+            "Finished" =>
+                "O veículo está pronto para entrega.",
+
+            "Delivered" =>
+                "Veículo entregue. Ordem concluída.",
+
+            "Cancelled" =>
+                "Esta ordem foi cancelada.",
+
+            _ =>
+                "Status não identificado."
+        };
+    }
+
+    private string GetPrimaryActionIcon()
+    {
+        return _serviceOrder?.Status switch
+        {
+            "Received" =>
+                Icons.Material.Filled.Search,
+
+            "Diagnosis" =>
+                Icons.Material.Filled.Send,
+
+            "WaitingApproval" =>
+                Icons.Material.Filled.Build,
+
+            "InProgress" =>
+                Icons.Material.Filled.CheckCircle,
+
+            "WaitingParts" =>
+                Icons.Material.Filled.PlayArrow,
+
+            "Finished" =>
+                Icons.Material.Filled.LocalShipping,
+
+            _ =>
+                Icons.Material.Filled.ArrowForward
+        };
+    }
+
+    private static string GetStatusLabel(
+        string status)
+    {
+        return status switch
+        {
+            "Received" =>
+                "Recebido",
+
+            "Diagnosis" =>
+                "Em diagnóstico",
+
+            "WaitingApproval" =>
+                "Aguardando aprovação",
+
+            "InProgress" =>
+                "Em serviço",
+
+            "WaitingParts" =>
+                "Aguardando peças",
+
+            "Finished" =>
+                "Finalizado",
+
+            "Delivered" =>
+                "Entregue",
+
+            "Cancelled" =>
+                "Cancelado",
+
+            _ =>
+                status
+        };
+    }
+
+    private static string GetStatusClass(
+        string status)
+    {
+        return $"status-badge status-{status.ToLowerInvariant()}";
+    }
+
+    private void GoToServiceOrders()
+    {
+        Navigation.NavigateTo("/service-orders");
+    }
+
+    private static string FormatPhone(
+        string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            return "Não informado";
+        }
+
+        var digits =
+            new string(
+                phone
+                    .Where(char.IsDigit)
+                    .ToArray());
+
+        return digits.Length switch
+        {
+            11 =>
+                $"({digits[..2]}) " +
+                $"{digits.Substring(2, 5)}-" +
+                $"{digits.Substring(7, 4)}",
+
+            10 =>
+                $"({digits[..2]}) " +
+                $"{digits.Substring(2, 4)}-" +
+                $"{digits.Substring(6, 4)}",
+
+            _ => phone
+        };
+    }
+}

@@ -1,4 +1,4 @@
-﻿using SemBroncaAI.Garage.Domain.Entities;
+﻿using SemBroncaAI.Garage.Domain.Entities.Customer;
 
 namespace SemBroncaAI.Garage.Application.Abstractions.Persistence;
 
