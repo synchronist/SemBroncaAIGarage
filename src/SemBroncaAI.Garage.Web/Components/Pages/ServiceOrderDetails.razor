@@ -116,7 +116,8 @@ else
                 </div>
 
                 <div class="vehicle-mileage">
-                    @_serviceOrder.Vehicle.Mileage.ToString("N0") km
+                    <small>Quilometragem na entrada</small>
+                    <span>@(_serviceOrder.Mileage.HasValue ? $"{_serviceOrder.Mileage.Value:N0} km" : "Não registrada")</span>
                 </div>
 
             </article>
@@ -449,7 +450,7 @@ else
                 {
                     <div class="timeline-item">
 
-                        <div class="timeline-marker"></div>
+                        <div class="@GetTimelineMarkerClass(history.ToStatus)"></div>
 
                         <div class="timeline-content">
 
@@ -513,6 +514,17 @@ else
                                Disabled="_isTransitioning"
                                OnClick="CancelAsync">
                         Cancelar OS
+                    </MudButton>
+                }
+
+                @if (_serviceOrder.Status == "InProgress")
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Warning"
+                               Disabled="_isTransitioning"
+                               StartIcon="@Icons.Material.Filled.Inventory2"
+                               OnClick="WaitForPartsAsync">
+                        Aguardar peças
                     </MudButton>
                 }
 
@@ -783,6 +795,11 @@ else
         await ExecuteTransitionAsync("cancel");
     }
 
+    private async Task WaitForPartsAsync()
+    {
+        await ExecuteTransitionAsync("wait-for-parts");
+    }
+
     private async Task ExecuteTransitionAsync(
         string action)
     {
@@ -970,6 +987,11 @@ else
         string status)
     {
         return $"status-badge status-{status.ToLowerInvariant()}";
+    }
+
+    private static string GetTimelineMarkerClass(string status)
+    {
+        return $"timeline-marker timeline-status-{status.ToLowerInvariant()}";
     }
 
     private void GoToServiceOrders()

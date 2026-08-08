@@ -10,8 +10,8 @@ public interface IVehicleRepository
 
     Task<VehicleEntity?> GetByIdAsync(
         Guid id,
+        Guid garageId,
         CancellationToken cancellationToken);
 
-    Task<IEnumerable<VehicleEntity>> GetAllAsync(
-        CancellationToken cancellationToken);
+    Task<bool> ExistsByPlateAsync(Guid garageId, string plate, Guid? excludingVehicleId = null, CancellationToken cancellationToken = default);
 }

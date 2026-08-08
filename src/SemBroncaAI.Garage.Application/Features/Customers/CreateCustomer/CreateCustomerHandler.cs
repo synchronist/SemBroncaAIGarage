@@ -37,7 +37,8 @@ public sealed class CreateCustomerHandler
         var documentAlreadyExists =
             await _customerRepository.ExistsByDocumentAsync(
                 command.GarageId,
-                command.Document,
+                command.Document.Trim(),
+                null,
                 cancellationToken);
 
         if (documentAlreadyExists)

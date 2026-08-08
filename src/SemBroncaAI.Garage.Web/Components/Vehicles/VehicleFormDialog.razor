@@ -1,0 +1,48 @@
+@using SemBroncaAI.Garage.Web.Models
+@using SemBroncaAI.Garage.Web.Services
+@inject VehicleService VehicleService
+@inject CustomerService CustomerService
+<MudDialog>
+<DialogContent><MudForm @ref="_form"><div class="vehicle-form">
+    @if (PreselectedCustomerId.HasValue)
+    { <MudAlert Severity="Severity.Info" Dense="true">Cliente: <strong>@PreselectedCustomerName</strong></MudAlert> }
+    else
+    { <MudAutocomplete T="CustomerListItemModel" Label="Cliente" Variant="Variant.Outlined" SearchFunc="SearchCustomersAsync" ToStringFunc="@(x => x?.Name ?? string.Empty)" Value="_selectedCustomer" ValueChanged="SelectCustomer" Required="true" RequiredError="Selecione o cliente." /> }
+    <div class="form-grid">
+        <MudTextField @bind-Value="_plate" Label="Placa" Variant="Variant.Outlined" Required="true" />
+        <MudTextField @bind-Value="_brand" Label="Marca" Variant="Variant.Outlined" Required="true" />
+        <MudTextField @bind-Value="_model" Label="Modelo" Variant="Variant.Outlined" Required="true" />
+        <MudTextField @bind-Value="_version" Label="Versão" Variant="Variant.Outlined" />
+        <MudNumericField T="int" @bind-Value="_year" Label="Ano" Variant="Variant.Outlined" Min="1900" />
+        <MudTextField @bind-Value="_color" Label="Cor" Variant="Variant.Outlined" />
+        <MudTextField @bind-Value="_fuel" Label="Combustível" Variant="Variant.Outlined" />
+        <MudNumericField T="int" @bind-Value="_mileage" Label="Quilometragem" Variant="Variant.Outlined" Min="0" />
+    </div>
+    @if (_error is not null) { <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert> }
+</div></MudForm></DialogContent>
+<DialogActions><MudButton OnClick="Cancel">Cancelar</MudButton><MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_saving" OnClick="SaveAsync">@(_saving ? "Salvando..." : "Salvar veículo")</MudButton></DialogActions>
+</MudDialog>
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public Guid GarageId { get; set; }
+    [Parameter] public Guid? PreselectedCustomerId { get; set; }
+    [Parameter] public string? PreselectedCustomerName { get; set; }
+    [Parameter] public VehicleDetailsModel? Vehicle { get; set; }
+    private MudForm? _form; private CustomerListItemModel? _selectedCustomer; private Guid _customerId; private string _plate="", _brand="", _model="", _version="", _color="", _fuel=""; private int _year=DateTime.Today.Year, _mileage; private string? _error; private bool _saving;
+    protected override void OnInitialized()
+    {
+        _customerId = PreselectedCustomerId ?? Vehicle?.Customer.Id ?? Guid.Empty;
+        if (Vehicle is null) return;
+        _plate=Vehicle.Plate; _brand=Vehicle.Brand; _model=Vehicle.Model; _version=Vehicle.Version; _year=Vehicle.Year; _color=Vehicle.Color; _fuel=Vehicle.Fuel; _mileage=Vehicle.Mileage;
+        _selectedCustomer = new CustomerListItemModel(Vehicle.Customer.Id, Vehicle.Customer.Name, Vehicle.Customer.Document, Vehicle.Customer.Phone, Vehicle.Customer.Email, true, default, 0);
+    }
+    private async Task<IEnumerable<CustomerListItemModel>> SearchCustomersAsync(string value, CancellationToken token) => (await CustomerService.ListAsync(GarageId, value, 1, 20, token)).Items;
+    private void SelectCustomer(CustomerListItemModel? customer) { _selectedCustomer=customer; _customerId=customer?.Id ?? Guid.Empty; }
+    private async Task SaveAsync()
+    {
+        await _form!.ValidateAsync(); if (!_form.IsValid || _customerId==Guid.Empty) return;
+        try { _saving=true; _error=null; var request=new SaveVehicleRequest(GarageId,_customerId,_plate,_brand,_model,_version,_year,_color,_fuel,_mileage); if(Vehicle is null) await VehicleService.CreateAsync(request); else await VehicleService.UpdateAsync(Vehicle.Id,request); Dialog.Close(DialogResult.Ok(true)); }
+        catch(Exception ex){_error=ex.Message;} finally{_saving=false;}
+    }
+    private void Cancel()=>Dialog.Cancel();
+}

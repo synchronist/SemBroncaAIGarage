@@ -20,6 +20,8 @@ public sealed class ServiceOrderEntity : Entity
 
     public string CustomerComplaint { get; private set; } = string.Empty;
 
+    public int? Mileage { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private set; }
 
     public GarageEntity Garage { get; private set; } = default!;
@@ -38,6 +40,7 @@ public sealed class ServiceOrderEntity : Entity
         Guid vehicleId,
         int number,
         string customerComplaint,
+        int mileage,
         Guid? actorId = null)
     {
         GarageId = Guard.AgainstEmpty(
@@ -55,6 +58,13 @@ public sealed class ServiceOrderEntity : Entity
         CustomerComplaint = Guard.AgainstNullOrWhiteSpace(
             customerComplaint,
             nameof(customerComplaint));
+
+        if (mileage < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(mileage), "A quilometragem não pode ser negativa.");
+        }
+
+        Mileage = mileage;
 
         Status = ServiceOrderStatus.Received;
         CreatedAt = DateTimeOffset.UtcNow;

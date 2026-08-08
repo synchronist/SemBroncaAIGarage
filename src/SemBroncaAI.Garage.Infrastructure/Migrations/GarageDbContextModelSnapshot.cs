@@ -156,6 +156,9 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                     b.Property<Guid>("GarageId")
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("Mileage")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Number")
                         .HasColumnType("integer");
 
@@ -317,7 +320,8 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.HasIndex("GarageId");
+                    b.HasIndex("GarageId", "Plate")
+                        .IsUnique();
 
                     b.ToTable("Vehicles", (string)null);
                 });

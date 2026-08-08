@@ -25,34 +25,25 @@ public sealed class CustomerRepository : ICustomerRepository
     public Task<bool> ExistsByDocumentAsync(
         Guid garageId,
         string document,
+        Guid? excludingCustomerId = null,
         CancellationToken cancellationToken = default)
     {
         return _dbContext.Customers.AnyAsync(
             customer =>
                 customer.GarageId == garageId &&
-                customer.Document == document,
+                customer.Document == document &&
+                (!excludingCustomerId.HasValue || customer.Id != excludingCustomerId.Value),
             cancellationToken);
     }
 
     public async Task<CustomerEntity?> GetByIdAsync(
         Guid id,
-        CancellationToken cancellationToken = default)
-    {
-        return await _dbContext.Customers
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                customer => customer.Id == id,
-                cancellationToken);
-    }
-
-    public async Task<IReadOnlyList<CustomerEntity>> GetAllAsync(
         Guid garageId,
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.Customers
-            .AsNoTracking()
-            .Where(customer => customer.GarageId == garageId)
-            .OrderBy(customer => customer.Name)
-            .ToListAsync(cancellationToken);
+            .FirstOrDefaultAsync(
+                customer => customer.Id == id && customer.GarageId == garageId,
+                cancellationToken);
     }
 }

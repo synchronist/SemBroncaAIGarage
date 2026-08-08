@@ -36,12 +36,35 @@ public sealed class CustomerEntity : Entity
         string phone,
         string email)
     {
-        GarageId = garageId;
-        Name = name;
-        Document = document;
-        Phone = phone;
-        Email = email;
+        GarageId = Guard.AgainstEmpty(garageId, nameof(garageId));
+        SetContactInformation(name, document, phone, email);
         Active = true;
         CreatedAt = DateTime.UtcNow;
+    }
+
+    public void Update(
+        string name,
+        string document,
+        string phone,
+        string email)
+    {
+        SetContactInformation(name, document, phone, email);
+    }
+
+    private void SetContactInformation(
+        string name,
+        string document,
+        string phone,
+        string email)
+    {
+        Name = Guard.AgainstNullOrWhiteSpace(name, nameof(name));
+        Document = Guard.AgainstNullOrWhiteSpace(document, nameof(document));
+        Phone = Guard.AgainstNullOrWhiteSpace(phone, nameof(phone));
+        Email = Guard.AgainstNullOrWhiteSpace(email, nameof(email));
+
+        if (!Email.Contains('@') || Email.StartsWith('@') || Email.EndsWith('@'))
+        {
+            throw new ArgumentException("O e-mail informado é inválido.", nameof(email));
+        }
     }
 }

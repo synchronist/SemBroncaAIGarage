@@ -103,6 +103,7 @@ public sealed class GetServiceOrderByIdHandler
             serviceOrder.Number,
             serviceOrder.Status,
             serviceOrder.CustomerComplaint,
+            serviceOrder.Mileage,
             serviceOrder.CreatedAt,
             customerResponse,
             vehicleResponse,

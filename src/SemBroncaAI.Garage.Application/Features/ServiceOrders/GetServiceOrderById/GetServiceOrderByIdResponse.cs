@@ -34,6 +34,7 @@ public sealed record GetServiceOrderByIdResponse(
     int Number,
     ServiceOrderStatus Status,
     string CustomerComplaint,
+    int? Mileage,
     DateTimeOffset CreatedAt,
     ServiceOrderCustomerResponse Customer,
     ServiceOrderVehicleResponse Vehicle,

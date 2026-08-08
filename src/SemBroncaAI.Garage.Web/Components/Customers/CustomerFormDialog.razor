@@ -1,0 +1,83 @@
+@using SemBroncaAI.Garage.Web.Models
+@using SemBroncaAI.Garage.Web.Services
+
+@inject CustomerService CustomerService
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form">
+            <div class="customer-form">
+                <MudTextField T="string" @bind-Value="_name" Label="Nome" Variant="Variant.Outlined" Required="true" RequiredError="Informe o nome." MaxLength="150" />
+                <MudTextField T="string" @bind-Value="_document" Label="Documento" Variant="Variant.Outlined" Required="true" RequiredError="Informe o documento." MaxLength="20" />
+                <MudTextField T="string" @bind-Value="_phone" Label="Telefone" Variant="Variant.Outlined" Required="true" RequiredError="Informe o telefone." MaxLength="20" />
+                <MudTextField T="string" @bind-Value="_email" Label="E-mail" Variant="Variant.Outlined" Required="true" RequiredError="Informe o e-mail." Validation="@(new Func<string, string?>(ValidateEmail))" MaxLength="150" />
+
+                @if (!string.IsNullOrWhiteSpace(_error))
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+                }
+            </div>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_isSaving">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_isSaving">
+            @(_isSaving ? "Salvando..." : "Salvar cliente")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Guid GarageId { get; set; }
+    [Parameter] public CustomerDetailsModel? Customer { get; set; }
+
+    private MudForm? _form;
+    private string _name = string.Empty;
+    private string _document = string.Empty;
+    private string _phone = string.Empty;
+    private string _email = string.Empty;
+    private string? _error;
+    private bool _isSaving;
+
+    protected override void OnInitialized()
+    {
+        if (Customer is null) return;
+        _name = Customer.Name;
+        _document = Customer.Document;
+        _phone = Customer.Phone;
+        _email = Customer.Email;
+    }
+
+    private async Task SaveAsync()
+    {
+        await _form!.ValidateAsync();
+        if (!_form.IsValid) return;
+
+        try
+        {
+            _isSaving = true;
+            _error = null;
+            var request = new SaveCustomerRequest(GarageId, _name, _document, _phone, _email);
+            if (Customer is null)
+                await CustomerService.CreateAsync(request);
+            else
+                await CustomerService.UpdateAsync(Customer.Id, request);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception exception)
+        {
+            _error = exception.Message;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private static string? ValidateEmail(string email) =>
+        !string.IsNullOrWhiteSpace(email) && email.Contains('@') && !email.StartsWith('@') && !email.EndsWith('@')
+            ? null : "Informe um e-mail válido.";
+
+    private void Cancel() => MudDialog.Cancel();
+}

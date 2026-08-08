@@ -23,6 +23,9 @@ public sealed class ServiceOrderConfiguration
             .HasMaxLength(1000)
             .IsRequired();
 
+        builder.Property(x => x.Mileage)
+            .IsRequired(false);
+
         builder.Property(x => x.Status)
             .HasConversion<int>()
             .IsRequired();

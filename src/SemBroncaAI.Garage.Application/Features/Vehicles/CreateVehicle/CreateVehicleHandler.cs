@@ -39,6 +39,7 @@ public sealed class CreateVehicleHandler
 
         var customer = await _customerRepository.GetByIdAsync(
             command.CustomerId,
+            command.GarageId,
             cancellationToken);
 
         if (customer is null)
@@ -53,10 +54,14 @@ public sealed class CreateVehicleHandler
                 "O cliente não pertence à oficina informada.");
         }
 
+        var normalizedPlate = VehicleEntity.NormalizePlate(command.Plate);
+        if (await _vehicleRepository.ExistsByPlateAsync(command.GarageId, normalizedPlate, null, cancellationToken))
+            throw new InvalidOperationException("Já existe um veículo com essa placa nesta oficina.");
+
         var vehicle = new VehicleEntity(
             command.GarageId,
             command.CustomerId,
-            command.Plate,
+            normalizedPlate,
             command.Brand,
             command.Model,
             command.Version,

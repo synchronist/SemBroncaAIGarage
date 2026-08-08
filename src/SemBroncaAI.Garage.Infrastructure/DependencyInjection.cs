@@ -3,6 +3,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SemBroncaAI.Garage.Application.Abstractions.Persistence;
 using SemBroncaAI.Garage.Application.Features.Customers.CreateCustomer;
+using SemBroncaAI.Garage.Application.Features.Customers.GetCustomerById;
+using SemBroncaAI.Garage.Application.Features.Customers.ListCustomers;
+using SemBroncaAI.Garage.Application.Features.Customers.UpdateCustomer;
 using SemBroncaAI.Garage.Application.Features.Garages.CreateGarage;
 using SemBroncaAI.Garage.Application.Features.Lookup;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.CancelServiceOrder;
@@ -19,6 +22,9 @@ using SemBroncaAI.Garage.Application.Features.ServiceOrders.StartDiagnosis;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.StartService;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.WaitForParts;
 using SemBroncaAI.Garage.Application.Features.Vehicles.CreateVehicle;
+using SemBroncaAI.Garage.Application.Features.Vehicles.GetVehicleById;
+using SemBroncaAI.Garage.Application.Features.Vehicles.ListVehicles;
+using SemBroncaAI.Garage.Application.Features.Vehicles.UpdateVehicle;
 using SemBroncaAI.Garage.Domain.Interfaces;
 using SemBroncaAI.Garage.Infrastructure.Persistence;
 using SemBroncaAI.Garage.Infrastructure.Persistence.Repositories;
@@ -46,7 +52,9 @@ public static class DependencyInjection
 
         services.AddScoped<IGarageRepository, GarageRepository>();
         services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<ICustomerQueryRepository, CustomerQueryRepository>();
         services.AddScoped<IVehicleRepository, VehicleRepository>();
+        services.AddScoped<IVehicleQueryRepository, VehicleQueryRepository>();
         services.AddScoped<IServiceOrderRepository, ServiceOrderRepository>();
         services.AddScoped<ILookupRepository, LookupRepository>();
         services.AddScoped<
@@ -59,7 +67,13 @@ public static class DependencyInjection
 
         services.AddScoped<CreateGarageHandler>();
         services.AddScoped<CreateCustomerHandler>();
+        services.AddScoped<ListCustomersHandler>();
+        services.AddScoped<GetCustomerByIdHandler>();
+        services.AddScoped<UpdateCustomerHandler>();
         services.AddScoped<CreateVehicleHandler>();
+        services.AddScoped<ListVehiclesHandler>();
+        services.AddScoped<GetVehicleByIdHandler>();
+        services.AddScoped<UpdateVehicleHandler>();
         services.AddScoped<CreateServiceOrderHandler>();
         services.AddScoped<GetServiceOrderByIdHandler>();
         services.AddScoped<StartDiagnosisHandler>();

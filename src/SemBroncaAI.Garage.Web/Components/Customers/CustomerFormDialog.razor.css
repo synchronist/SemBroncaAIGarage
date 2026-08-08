@@ -1,0 +1,10 @@
+.customer-form {
+    width: min(520px, 80vw);
+    display: grid;
+    gap: 16px;
+    padding-top: 8px;
+}
+
+@media (max-width: 600px) {
+    .customer-form { width: 100%; }
+}

@@ -1,0 +1,20 @@
+@page "/vehicles/{Id:guid}"
+@using SemBroncaAI.Garage.Web.Components.Vehicles
+@using SemBroncaAI.Garage.Web.Models
+@using SemBroncaAI.Garage.Web.Services
+@inject VehicleService VehicleService
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+<PageTitle>Veículo</PageTitle>
+@if(_loading){<div class="state"><MudProgressCircular Indeterminate="true"/>Carregando...</div>}
+else if(_vehicle is null){<div class="state">Veículo não encontrado.</div>}
+else{<div class="details"><header><div><button @onclick="Back"><MudIcon Icon="@Icons.Material.Filled.ArrowBack"/></button><div><span>Veículo</span><h1>@_vehicle.Plate</h1><small>@_vehicle.Brand @_vehicle.Model</small></div></div><div class="actions"><MudButton Variant="Variant.Outlined" OnClick="EditAsync">Editar veículo</MudButton><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Receive">Receber veículo</MudButton></div></header>
+<section class="info"><div><small>Versão</small><strong>@_vehicle.Version</strong></div><div><small>Ano</small><strong>@_vehicle.Year</strong></div><div><small>Cor</small><strong>@_vehicle.Color</strong></div><div><small>Combustível</small><strong>@_vehicle.Fuel</strong></div><div><small>Quilometragem</small><strong>@_vehicle.Mileage.ToString("N0") km</strong></div><div><small>Status</small><strong>@(_vehicle.Active?"Ativo":"Inativo")</strong></div></section>
+<section class="owner"><div><small>Cliente proprietário</small><strong>@_vehicle.Customer.Name</strong><span>@_vehicle.Customer.Phone · @_vehicle.Customer.Document</span></div><MudButton Variant="Variant.Outlined" OnClick="OpenCustomer">Abrir cliente</MudButton></section>
+<section><h2>Ordens de serviço</h2>@if(_vehicle.ServiceOrders.Count==0){<div class="empty">Este veículo ainda não possui ordens de serviço.</div>}else{<div class="orders">@foreach(var o in _vehicle.ServiceOrders){<article><strong>OS #@o.Number.ToString("D4")</strong><span>@Status(o.Status)</span><p>@o.CustomerComplaint</p><small>@(o.Mileage.HasValue ? $"{o.Mileage.Value:N0} km · " : "Quilometragem não registrada · ")@o.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small><MudButton Variant="Variant.Text" OnClick="@(()=>OpenOrder(o.Id))">Abrir OS</MudButton></article>}</div>}</section></div>}
+@code{[Parameter]public Guid Id{get;set;}private VehicleDetailsModel? _vehicle;private Guid _garageId;private bool _loading;
+protected override async Task OnParametersSetAsync(){if(!Guid.TryParse(Configuration["Garage:Id"],out _garageId))throw new InvalidOperationException("Oficina não configurada.");await Load();}private async Task Load(){try{_loading=true;_vehicle=await VehicleService.GetByIdAsync(Id,_garageId);}finally{_loading=false;}}
+private async Task EditAsync(){var p=new DialogParameters{{"GarageId",_garageId},{"Vehicle",_vehicle}};var d=await DialogService.ShowAsync<VehicleFormDialog>("Editar veículo",p,new DialogOptions{CloseButton=true,FullWidth=true,MaxWidth=MaxWidth.Medium});var r=await d.Result;if(r is{Canceled:false}){Snackbar.Add("Veículo atualizado.",Severity.Success);await Load();}}
+private void Receive()=>Navigation.NavigateTo($"/?vehicleId={Id}");private void OpenCustomer()=>Navigation.NavigateTo($"/customers/{_vehicle!.Customer.Id}");private void OpenOrder(Guid id)=>Navigation.NavigateTo($"/service-orders/{id}");private void Back()=>Navigation.NavigateTo("/vehicles");private static string Status(string s)=>s switch{"Received"=>"Recebida","Diagnosis"=>"Diagnóstico","WaitingApproval"=>"Aguardando aprovação","InProgress"=>"Em serviço","WaitingParts"=>"Aguardando peças","Finished"=>"Finalizada","Delivered"=>"Entregue","Cancelled"=>"Cancelada",_=>s};}

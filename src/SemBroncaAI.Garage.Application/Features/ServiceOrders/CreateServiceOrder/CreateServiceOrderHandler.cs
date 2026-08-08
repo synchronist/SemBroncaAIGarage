@@ -42,6 +42,7 @@ public sealed class CreateServiceOrderHandler
 
         var vehicle = await _vehicleRepository.GetByIdAsync(
             command.VehicleId,
+            command.GarageId,
             cancellationToken);
 
         if (vehicle is null)
@@ -56,6 +57,8 @@ public sealed class CreateServiceOrderHandler
                 "O veículo não pertence à oficina informada.");
         }
 
+        vehicle.UpdateMileage(command.Mileage);
+
         var number = await _numberGenerator.GetNextAsync(
             command.GarageId,
             cancellationToken);
@@ -64,7 +67,8 @@ public sealed class CreateServiceOrderHandler
             command.GarageId,
             command.VehicleId,
             number,
-            command.CustomerComplaint);
+            command.CustomerComplaint,
+            command.Mileage);
 
         await _serviceOrderRepository.AddAsync(
             serviceOrder,

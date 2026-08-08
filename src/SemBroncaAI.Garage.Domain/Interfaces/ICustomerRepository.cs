@@ -11,13 +11,11 @@ public interface ICustomerRepository
     Task<bool> ExistsByDocumentAsync(
         Guid garageId,
         string document,
+        Guid? excludingCustomerId = null,
         CancellationToken cancellationToken = default);
 
     Task<CustomerEntity?> GetByIdAsync(
         Guid id,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<CustomerEntity>> GetAllAsync(
         Guid garageId,
         CancellationToken cancellationToken = default);
 }

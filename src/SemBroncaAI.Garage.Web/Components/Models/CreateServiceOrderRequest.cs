@@ -3,4 +3,5 @@
 public sealed record CreateServiceOrderRequest(
     Guid GarageId,
     Guid VehicleId,
-    string CustomerComplaint);
+    string CustomerComplaint,
+    int Mileage);

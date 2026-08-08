@@ -17,17 +17,13 @@ public sealed class VehicleRepository(GarageDbContext context)
 
     public async Task<VehicleEntity?> GetByIdAsync(
         Guid id,
+        Guid garageId,
         CancellationToken cancellationToken)
     {
         return await context.Vehicles
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == id && x.GarageId == garageId, cancellationToken);
     }
 
-    public async Task<IEnumerable<VehicleEntity>> GetAllAsync(
-        CancellationToken cancellationToken)
-    {
-        return await context.Vehicles
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
-    }
+    public Task<bool> ExistsByPlateAsync(Guid garageId, string plate, Guid? excludingVehicleId = null, CancellationToken cancellationToken = default) =>
+        context.Vehicles.AnyAsync(x => x.GarageId == garageId && x.Plate == plate && (!excludingVehicleId.HasValue || x.Id != excludingVehicleId.Value), cancellationToken);
 }

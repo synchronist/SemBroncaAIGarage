@@ -69,7 +69,8 @@
     padding: 18px 10px;
 }
 
-.sbg-menu-item {
+.sbg-menu ::deep .sbg-menu-item {
+    position: relative;
     min-height: 38px;
     display: flex;
     align-items: center;
@@ -79,23 +80,35 @@
     color: #5f6368;
     font-size: 13px;
     text-decoration: none;
-    transition: background-color 120ms ease, color 120ms ease;
+    transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
 }
 
-    .sbg-menu-item:hover {
-        background: #f8fafc;
-        color: #111827;
+    .sbg-menu ::deep .sbg-menu-item:hover {
+        background: #fff7ed;
+        color: #c2410c;
     }
 
-    .sbg-menu-item.active {
+    .sbg-menu ::deep .sbg-menu-item.active {
         background: #fff1e9;
         color: #ea580c;
         font-weight: 600;
     }
 
-    .sbg-menu-item ::deep svg {
+    .sbg-menu ::deep .sbg-menu-item.active::before {
+        position: absolute;
+        top: 8px;
+        bottom: 8px;
+        left: -10px;
+        width: 3px;
+        border-radius: 0 3px 3px 0;
+        background: #f97316;
+        content: "";
+    }
+
+    .sbg-menu ::deep .sbg-menu-item svg {
         width: 17px;
         height: 17px;
+        transition: color 160ms ease;
     }
 
 .sbg-sidebar-footer {
@@ -202,12 +215,12 @@
     }
 
     .sbg-brand-text,
-    .sbg-menu-item span,
+    .sbg-menu ::deep .sbg-menu-item span,
     .sbg-sidebar-footer {
         display: none;
     }
 
-    .sbg-menu-item {
+    .sbg-menu ::deep .sbg-menu-item {
         justify-content: center;
         padding: 0;
     }

@@ -45,6 +45,8 @@ public sealed class VehicleConfiguration : IEntityTypeConfiguration<VehicleEntit
         builder.Property(v => v.CreatedAt)
             .IsRequired();
 
+        builder.HasIndex(v => new { v.GarageId, v.Plate }).IsUnique();
+
         builder.HasOne(v => v.Garage)
             .WithMany(g => g.Vehicles)
             .HasForeignKey(v => v.GarageId)

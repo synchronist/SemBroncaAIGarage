@@ -53,17 +53,39 @@ public sealed class VehicleEntity : Entity
         string fuel,
         int mileage)
     {
-        GarageId = garageId;
-        CustomerId = customerId;
-        Plate = plate;
-        Brand = brand;
-        Model = model;
-        Version = version;
-        Year = year;
-        Color = color;
-        Fuel = fuel;
-        Mileage = mileage;
+        GarageId = Guard.AgainstEmpty(garageId, nameof(garageId));
+        CustomerId = Guard.AgainstEmpty(customerId, nameof(customerId));
+        SetDetails(plate, brand, model, version, year, color, fuel, mileage);
         Active = true;
         CreatedAt = DateTime.UtcNow;
+    }
+
+    public void Update(Guid customerId, string plate, string brand, string model, string version, int year, string color, string fuel, int mileage)
+    {
+        CustomerId = Guard.AgainstEmpty(customerId, nameof(customerId));
+        SetDetails(plate, brand, model, version, year, color, fuel, mileage);
+    }
+
+    public void UpdateMileage(int mileage)
+    {
+        if (mileage < 0) throw new ArgumentOutOfRangeException(nameof(mileage), "A quilometragem não pode ser negativa.");
+        Mileage = mileage;
+    }
+
+    public static string NormalizePlate(string plate) =>
+        Guard.AgainstNullOrWhiteSpace(plate, nameof(plate)).Replace("-", string.Empty).Replace(" ", string.Empty).ToUpperInvariant();
+
+    private void SetDetails(string plate, string brand, string model, string version, int year, string color, string fuel, int mileage)
+    {
+        Plate = NormalizePlate(plate);
+        Brand = Guard.AgainstNullOrWhiteSpace(brand, nameof(brand));
+        Model = Guard.AgainstNullOrWhiteSpace(model, nameof(model));
+        Version = version?.Trim() ?? string.Empty;
+        Color = color?.Trim() ?? string.Empty;
+        Fuel = fuel?.Trim() ?? string.Empty;
+        if (year < 1900 || year > DateTime.UtcNow.Year + 1) throw new ArgumentOutOfRangeException(nameof(year), "O ano do veículo é inválido.");
+        if (mileage < 0) throw new ArgumentOutOfRangeException(nameof(mileage), "A quilometragem não pode ser negativa.");
+        Year = year;
+        Mileage = mileage;
     }
 }

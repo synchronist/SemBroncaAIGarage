@@ -17,7 +17,8 @@ public class ServiceOrderEntityTests
             garageId,
             vehicleId,
             1,
-            "Barulho na suspensão");
+            "Barulho na suspensão",
+            35000);
 
         // Assert
         order.GarageId.ShouldBe(garageId);
@@ -25,8 +26,34 @@ public class ServiceOrderEntityTests
         order.Number.ShouldBe(1);
         order.Status.ShouldBe(ServiceOrderStatus.Received);
         order.CustomerComplaint.ShouldBe("Barulho na suspensão");
+        order.Mileage.ShouldBe(35000);
 
         order.History.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Should_Reject_Negative_Mileage()
+    {
+        Should.Throw<ArgumentOutOfRangeException>(() => new ServiceOrderEntity(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
+            1,
+            "Barulho na suspensão",
+            -1));
+    }
+
+    [Fact]
+    public void Should_Preserve_Mileage_When_Vehicle_Mileage_Changes()
+    {
+        var garageId = Guid.CreateVersion7();
+        var vehicle = new SemBroncaAI.Garage.Domain.Entities.Vehicle.VehicleEntity(
+            garageId, Guid.CreateVersion7(), "ABC1234", "Fiat", "Uno", "", 2020, "Prata", "Flex", 35000);
+        var order = new ServiceOrderEntity(garageId, vehicle.Id, 1, "Revisão", vehicle.Mileage);
+
+        vehicle.UpdateMileage(42500);
+
+        order.Mileage.ShouldBe(35000);
+        vehicle.Mileage.ShouldBe(42500);
     }
 
     [Fact]
@@ -36,7 +63,8 @@ public class ServiceOrderEntityTests
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             1,
-            "Barulho na suspensão");
+            "Barulho na suspensão",
+            35000);
 
         order.StartDiagnosis();
 
@@ -62,7 +90,8 @@ public class ServiceOrderEntityTests
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             1,
-            "Barulho na suspensão");
+            "Barulho na suspensão",
+            35000);
 
         order.StartDiagnosis();
 
@@ -86,7 +115,8 @@ public class ServiceOrderEntityTests
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             1,
-            "Barulho na suspensão");
+            "Barulho na suspensão",
+            35000);
 
         order.StartDiagnosis();
 
@@ -128,7 +158,8 @@ public class ServiceOrderEntityTests
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             1,
-            "Barulho na suspensão");
+            "Barulho na suspensão",
+            35000);
 
         order.StartDiagnosis();
 
@@ -233,7 +264,8 @@ public class ServiceOrderEntityTests
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             1,
-            "Barulho na suspensão");
+            "Barulho na suspensão",
+            35000);
         order.StartDiagnosis();
         order.SaveDiagnosis("Folga identificada na suspensão.");
         return order;

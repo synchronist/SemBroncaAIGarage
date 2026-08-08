@@ -32,6 +32,7 @@ public sealed record ServiceOrderDetailsModel(
     int Number,
     string Status,
     string CustomerComplaint,
+    int? Mileage,
     DateTimeOffset CreatedAt,
     ServiceOrderCustomerModel Customer,
     ServiceOrderVehicleModel Vehicle,

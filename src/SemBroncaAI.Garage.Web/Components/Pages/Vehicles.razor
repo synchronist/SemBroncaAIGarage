@@ -1,0 +1,26 @@
+@page "/vehicles"
+@using SemBroncaAI.Garage.Web.Components.Vehicles
+@using SemBroncaAI.Garage.Web.Models
+@using SemBroncaAI.Garage.Web.Services
+@inject VehicleService VehicleService
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+<PageTitle>Veículos</PageTitle>
+<div class="vehicles-page">
+<header><div><h1>Veículos</h1><p>Consulte a frota atendida pela oficina.</p></div><MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateAsync">Novo veículo</MudButton></header>
+<section class="toolbar"><MudTextField T="string" Value="_search" ValueChanged="SearchChanged" Immediate="true" Placeholder="Buscar placa, veículo ou cliente..." Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" /></section>
+@if(_loading){<div class="state"><MudProgressCircular Indeterminate="true" Color="Color.Primary" />Carregando veículos...</div>}
+else if(_data is null||_data.Items.Count==0){<div class="state"><MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Size="Size.Large"/><h2>Nenhum veículo encontrado</h2></div>}
+else{<div class="list">@foreach(var v in _data.Items){<article><strong class="plate">@v.Plate</strong><div class="main"><strong>@v.Brand @v.Model</strong><span>@v.Version · @v.Year · @v.Color</span></div><div><small>Quilometragem</small><span>@v.Mileage.ToString("N0") km</span></div><div><small>Cliente</small><span>@v.CustomerName</span></div><MudButton Variant="Variant.Outlined" OnClick="@(()=>Open(v.Id))">Abrir</MudButton></article>}</div>
+@if(_data.TotalPages>1){<div class="pagination"><MudButton Variant="Variant.Outlined" Disabled="@(_page==1)" OnClick="Prev">Anterior</MudButton><span>Página @_page de @_data.TotalPages</span><MudButton Variant="Variant.Outlined" Disabled="@(_page>=_data.TotalPages)" OnClick="Next">Próxima</MudButton></div>}}
+</div>
+@code{
+private VehicleListModel? _data;private Guid _garageId;private string _search="";private int _page=1;private bool _loading;private CancellationTokenSource? _cts;
+protected override async Task OnInitializedAsync(){if(!Guid.TryParse(Configuration["Garage:Id"],out _garageId))throw new InvalidOperationException("Oficina não configurada.");await Load();}
+private async Task Load(){try{_loading=true;_data=await VehicleService.ListAsync(_garageId,_search,_page,12);}catch(Exception e){Snackbar.Add(e.Message,Severity.Error);}finally{_loading=false;}}
+private async Task SearchChanged(string value){_search=value;_cts?.Cancel();_cts?.Dispose();_cts=new();try{await Task.Delay(300,_cts.Token);_page=1;await Load();}catch(OperationCanceledException){}}
+private async Task CreateAsync(){var p=new DialogParameters{{"GarageId",_garageId}};var d=await DialogService.ShowAsync<VehicleFormDialog>("Novo veículo",p,new DialogOptions{CloseButton=true,FullWidth=true,MaxWidth=MaxWidth.Medium});var r=await d.Result;if(r is{Canceled:false}){Snackbar.Add("Veículo cadastrado.",Severity.Success);await Load();}}
+private void Open(Guid id)=>Navigation.NavigateTo($"/vehicles/{id}");private async Task Prev(){_page--;await Load();}private async Task Next(){_page++;await Load();}
+}

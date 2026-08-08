@@ -1,0 +1,99 @@
+@page "/customers/{Id:guid}"
+@using SemBroncaAI.Garage.Web.Components.Customers
+@using SemBroncaAI.Garage.Web.Components.Vehicles
+@using SemBroncaAI.Garage.Web.Models
+@using SemBroncaAI.Garage.Web.Services
+@inject CustomerService CustomerService
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Cliente</PageTitle>
+
+@if (_isLoading)
+{
+    <div class="customer-state"><MudProgressCircular Indeterminate="true" Color="Color.Primary" />Carregando cliente...</div>
+}
+else if (_customer is null)
+{
+    <div class="customer-state"><MudIcon Icon="@Icons.Material.Filled.PersonOff" Size="Size.Large" /><h2>Cliente não encontrado</h2><MudButton Variant="Variant.Outlined" OnClick="Back">Voltar</MudButton></div>
+}
+else
+{
+    <div class="customer-details-page">
+        <header class="details-header">
+            <div class="details-title"><button class="back-button" @onclick="Back"><MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" /></button><div><span>Cliente</span><h1>@_customer.Name</h1><small>Cadastrado em @_customer.CreatedAt.ToString("dd/MM/yyyy")</small></div></div>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" OnClick="OpenEditDialogAsync">Editar cliente</MudButton>
+        </header>
+
+        <section class="customer-info-card">
+            <div><small>Telefone</small><strong>@_customer.Phone</strong></div>
+            <div><small>Documento</small><strong>@_customer.Document</strong></div>
+            <div><small>E-mail</small><strong>@_customer.Email</strong></div>
+            <div><small>Status</small><span class="status-active">@(_customer.Active ? "Ativo" : "Inativo")</span></div>
+        </section>
+
+        <section class="vehicles-section">
+            <div class="section-heading"><div><h2>Veículos vinculados</h2><p>@_customer.Vehicles.Count veículo(s) cadastrado(s)</p></div></div>
+            @if (_customer.Vehicles.Count == 0)
+            {
+                <div class="vehicles-empty"><MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Size="Size.Large" /><span>Nenhum veículo vinculado a este cliente.</span><MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddVehicleAsync">Adicionar veículo</MudButton></div>
+            }
+            else
+            {
+                <div class="vehicles-grid">
+                    @foreach (var vehicle in _customer.Vehicles)
+                    {
+                        <article class="vehicle-card">
+                            <div class="vehicle-title"><strong>@vehicle.Plate</strong><span>@vehicle.Brand @vehicle.Model</span></div>
+                            <div class="vehicle-data"><span><small>Versão</small>@vehicle.Version</span><span><small>Ano</small>@vehicle.Year</span><span><small>Cor</small>@vehicle.Color</span><span><small>Quilometragem</small>@vehicle.Mileage.ToString("N0") km</span></div>
+                            <div class="vehicle-actions"><MudButton Variant="Variant.Text" OnClick="@(() => OpenVehicle(vehicle.Id))">Abrir veículo</MudButton><MudButton Variant="Variant.Outlined" OnClick="@(() => ReceiveVehicle(vehicle.Id))">Receber veículo</MudButton></div>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private CustomerDetailsModel? _customer;
+    private Guid _garageId;
+    private bool _isLoading;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Guid.TryParse(Configuration["Garage:Id"], out _garageId)) throw new InvalidOperationException("O identificador da oficina não foi configurado.");
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try { _isLoading = true; _customer = await CustomerService.GetByIdAsync(Id, _garageId); }
+        catch (Exception exception) { Snackbar.Add(exception.Message, Severity.Error); }
+        finally { _isLoading = false; }
+    }
+
+    private async Task OpenEditDialogAsync()
+    {
+        var parameters = new DialogParameters { ["GarageId"] = _garageId, ["Customer"] = _customer };
+        var dialog = await DialogService.ShowAsync<CustomerFormDialog>("Editar cliente", parameters, new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false }) { Snackbar.Add("Cliente atualizado com sucesso.", Severity.Success); await LoadAsync(); }
+    }
+
+    private async Task AddVehicleAsync()
+    {
+        var parameters = new DialogParameters { ["GarageId"] = _garageId, ["PreselectedCustomerId"] = _customer!.Id, ["PreselectedCustomerName"] = _customer.Name };
+        var dialog = await DialogService.ShowAsync<VehicleFormDialog>("Adicionar veículo", parameters, new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false }) { Snackbar.Add("Veículo cadastrado com sucesso.", Severity.Success); await LoadAsync(); }
+    }
+
+    private void OpenVehicle(Guid id) => Navigation.NavigateTo($"/vehicles/{id}");
+    private void ReceiveVehicle(Guid id) => Navigation.NavigateTo($"/?vehicleId={id}");
+
+    private void Back() => Navigation.NavigateTo("/customers");
+}

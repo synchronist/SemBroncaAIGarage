@@ -421,10 +421,50 @@
     width: 11px;
     height: 11px;
     margin-top: 3px;
-    border: 3px solid #fff7ed;
+    border: 3px solid #f1f5f9;
     border-radius: 50%;
-    background: #f97316;
+    background: #94a3b8;
     box-sizing: content-box;
+}
+
+.timeline-status-received {
+    border-color: #dbeafe;
+    background: #3b82f6;
+}
+
+.timeline-status-diagnosis {
+    border-color: #ffedd5;
+    background: #f97316;
+}
+
+.timeline-status-waitingapproval {
+    border-color: #fef3c7;
+    background: #d97706;
+}
+
+.timeline-status-inprogress {
+    border-color: #e0e7ff;
+    background: #6366f1;
+}
+
+.timeline-status-waitingparts {
+    border-color: #fce7f3;
+    background: #be185d;
+}
+
+.timeline-status-finished {
+    border-color: #d1fae5;
+    background: #10b981;
+}
+
+.timeline-status-delivered {
+    border-color: #d1fae5;
+    background: #047857;
+}
+
+.timeline-status-cancelled {
+    border-color: #fee2e2;
+    background: #dc2626;
 }
 
 .timeline-header {
