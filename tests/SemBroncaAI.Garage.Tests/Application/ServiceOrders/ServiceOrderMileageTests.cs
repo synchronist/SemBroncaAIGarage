@@ -73,7 +73,8 @@ public sealed class ServiceOrderMileageTests
     {
         public Task<GarageEntity?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<GarageEntity?>(id == garage.Id ? garage : null);
         public Task AddAsync(GarageEntity entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<bool> ExistsByDocumentAsync(string document, CancellationToken cancellationToken = default) => Task.FromResult(false);
+        public Task<bool> ExistsByDocumentAsync(string document, Guid? excludingGarageId = null, CancellationToken cancellationToken = default) => Task.FromResult(false);
+        public Task<GarageEntity?> GetForUpdateAsync(Guid id, CancellationToken cancellationToken = default) => GetByIdAsync(id, cancellationToken);
         public Task<IReadOnlyList<GarageEntity>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<GarageEntity>>([]);
     }
 

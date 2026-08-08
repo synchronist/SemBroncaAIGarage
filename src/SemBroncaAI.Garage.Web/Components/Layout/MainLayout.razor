@@ -1,5 +1,9 @@
 ﻿@inherits LayoutComponentBase
 
+@using SemBroncaAI.Garage.Web.Services
+@inject GarageService GarageService
+@inject IConfiguration Configuration
+
 <MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
 <MudDialogProvider />
@@ -17,8 +21,8 @@
             </div>
 
             <div class="sbg-brand-text">
-                <strong>Oficina Modelo</strong>
-                <span>São Paulo — SP</span>
+                <strong>@_garageName</strong>
+                <span>@_garageLocation</span>
             </div>
         </div>
 
@@ -117,6 +121,27 @@
 </div>
 
 @code {
+    private string _garageName = "Oficina";
+    private string _garageLocation = "SBGarage";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Guid.TryParse(Configuration["Garage:Id"], out var garageId)) return;
+        try
+        {
+            var garage = await GarageService.GetAsync(garageId);
+            if (garage is null) return;
+            _garageName = string.IsNullOrWhiteSpace(garage.Name) ? "Oficina" : garage.Name;
+            _garageLocation = !string.IsNullOrWhiteSpace(garage.City) && !string.IsNullOrWhiteSpace(garage.State)
+                ? $"{garage.City} — {garage.State}"
+                : "SBGarage";
+        }
+        catch
+        {
+            // O layout deve continuar disponível mesmo sem a API.
+        }
+    }
+
     private readonly MudTheme _theme = new()
     {
         PaletteLight = new PaletteLight

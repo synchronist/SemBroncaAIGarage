@@ -47,6 +47,11 @@ builder.Services.AddHttpClient<VehicleService>((serviceProvider, client) =>
     var baseUrl = serviceProvider.GetRequiredService<IConfiguration>()["Api:BaseUrl"] ?? throw new InvalidOperationException("A URL da API não foi configurada.");
     client.BaseAddress = new Uri(baseUrl);
 });
+builder.Services.AddHttpClient<GarageService>((serviceProvider, client) =>
+{
+    var baseUrl = serviceProvider.GetRequiredService<IConfiguration>()["Api:BaseUrl"] ?? throw new InvalidOperationException("A URL da API não foi configurada.");
+    client.BaseAddress = new Uri(baseUrl);
+});
 
 var app = builder.Build();
 

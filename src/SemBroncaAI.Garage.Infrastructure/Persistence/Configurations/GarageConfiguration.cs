@@ -26,6 +26,14 @@ public sealed class GarageConfiguration : IEntityTypeConfiguration<GarageEntity>
         builder.Property(x => x.Email)
             .HasMaxLength(150);
 
+        builder.Property(x => x.PostalCode).HasMaxLength(10);
+        builder.Property(x => x.Street).HasMaxLength(200);
+        builder.Property(x => x.Number).HasMaxLength(20);
+        builder.Property(x => x.Complement).HasMaxLength(100);
+        builder.Property(x => x.Neighborhood).HasMaxLength(100);
+        builder.Property(x => x.City).HasMaxLength(100);
+        builder.Property(x => x.State).HasMaxLength(2);
+
         builder.Property(x => x.Active)
             .IsRequired();
 

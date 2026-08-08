@@ -25,12 +25,17 @@ public sealed class GarageRepository : IGarageRepository
 
     public Task<bool> ExistsByDocumentAsync(
         string document,
+        Guid? excludingGarageId = null,
         CancellationToken cancellationToken = default)
     {
         return _dbContext.Garages.AnyAsync(
-            garage => garage.Document == document,
+            garage => garage.Document == document &&
+                      (!excludingGarageId.HasValue || garage.Id != excludingGarageId.Value),
             cancellationToken);
     }
+
+    public Task<GarageEntity?> GetForUpdateAsync(Guid id, CancellationToken cancellationToken = default) =>
+        _dbContext.Garages.FirstOrDefaultAsync(garage => garage.Id == id, cancellationToken);
 
     public async Task<GarageEntity?> GetByIdAsync(
         Guid id,

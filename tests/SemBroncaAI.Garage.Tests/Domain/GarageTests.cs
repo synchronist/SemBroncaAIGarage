@@ -91,4 +91,38 @@ public class GarageTests
         garage.Phone.ShouldBe("11888888888");
         garage.Email.ShouldBe("novo@oficina.com");
     }
+
+    [Fact]
+    public void Should_Update_Settings_And_Preserve_Identity_State()
+    {
+        var garage = new GarageEntity("Oficina", "123", "1199", "a@b.com");
+        var id = garage.Id; var createdAt = garage.CreatedAt; var active = garage.Active;
+
+        garage.UpdateSettings("Oficina Nova", "456", "1188", "novo@oficina.com",
+            "18500-000", "Rua Central", "123", "Sala 2", "Centro", "Boituva", "sp");
+
+        garage.Id.ShouldBe(id); garage.CreatedAt.ShouldBe(createdAt); garage.Active.ShouldBe(active);
+        garage.Name.ShouldBe("Oficina Nova"); garage.Street.ShouldBe("Rua Central");
+        garage.City.ShouldBe("Boituva"); garage.State.ShouldBe("SP");
+    }
+
+    [Theory]
+    [InlineData("", "123", "1199", "a@b.com")]
+    [InlineData("Oficina", "", "1199", "a@b.com")]
+    [InlineData("Oficina", "123", "", "a@b.com")]
+    [InlineData("Oficina", "123", "1199", "")]
+    public void Should_Reject_Required_Settings(string name, string document, string phone, string email)
+    {
+        Should.Throw<ArgumentException>(() => new GarageEntity(name, document, phone, email));
+    }
+
+    [Fact]
+    public void Should_Reject_Address_That_Exceeds_Database_Limit()
+    {
+        var garage = new GarageEntity("Oficina", "123", "1199", "a@b.com");
+        var exception = Should.Throw<ArgumentException>(() => garage.UpdateSettings(
+            garage.Name, garage.Document, garage.Phone, garage.Email,
+            null, null, null, null, null, new string('X', 101), "sp"));
+        exception.Message.ShouldContain("100 caracteres");
+    }
 }

@@ -1,0 +1,76 @@
+@page "/settings"
+@using SemBroncaAI.Garage.Web.Models
+@using SemBroncaAI.Garage.Web.Services
+@inject GarageService GarageService
+@inject IConfiguration Configuration
+@inject ISnackbar Snackbar
+
+<PageTitle>Configurações</PageTitle>
+
+<div class="settings-page">
+    <header><div><h1>Configurações</h1><p>Dados da oficina e personalização do sistema</p></div></header>
+    @if (_loading)
+    {
+        <div class="state"><MudProgressCircular Indeterminate="true" /> Carregando configurações...</div>
+    }
+    else if (_model is null)
+    {
+        <div class="state">Não foi possível carregar a oficina.</div>
+    }
+    else
+    {
+        <MudForm @ref="_form" Model="_model">
+            <section class="settings-card">
+                <div class="card-title"><MudIcon Icon="@Icons.Material.Filled.Store"/><div><h2>Dados da oficina</h2><p>Informações usadas no atendimento e nos documentos.</p></div></div>
+                <div class="form-grid">
+                    <MudTextField @bind-Value="_model.Name" Label="Nome da oficina" Required="true" RequiredError="Informe o nome da oficina." />
+                    <MudTextField @bind-Value="_model.Document" Label="Documento" Required="true" RequiredError="Informe o documento." />
+                    <MudTextField @bind-Value="_model.Phone" Label="Telefone" Required="true" RequiredError="Informe o telefone." />
+                    <MudTextField @bind-Value="_model.Email" Label="E-mail" Required="true" RequiredError="Informe o e-mail." InputType="InputType.Email" />
+                </div>
+            </section>
+            <section class="settings-card">
+                <div class="card-title"><MudIcon Icon="@Icons.Material.Filled.LocationOn"/><div><h2>Endereço</h2><p>Será utilizado nos cabeçalhos de OS e orçamento.</p></div></div>
+                <div class="form-grid address-grid">
+                    <MudTextField @bind-Value="_model.PostalCode" Label="CEP" />
+                    <MudTextField @bind-Value="_model.Street" Label="Logradouro" Class="wide" />
+                    <MudTextField @bind-Value="_model.Number" Label="Número" />
+                    <MudTextField @bind-Value="_model.Complement" Label="Complemento" />
+                    <MudTextField @bind-Value="_model.Neighborhood" Label="Bairro" />
+                    <MudTextField @bind-Value="_model.City" Label="Cidade" />
+                    <MudTextField @bind-Value="_model.State" Label="UF" MaxLength="2" />
+                </div>
+            </section>
+            <section class="settings-card identity">
+                <div class="card-title"><MudIcon Icon="@Icons.Material.Filled.Palette"/><div><h2>Identidade visual</h2><p>Logo e cor principal serão disponibilizadas na próxima etapa de personalização.</p></div></div>
+                <span>Em breve</span>
+            </section>
+            <div class="actions"><MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_saving" OnClick="SaveAsync">@(_saving ? "Salvando..." : "Salvar alterações")</MudButton></div>
+        </MudForm>
+    }
+</div>
+
+@code {
+    private GarageSettingsModel? _model; private MudForm? _form; private Guid _garageId; private bool _loading = true; private bool _saving;
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Guid.TryParse(Configuration["Garage:Id"], out _garageId)) throw new InvalidOperationException("O identificador da oficina não foi configurado.");
+        try { _model = await GarageService.GetAsync(_garageId); }
+        catch { Snackbar.Add("Não foi possível carregar as configurações da oficina.", Severity.Error); }
+        finally { _loading = false; }
+    }
+    private async Task SaveAsync()
+    {
+        if (_model is null || _saving) return;
+        await _form!.ValidateAsync(); if (!_form.IsValid) return;
+        try
+        {
+            _saving = true;
+            _model = await GarageService.UpdateAsync(_garageId, new(_model.Name, _model.Document, _model.Phone, _model.Email,
+                _model.PostalCode, _model.Street, _model.Number, _model.Complement, _model.Neighborhood, _model.City, _model.State));
+            Snackbar.Add("Configurações salvas com sucesso.", Severity.Success);
+        }
+        catch (Exception exception) { Snackbar.Add(exception.Message, Severity.Error); }
+        finally { _saving = false; }
+    }
+}

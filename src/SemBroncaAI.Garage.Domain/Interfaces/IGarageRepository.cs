@@ -10,9 +10,14 @@ public interface IGarageRepository
 
     Task<bool> ExistsByDocumentAsync(
         string document,
+        Guid? excludingGarageId = null,
         CancellationToken cancellationToken = default);
 
     Task<GarageEntity?> GetByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default);
+
+    Task<GarageEntity?> GetForUpdateAsync(
         Guid id,
         CancellationToken cancellationToken = default);
 

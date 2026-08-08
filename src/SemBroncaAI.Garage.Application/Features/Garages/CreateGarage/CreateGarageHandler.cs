@@ -21,7 +21,7 @@ public sealed class CreateGarageHandler
         CreateGarageCommand command,
         CancellationToken cancellationToken = default)
     {
-        if (await _garageRepository.ExistsByDocumentAsync(command.Document, cancellationToken))
+        if (await _garageRepository.ExistsByDocumentAsync(command.Document, cancellationToken: cancellationToken))
             throw new InvalidOperationException("Já existe uma oficina cadastrada com este documento.");
 
         var garage = new GarageEntity(

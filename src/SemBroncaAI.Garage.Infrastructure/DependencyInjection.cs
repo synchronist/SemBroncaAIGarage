@@ -7,6 +7,8 @@ using SemBroncaAI.Garage.Application.Features.Customers.GetCustomerById;
 using SemBroncaAI.Garage.Application.Features.Customers.ListCustomers;
 using SemBroncaAI.Garage.Application.Features.Customers.UpdateCustomer;
 using SemBroncaAI.Garage.Application.Features.Garages.CreateGarage;
+using SemBroncaAI.Garage.Application.Features.Garages.GetGarageSettings;
+using SemBroncaAI.Garage.Application.Features.Garages.UpdateGarageSettings;
 using SemBroncaAI.Garage.Application.Features.Lookup;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.CancelServiceOrder;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.CreateServiceOrder;
@@ -66,6 +68,8 @@ public static class DependencyInjection
             ServiceOrderNumberGenerator>();
 
         services.AddScoped<CreateGarageHandler>();
+        services.AddScoped<GetGarageSettingsHandler>();
+        services.AddScoped<UpdateGarageSettingsHandler>();
         services.AddScoped<CreateCustomerHandler>();
         services.AddScoped<ListCustomersHandler>();
         services.AddScoped<GetCustomerByIdHandler>();
