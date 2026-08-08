@@ -36,7 +36,8 @@ public sealed record ServiceOrderDetailsModel(
     ServiceOrderCustomerModel Customer,
     ServiceOrderVehicleModel Vehicle,
     IReadOnlyCollection<ServiceOrderHistoryItem> History,
-    ServiceOrderDiagnosisModel? Diagnosis);
+    ServiceOrderDiagnosisModel? Diagnosis,
+    ServiceOrderEstimateModel? Estimate);
 
 public sealed record ServiceOrderDiagnosisModel(
     Guid Id,
@@ -45,3 +46,20 @@ public sealed record ServiceOrderDiagnosisModel(
     Guid? ActorId,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
+
+public sealed record ServiceOrderEstimateModel(
+    Guid Id,
+    decimal ServicesSubtotal,
+    decimal PartsSubtotal,
+    decimal Total,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    IReadOnlyCollection<ServiceOrderEstimateItemModel> Items);
+
+public sealed record ServiceOrderEstimateItemModel(
+    Guid Id,
+    string Description,
+    string Type,
+    decimal Quantity,
+    decimal UnitPrice,
+    decimal Total);

@@ -13,6 +13,7 @@ using SemBroncaAI.Garage.Application.Features.ServiceOrders.GetServiceOrderById;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.ListServiceOrders;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.ResumeService;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.SaveDiagnosis;
+using SemBroncaAI.Garage.Application.Features.ServiceOrders.SaveEstimate;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.SendForApproval;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.StartDiagnosis;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.StartService;
@@ -72,6 +73,7 @@ public static class DependencyInjection
         services.AddScoped<SearchLookupHandler>();
         services.AddScoped<ListServiceOrdersHandler>();
         services.AddScoped<SaveDiagnosisHandler>();
+        services.AddScoped<SaveEstimateHandler>();
 
         return services;
     }

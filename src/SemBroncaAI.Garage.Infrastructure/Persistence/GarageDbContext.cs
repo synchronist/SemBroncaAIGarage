@@ -22,6 +22,10 @@ public sealed class GarageDbContext : DbContext, IUnitOfWork
         Set<ServiceOrderHistoryEntity>();
     public DbSet<ServiceOrderDiagnosisEntity> ServiceOrderDiagnoses =>
     Set<ServiceOrderDiagnosisEntity>();
+    public DbSet<ServiceOrderEstimateEntity> ServiceOrderEstimates =>
+        Set<ServiceOrderEstimateEntity>();
+    public DbSet<ServiceOrderEstimateItemEntity> ServiceOrderEstimateItems =>
+        Set<ServiceOrderEstimateItemEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

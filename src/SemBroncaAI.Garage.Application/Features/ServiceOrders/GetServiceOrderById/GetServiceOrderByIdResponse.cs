@@ -38,6 +38,7 @@ public sealed record GetServiceOrderByIdResponse(
     ServiceOrderCustomerResponse Customer,
     ServiceOrderVehicleResponse Vehicle,
     ServiceOrderDiagnosisResponse? Diagnosis,
+    ServiceOrderEstimateResponse? Estimate,
     IReadOnlyCollection<ServiceOrderHistoryResponse> History);
 public sealed record ServiceOrderDiagnosisResponse(
     Guid Id,
@@ -46,3 +47,20 @@ public sealed record ServiceOrderDiagnosisResponse(
     Guid? ActorId,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
+
+public sealed record ServiceOrderEstimateResponse(
+    Guid Id,
+    decimal ServicesSubtotal,
+    decimal PartsSubtotal,
+    decimal Total,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    IReadOnlyCollection<ServiceOrderEstimateItemResponse> Items);
+
+public sealed record ServiceOrderEstimateItemResponse(
+    Guid Id,
+    string Description,
+    EstimateItemType Type,
+    decimal Quantity,
+    decimal UnitPrice,
+    decimal Total);

@@ -16,4 +16,7 @@ public interface IServiceOrderRepository
     Task AddAsync(
         ServiceOrderEntity serviceOrder,
         CancellationToken cancellationToken = default);
+
+    void RemoveEstimateItems(
+        IEnumerable<ServiceOrderEstimateItemEntity> items);
 }

@@ -7,6 +7,7 @@ using SemBroncaAI.Garage.Application.Features.ServiceOrders.GetServiceOrderById;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.ListServiceOrders;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.ResumeService;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.SaveDiagnosis;
+using SemBroncaAI.Garage.Application.Features.ServiceOrders.SaveEstimate;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.SendForApproval;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.StartDiagnosis;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.StartService;
@@ -102,6 +103,23 @@ public sealed class ServiceOrdersController : ControllerBase
             {
                 message = exception.Message
             });
+        }
+    }
+
+    [HttpPut("{id:guid}/estimate")]
+    public async Task<IActionResult> SaveEstimate(
+        Guid id,
+        [FromBody] SaveEstimateCommand command,
+        [FromServices] SaveEstimateHandler handler,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await handler.HandleAsync(id, command, cancellationToken));
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException)
+        {
+            return BadRequest(new { message = exception.Message });
         }
     }
 

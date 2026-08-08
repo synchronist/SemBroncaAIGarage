@@ -146,4 +146,22 @@ public sealed class ServiceOrderService
             ?? throw new InvalidOperationException(
                 "A API não retornou o diagnóstico salvo.");
     }
+
+    public async Task<SaveEstimateResponse> SaveEstimateAsync(
+        Guid serviceOrderId,
+        IReadOnlyCollection<SaveEstimateItemRequest> items,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _httpClient.PutAsJsonAsync(
+            $"api/service-orders/{serviceOrderId}/estimate",
+            new SaveEstimateRequest(items),
+            cancellationToken);
+
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<SaveEstimateResponse>(
+            cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException(
+                "A API não retornou o orçamento salvo.");
+    }
 }

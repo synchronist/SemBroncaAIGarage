@@ -12,6 +12,7 @@ public sealed class ServiceOrderEntity : Entity
 
     public Guid VehicleId { get; private set; }
     public ServiceOrderDiagnosisEntity? Diagnosis { get; private set; }
+    public ServiceOrderEstimateEntity? Estimate { get; private set; }
 
     public int Number { get; private set; }
 
@@ -83,6 +84,12 @@ public sealed class ServiceOrderEntity : Entity
         {
             throw new InvalidOperationException(
                 "Registre o diagnóstico antes de enviar a ordem para aprovação.");
+        }
+
+        if (Estimate is null || !Estimate.IsValid)
+        {
+            throw new InvalidOperationException(
+                "Registre um orçamento válido antes de enviar a ordem para aprovação.");
         }
 
         ChangeStatus(
@@ -220,5 +227,25 @@ public sealed class ServiceOrderEntity : Entity
             description,
             internalNotes,
             actorId);
+    }
+
+    public void SaveEstimate(
+        IEnumerable<ServiceOrderEstimateItemData> items)
+    {
+        EnsureStatus(ServiceOrderStatus.Diagnosis);
+
+        if (Diagnosis is null)
+        {
+            throw new InvalidOperationException(
+                "Registre o diagnóstico antes de montar o orçamento.");
+        }
+
+        if (Estimate is null)
+        {
+            Estimate = new ServiceOrderEstimateEntity(Id, items);
+            return;
+        }
+
+        Estimate.Update(items);
     }
 }

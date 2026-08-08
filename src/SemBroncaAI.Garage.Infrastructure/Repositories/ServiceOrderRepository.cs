@@ -32,6 +32,8 @@ public sealed class ServiceOrderRepository : IServiceOrderRepository
                 .ThenInclude(x => x.Customer)
             .Include(x => x.History)
             .Include(x => x.Diagnosis)
+            .Include(x => x.Estimate!)
+                .ThenInclude(x => x.Items)
             .FirstOrDefaultAsync(
                 x => x.Id == id,
                 cancellationToken);
@@ -47,9 +49,17 @@ public sealed class ServiceOrderRepository : IServiceOrderRepository
                 .ThenInclude(x => x.Customer)
             .Include(x => x.History)
             .Include(x => x.Diagnosis)
+            .Include(x => x.Estimate!)
+                .ThenInclude(x => x.Items)
             .FirstOrDefaultAsync(
                 x => x.GarageId == garageId &&
                      x.Number == number,
                 cancellationToken);
+    }
+
+    public void RemoveEstimateItems(
+        IEnumerable<ServiceOrderEstimateItemEntity> items)
+    {
+        _context.ServiceOrderEstimateItems.RemoveRange(items);
     }
 }

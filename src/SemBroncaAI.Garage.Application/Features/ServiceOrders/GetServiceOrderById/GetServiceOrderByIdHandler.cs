@@ -76,6 +76,27 @@ public sealed class GetServiceOrderByIdHandler
                     serviceOrder.Diagnosis.UpdatedAt);
         }
 
+        ServiceOrderEstimateResponse? estimateResponse = null;
+
+        if (serviceOrder.Estimate is not null)
+        {
+            var estimate = serviceOrder.Estimate;
+            estimateResponse = new ServiceOrderEstimateResponse(
+                estimate.Id,
+                estimate.ServicesSubtotal,
+                estimate.PartsSubtotal,
+                estimate.Total,
+                estimate.CreatedAt,
+                estimate.UpdatedAt,
+                estimate.Items.Select(item => new ServiceOrderEstimateItemResponse(
+                    item.Id,
+                    item.Description,
+                    item.Type,
+                    item.Quantity,
+                    item.UnitPrice,
+                    item.Total)).ToArray());
+        }
+
         return new GetServiceOrderByIdResponse(
             serviceOrder.Id,
             serviceOrder.GarageId,
@@ -86,6 +107,7 @@ public sealed class GetServiceOrderByIdHandler
             customerResponse,
             vehicleResponse,
             diagnosisResponse,
+            estimateResponse,
             history);
     }
 }

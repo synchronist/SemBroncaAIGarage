@@ -296,6 +296,127 @@ else
             </section>
         }
 
+        @if (_serviceOrder.Diagnosis is not null ||
+             _serviceOrder.Estimate is not null)
+        {
+            <section class="content-card estimate-card">
+                <div class="section-heading">
+                    <div class="section-title">
+                        <MudIcon Icon="@Icons.Material.Filled.RequestQuote"
+                                 Size="Size.Small" />
+                        <span>Orçamento</span>
+                    </div>
+
+                    @if (_serviceOrder.Estimate is not null)
+                    {
+                        <span class="diagnosis-saved">Orçamento salvo</span>
+                    }
+                </div>
+
+                @if (_serviceOrder.Status == "Diagnosis")
+                {
+                    <div class="estimate-editor">
+                        <div class="estimate-table-header">
+                            <span>Tipo</span>
+                            <span>Descrição</span>
+                            <span>Quantidade</span>
+                            <span>Valor unitário</span>
+                            <span>Total</span>
+                            <span></span>
+                        </div>
+
+                        @foreach (var item in _estimateItems)
+                        {
+                            <div class="estimate-row" @key="item.Key">
+                                <MudSelect T="int"
+                                           @bind-Value="item.Type"
+                                           Variant="Variant.Outlined"
+                                           Dense="true">
+                                    <MudSelectItem T="int" Value="1">Serviço</MudSelectItem>
+                                    <MudSelectItem T="int" Value="2">Peça</MudSelectItem>
+                                </MudSelect>
+
+                                <MudTextField T="string"
+                                              @bind-Value="item.Description"
+                                              Placeholder="Descrição do item"
+                                              Variant="Variant.Outlined"
+                                              Immediate="true" />
+
+                                <MudNumericField T="decimal"
+                                                 @bind-Value="item.Quantity"
+                                                 Variant="Variant.Outlined"
+                                                 Min="0.001m"
+                                                 Step="0.1m"
+                                                 HideSpinButtons="true" />
+
+                                <MudNumericField T="decimal"
+                                                 @bind-Value="item.UnitPrice"
+                                                 Variant="Variant.Outlined"
+                                                 Min="0.01m"
+                                                 Step="0.01m"
+                                                 HideSpinButtons="true"
+                                                 Adornment="Adornment.Start"
+                                                 AdornmentText="R$" />
+
+                                <strong class="estimate-line-total">
+                                    @FormatCurrency(item.Total)
+                                </strong>
+
+                                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               OnClick="@(() => RemoveEstimateItem(item))" />
+                            </div>
+                        }
+
+                        <MudButton Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="AddEstimateItem">
+                            Adicionar item
+                        </MudButton>
+
+                        <div class="estimate-footer">
+                            <div class="estimate-totals">
+                                <span>Serviços <strong>@FormatCurrency(EstimateServicesSubtotal)</strong></span>
+                                <span>Peças <strong>@FormatCurrency(EstimatePartsSubtotal)</strong></span>
+                                <span class="estimate-grand-total">Total <strong>@FormatCurrency(EstimateTotal)</strong></span>
+                            </div>
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Save"
+                                       Disabled="@(_isSavingEstimate || !CanSaveEstimate)"
+                                       OnClick="SaveEstimateAsync">
+                                @(_isSavingEstimate ? "Salvando..." : "Salvar orçamento")
+                            </MudButton>
+                        </div>
+                    </div>
+                }
+                else if (_serviceOrder.Estimate is not null)
+                {
+                    <div class="estimate-readonly">
+                        @foreach (var item in _serviceOrder.Estimate.Items)
+                        {
+                            <div class="estimate-readonly-row">
+                                <span class="estimate-type">@(item.Type == "Service" ? "Serviço" : "Peça")</span>
+                                <span>
+                                    <strong>@item.Description</strong>
+                                    <small>@FormatQuantity(item.Quantity) × @FormatCurrency(item.UnitPrice)</small>
+                                </span>
+                                <strong>@FormatCurrency(item.Total)</strong>
+                            </div>
+                        }
+
+                        <div class="estimate-totals">
+                            <span>Serviços <strong>@FormatCurrency(_serviceOrder.Estimate.ServicesSubtotal)</strong></span>
+                            <span>Peças <strong>@FormatCurrency(_serviceOrder.Estimate.PartsSubtotal)</strong></span>
+                            <span class="estimate-grand-total">Total <strong>@FormatCurrency(_serviceOrder.Estimate.Total)</strong></span>
+                        </div>
+                    </div>
+                }
+            </section>
+        }
+
         <section class="content-card">
 
             <div class="section-heading">
@@ -436,6 +557,10 @@ else
 
     private bool _isSavingDiagnosis;
 
+    private bool _isSavingEstimate;
+
+    private readonly List<EstimateItemEditModel> _estimateItems = [];
+
     private string _diagnosisDescription = string.Empty;
 
     private string _diagnosisInternalNotes = string.Empty;
@@ -459,7 +584,8 @@ else
         _isTransitioning ||
         _isSavingDiagnosis ||
         (_serviceOrder?.Status == "Diagnosis" &&
-         _serviceOrder.Diagnosis is null);
+         (_serviceOrder.Diagnosis is null ||
+          _serviceOrder.Estimate is null));
 
     protected override async Task OnParametersSetAsync()
     {
@@ -488,6 +614,24 @@ else
                 _diagnosisDescription = string.Empty;
                 _diagnosisInternalNotes = string.Empty;
             }
+
+            _estimateItems.Clear();
+
+            if (_serviceOrder?.Estimate is not null)
+            {
+                _estimateItems.AddRange(_serviceOrder.Estimate.Items.Select(item =>
+                    new EstimateItemEditModel
+                    {
+                        Description = item.Description,
+                        Type = GetEstimateItemTypeValue(item.Type),
+                        Quantity = item.Quantity,
+                        UnitPrice = item.UnitPrice
+                    }));
+            }
+            else if (_serviceOrder?.Diagnosis is not null)
+            {
+                AddEstimateItem();
+            }
         }
         catch (Exception exception)
         {
@@ -500,6 +644,76 @@ else
             _isLoading = false;
         }
     }
+
+    private decimal EstimateServicesSubtotal =>
+        _estimateItems.Where(item => item.Type == 1).Sum(item => item.Total);
+
+    private decimal EstimatePartsSubtotal =>
+        _estimateItems.Where(item => item.Type == 2).Sum(item => item.Total);
+
+    private decimal EstimateTotal => EstimateServicesSubtotal + EstimatePartsSubtotal;
+
+    private bool CanSaveEstimate =>
+        _estimateItems.Count > 0 &&
+        _estimateItems.All(item =>
+            !string.IsNullOrWhiteSpace(item.Description) &&
+            item.Type is 1 or 2 &&
+            item.Quantity > 0 &&
+            item.UnitPrice > 0);
+
+    private void AddEstimateItem() => _estimateItems.Add(new EstimateItemEditModel());
+
+    private void RemoveEstimateItem(EstimateItemEditModel item) => _estimateItems.Remove(item);
+
+    private async Task SaveEstimateAsync()
+    {
+        if (!CanSaveEstimate)
+        {
+            Snackbar.Add("Preencha ao menos um item válido no orçamento.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            _isSavingEstimate = true;
+            await ServiceOrderService.SaveEstimateAsync(
+                Id,
+                _estimateItems.Select(item => new SaveEstimateItemRequest(
+                    item.Description.Trim(),
+                    item.Type,
+                    item.Quantity,
+                    item.UnitPrice)).ToArray());
+
+            Snackbar.Add("Orçamento salvo com sucesso.", Severity.Success);
+            await LoadAsync();
+        }
+        catch (HttpRequestException exception)
+        {
+            Snackbar.Add($"Não foi possível salvar o orçamento: {exception.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSavingEstimate = false;
+        }
+    }
+
+    private static readonly System.Globalization.CultureInfo BrazilianCulture =
+        System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
+
+    private static string FormatCurrency(decimal value) =>
+        value.ToString("C2", BrazilianCulture);
+
+    private static string FormatQuantity(decimal value) =>
+        value.ToString("0.###", BrazilianCulture);
+
+    private static int GetEstimateItemTypeValue(string type) =>
+        type switch
+        {
+            "Service" => 1,
+            "Part" => 2,
+            _ => throw new InvalidOperationException(
+                $"Tipo de item de orçamento desconhecido: {type}.")
+        };
 
     private async Task SaveDiagnosisAsync()
     {
@@ -662,8 +876,11 @@ else
             "Diagnosis" when _serviceOrder.Diagnosis is null =>
                 "Registre e salve o diagnóstico para continuar.",
 
+            "Diagnosis" when _serviceOrder.Estimate is null =>
+                "Monte e salve um orçamento válido para continuar.",
+
             "Diagnosis" =>
-                "Diagnóstico registrado. A OS pode ser enviada para aprovação.",
+                "Diagnóstico e orçamento registrados. A OS pode ser enviada para aprovação.",
 
             "WaitingApproval" =>
                 "Aguardando autorização do cliente.",
@@ -788,5 +1005,15 @@ else
 
             _ => phone
         };
+    }
+
+    private sealed class EstimateItemEditModel
+    {
+        public Guid Key { get; } = Guid.CreateVersion7();
+        public string Description { get; set; } = string.Empty;
+        public int Type { get; set; } = 1;
+        public decimal Quantity { get; set; } = 1;
+        public decimal UnitPrice { get; set; }
+        public decimal Total => Quantity * UnitPrice;
     }
 }
