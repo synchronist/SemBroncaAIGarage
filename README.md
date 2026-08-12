@@ -97,3 +97,13 @@ dotnet user-secrets set "IdentitySeed:OwnerPassword" "sua-senha-local" --project
 ```
 
 Alternativamente, defina a variável `IdentitySeed__OwnerPassword`. Sem senha, com Garage inexistente ou com usuário associado a outra Garage, a inicialização em Development falha com mensagem explícita. A senha deve ter ao menos 10 caracteres, letras maiúsculas e minúsculas e um dígito; símbolo não é obrigatório. O lockout está preparado para 15 minutos após 5 tentativas inválidas.
+
+## Autenticação Web e API
+
+O Blazor Interactive Server funciona como BFF. O navegador recebe apenas o cookie de sessão do Web (`HttpOnly`, `SameSite=Lax`; `Secure` e prefixo `__Host-` em Production). O login é enviado por POST com antiforgery ao Web, que valida as credenciais na API usando ASP.NET Core Identity. A API emite seu bearer opaco oficial, e o Web o guarda somente no servidor, associado a um identificador aleatório presente no cookie. O token não é enviado ao JavaScript nem armazenado em `localStorage` ou `sessionStorage`.
+
+Sessões marcadas com **Lembrar meu acesso** usam cookie persistente; as demais usam cookie de sessão. Cookie e bearer têm limite máximo de sete dias, e o cookie possui sliding expiration dentro desse limite. A API revalida `Active`, vínculo com Garage e security stamp em `/api/auth/me`. Cinco senhas inválidas bloqueiam a conta por 15 minutos; os POSTs de login do Web e da API também possuem limite por IP de 10 tentativas por minuto.
+
+O cofre de credenciais do BFF usa memória local nesta fase incremental. Reiniciar o Web invalida as sessões existentes, e múltiplas réplicas exigirão um store distribuído protegido antes de produção. Não registre cookies, cabeçalhos `Authorization`, senhas nem corpos do login em access logs/APM. O logout remove a credencial server-side e o cookie. Antiforgery protege login/logout baseados em cookie; a chamada Web→API usa bearer e não depende de cookie do navegador.
+
+O endpoint autenticado da API é `GET /api/auth/me`. Para validar a cadeia completa no navegador, `GET /auth/me` no Web usa o cookie e consulta esse endpoint da API server-side; o bearer nunca chega ao browser. Os demais módulos ainda mantêm os contratos atuais com `GarageId` até a migração de tenant da Fase 3. Os endpoints `/api/public/approvals/{token}` e `/approval/{token}` continuam anônimos.

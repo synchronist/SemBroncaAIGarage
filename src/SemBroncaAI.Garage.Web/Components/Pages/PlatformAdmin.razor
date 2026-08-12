@@ -1,0 +1,15 @@
+@page "/platform-admin"
+@layout AuthLayout
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "PlatformAdmin")]
+
+<PageTitle>Área administrativa | SBGarage</PageTitle>
+
+<main style="max-width:520px;padding:32px;border:1px solid #e5e7eb;border-radius:18px;background:#fff;text-align:center">
+    <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Primary" Size="Size.Large" />
+    <h1 style="margin:16px 0 8px;font-size:24px">Área administrativa</h1>
+    <p style="margin:0 0 24px;color:#6b7280">O acesso de PlatformAdmin está ativo. O painel administrativo será disponibilizado em uma fase futura.</p>
+    <form method="post" action="/auth/logout">
+        <AntiforgeryToken />
+        <button type="submit" class="btn btn-outline-secondary">Sair</button>
+    </form>
+</main>

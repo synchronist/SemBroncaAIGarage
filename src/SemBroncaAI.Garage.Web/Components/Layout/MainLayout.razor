@@ -109,14 +109,21 @@
                              Size="Size.Small" />
                 </button>
 
-                <div class="sbg-user-avatar">
-                    JS
-                </div>
-
-                <div class="sbg-user-data">
-                    <strong>João Silva</strong>
-                    <span>Administrador</span>
-                </div>
+                <AuthorizeView Context="auth">
+                    <Authorized>
+                        <div class="sbg-user-avatar">@GetInitials(auth.User.Identity?.Name)</div>
+                        <div class="sbg-user-data">
+                            <strong>@auth.User.Identity?.Name</strong>
+                            <span>@GetRoleLabel(auth.User)</span>
+                        </div>
+                        <form method="post" action="/auth/logout" class="sbg-logout-form">
+                            <AntiforgeryToken />
+                            <button class="sbg-icon-button" type="submit" aria-label="Sair" title="Sair">
+                                <MudIcon Icon="@Icons.Material.Filled.Logout" Size="Size.Small" />
+                            </button>
+                        </form>
+                    </Authorized>
+                </AuthorizeView>
 
             </div>
 
@@ -136,6 +143,22 @@
     private void CloseMobileMenu() => _mobileMenuOpen = false;
     private string _garageName = "Oficina";
     private string _garageLocation = "SBGarage";
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "US";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return string.Concat(parts.Take(2).Select(part => char.ToUpperInvariant(part[0])));
+    }
+
+    private static string GetRoleLabel(System.Security.Claims.ClaimsPrincipal user)
+    {
+        if (user.IsInRole("Owner")) return "Proprietário";
+        if (user.IsInRole("Receptionist")) return "Recepção";
+        if (user.IsInRole("Mechanic")) return "Mecânico";
+        if (user.IsInRole("PlatformAdmin")) return "Plataforma";
+        return "Equipe";
+    }
 
     protected override async Task OnInitializedAsync()
     {

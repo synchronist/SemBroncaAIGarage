@@ -60,6 +60,7 @@ public static class DependencyInjection
 
         services.AddIdentityCore<ApplicationUser>(ConfigureIdentity)
             .AddRoles<IdentityRole<Guid>>()
+            .AddSignInManager()
             .AddEntityFrameworkStores<GarageDbContext>()
             .AddDefaultTokenProviders();
 

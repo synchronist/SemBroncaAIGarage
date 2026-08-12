@@ -1,0 +1,72 @@
+@page "/login"
+@layout AuthLayout
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Entrar | SBGarage</PageTitle>
+
+<main class="login-page">
+    <section class="login-brand" aria-label="SBGarage">
+        <span class="login-brand-icon"><MudIcon Icon="@Icons.Material.Filled.Build" /></span>
+        <div><strong>SBGarage</strong><span>Gestão para oficinas</span></div>
+    </section>
+
+    <section class="login-card">
+        <header>
+            <p class="login-eyebrow">ACESSO SEGURO</p>
+            <h1>Entre na sua oficina</h1>
+            <p>Use seu e-mail ou nome de usuário para continuar.</p>
+        </header>
+
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <div class="login-alert" role="alert">
+                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small" />
+                <span>@ErrorMessage</span>
+            </div>
+        }
+
+        <form method="post" action="/auth/login" class="login-form" onsubmit="return sbgLoginSubmitting(this)">
+            <AntiforgeryToken />
+            <label for="identifier">E-mail ou usuário</label>
+            <input id="identifier" name="identifier" type="text" autocomplete="username"
+                   required autofocus maxlength="256" />
+
+            <label for="password">Senha</label>
+            <input id="password" name="password" type="password" autocomplete="current-password"
+                   required maxlength="256" />
+
+            <label class="remember-option">
+                <input type="checkbox" name="rememberMe" value="true" />
+                <span>Lembrar meu acesso</span>
+            </label>
+
+            <button type="submit" class="login-submit">
+                <span class="login-label">Entrar</span>
+                <span class="login-loading" aria-live="polite">Entrando...</span>
+                <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" />
+            </button>
+        </form>
+    </section>
+
+    <p class="login-footer">Acesso restrito à equipe autorizada da oficina.</p>
+</main>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    private string ErrorMessage => Error == "limited"
+        ? "Muitas tentativas. Aguarde um minuto e tente novamente."
+        : Error == "unavailable"
+            ? "O acesso está temporariamente indisponível. Tente novamente."
+            : "Não foi possível entrar com as credenciais informadas.";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated == true)
+            Navigation.NavigateTo("/", forceLoad: true);
+    }
+}
