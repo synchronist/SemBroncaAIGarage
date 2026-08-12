@@ -1,0 +1,98 @@
+@page "/service-orders/{Id:guid}/print"
+@layout PrintLayout
+@using SemBroncaAI.Garage.Web.Models
+@using SemBroncaAI.Garage.Web.Services
+@inject ServiceOrderService ServiceOrderService
+@inject GarageService GarageService
+@inject IConfiguration Configuration
+@inject IJSRuntime JS
+
+<PageTitle>Impressão da OS</PageTitle>
+
+@if (_loading)
+{
+    <div class="document-state">Carregando ordem de serviço...</div>
+}
+else if (_document is null)
+{
+    <div class="document-state">Ordem de serviço não encontrada.</div>
+}
+else
+{
+    <div class="document-actions no-print">
+        <button type="button" @onclick="GoBack">Voltar</button>
+        <button type="button" class="primary" @onclick="PrintAsync">Imprimir</button>
+    </div>
+    <article class="service-order-document">
+        <header class="document-header">
+            <div class="brand-mark">SB</div>
+            <div class="garage-heading">
+                <h1>@_document.Garage.Name</h1>
+                <p>@_document.Garage.Document</p>
+                @if (!string.IsNullOrWhiteSpace(FormatAddress(_document.Garage))) { <p>@FormatAddress(_document.Garage)</p> }
+                <p>@_document.Garage.Phone · @_document.Garage.Email</p>
+            </div>
+            <div class="order-heading"><span>ORDEM DE SERVIÇO</span><strong>#@_document.Number.ToString("D4")</strong></div>
+        </header>
+
+        <section class="order-strip">
+            <div><small>Data de abertura</small><strong>@_document.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</strong></div>
+            <div><small>Status</small><strong>@StatusLabel(_document.Status)</strong></div>
+            <div><small>Quilometragem na entrada</small><strong>@(_document.Mileage.HasValue ? $"{_document.Mileage:N0} km" : "Não registrada")</strong></div>
+        </section>
+
+        <section class="two-columns avoid-break">
+            <div><h2>Cliente</h2><dl><dt>Nome</dt><dd>@_document.Customer.Name</dd><dt>Documento</dt><dd>@_document.Customer.Document</dd><dt>Telefone</dt><dd>@_document.Customer.Phone</dd><dt>E-mail</dt><dd>@_document.Customer.Email</dd></dl></div>
+            <div><h2>Veículo</h2><dl><dt>Placa</dt><dd>@_document.Vehicle.Plate</dd><dt>Veículo</dt><dd>@_document.Vehicle.Brand @_document.Vehicle.Model</dd><dt>Versão / Ano</dt><dd>@_document.Vehicle.Version · @_document.Vehicle.Year</dd><dt>Cor / Combustível</dt><dd>@_document.Vehicle.Color · @_document.Vehicle.Fuel</dd></dl></div>
+        </section>
+
+        <section class="text-section avoid-break"><h2>Relato do cliente</h2><p>@_document.CustomerComplaint</p></section>
+        @if (_document.Diagnosis is not null)
+        {
+            <section class="text-section avoid-break"><h2>Diagnóstico técnico</h2><p>@_document.Diagnosis.Description</p></section>
+        }
+        @if (_document.Estimate is not null)
+        {
+            <section class="estimate-section"><h2>Orçamento</h2>
+                <table><thead><tr><th>Tipo</th><th>Descrição</th><th class="number">Qtd.</th><th class="number">Valor unitário</th><th class="number">Total</th></tr></thead>
+                    <tbody>@foreach (var item in _document.Estimate.Items){<tr><td>@TypeLabel(item.Type)</td><td>@item.Description</td><td class="number">@item.Quantity.ToString("N2")</td><td class="number">@Currency(item.UnitPrice)</td><td class="number">@Currency(item.Total)</td></tr>}</tbody>
+                </table>
+                <div class="totals"><span>Serviços <strong>@Currency(_document.Estimate.ServicesSubtotal)</strong></span><span>Peças <strong>@Currency(_document.Estimate.PartsSubtotal)</strong></span><span class="grand-total">Total geral <strong>@Currency(_document.Estimate.Total)</strong></span></div>
+            </section>
+        }
+        <footer class="signatures avoid-break"><div><span></span><strong>Responsável pela oficina</strong></div><div><span></span><strong>Cliente</strong></div></footer>
+        <div class="document-footer">Documento emitido pelo SBGarage</div>
+    </article>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private ServiceOrderPrintModel? _document; private bool _loading = true;
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        try
+        {
+            if (!Guid.TryParse(Configuration["Garage:Id"], out var garageId)) return;
+            var order = await ServiceOrderService.GetByIdAsync(Id);
+            if (order is null || order.GarageId != garageId) return;
+            var garage = await GarageService.GetAsync(garageId);
+            if (garage is null) return;
+            _document = ServiceOrderPrintBuilder.Build(order, garage);
+        }
+        finally { _loading = false; }
+    }
+    private async Task PrintAsync() => await JS.InvokeVoidAsync("print");
+    private void GoBack() => NavigationManager.NavigateTo($"/service-orders/{Id}");
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+    private static string Currency(decimal value) => value.ToString("C2", new System.Globalization.CultureInfo("pt-BR"));
+    private static string TypeLabel(string type) => type == "Service" ? "Serviço" : type == "Part" ? "Peça" : type;
+    private static string StatusLabel(string status) => status switch { "Received" => "Recebida", "Diagnosis" => "Diagnóstico", "WaitingApproval" => "Aguardando aprovação", "InProgress" => "Em serviço", "WaitingParts" => "Aguardando peças", "Finished" => "Finalizada", "Delivered" => "Entregue", "Cancelled" => "Cancelada", _ => status };
+    private static string FormatAddress(GaragePrintModel garage)
+    {
+        var street = string.Join(", ", new[] { garage.Street, garage.Number }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        var district = string.Join(" - ", new[] { garage.Neighborhood, garage.Complement }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        var city = string.IsNullOrWhiteSpace(garage.City) ? null : string.IsNullOrWhiteSpace(garage.State) ? garage.City : $"{garage.City}/{garage.State}";
+        return string.Join(" · ", new[] { street, district, city, garage.PostalCode }.Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+}

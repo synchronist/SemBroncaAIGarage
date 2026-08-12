@@ -69,6 +69,21 @@ else
                 @GetStatusLabel(_serviceOrder.Status)
             </span>
 
+            <MudButton Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Filled.Print"
+                       OnClick="OpenPrintView">
+                Imprimir OS
+            </MudButton>
+
+            @if (_serviceOrder.Estimate is not null)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           StartIcon="@Icons.Material.Filled.RequestQuote"
+                           OnClick="OpenEstimatePrintView">
+                    Imprimir orçamento
+                </MudButton>
+            }
+
         </header>
 
         <section class="summary-grid">
@@ -1027,6 +1042,16 @@ else
 
             _ => phone
         };
+    }
+
+    private void OpenPrintView()
+    {
+        Navigation.NavigateTo($"/service-orders/{Id}/print");
+    }
+
+    private void OpenEstimatePrintView()
+    {
+        Navigation.NavigateTo($"/service-orders/{Id}/estimate/print");
     }
 
     private sealed class EstimateItemEditModel
