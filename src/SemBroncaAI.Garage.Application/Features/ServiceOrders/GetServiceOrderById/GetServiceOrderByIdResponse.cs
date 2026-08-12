@@ -43,7 +43,18 @@ public sealed record GetServiceOrderByIdResponse(
     ServiceOrderDiagnosisResponse? Diagnosis,
     ServiceOrderEstimateResponse? Estimate,
     ApprovalSummaryResponse? Approval,
-    IReadOnlyCollection<ServiceOrderHistoryResponse> History);
+    IReadOnlyCollection<ApprovalHistoryResponse> ApprovalHistory,
+    IReadOnlyCollection<ServiceOrderHistoryResponse> History,
+    DateTimeOffset? ArchivedAt);
+
+public sealed record ApprovalHistoryResponse(
+    EstimateApprovalStatus Status,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset ExpiresAt,
+    DateTimeOffset? RespondedAt,
+    DateTimeOffset? InvalidatedAt,
+    string? CustomerName,
+    string? CustomerComment);
 public sealed record ServiceOrderDiagnosisResponse(
     Guid Id,
     string Description,

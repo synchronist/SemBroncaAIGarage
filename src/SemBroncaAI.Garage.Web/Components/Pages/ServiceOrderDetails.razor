@@ -8,6 +8,7 @@
 @inject NavigationManager Navigation
 @inject IConfiguration Configuration
 @inject IJSRuntime JS
+@inject IDialogService DialogService
 
 <PageTitle>Ordem de serviço</PageTitle>
 
@@ -57,6 +58,11 @@ else
                     <h1>
                         OS #@_serviceOrder.Number.ToString("D4")
                     </h1>
+
+                    @if (_serviceOrder.ArchivedAt is not null)
+                    {
+                        <span class="archived-indicator">Arquivada</span>
+                    }
 
                     <span class="order-created">
                         Aberta em
@@ -533,6 +539,23 @@ else
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ReviseEstimateAsync">Revisar orçamento</MudButton>
                     }
                 </div>
+                @if ((_serviceOrder.ApprovalHistory?.Count ?? 0) > 1)
+                {
+                    <details class="approval-history">
+                        <summary>Ver histórico (@_serviceOrder.ApprovalHistory!.Count)</summary>
+                        <div>
+                            @foreach (var approval in _serviceOrder.ApprovalHistory.Select((value, index) => (value, index)))
+                            {
+                                <article>
+                                    <span>@(_serviceOrder.ApprovalHistory.Count - approval.index)º envio</span>
+                                    <strong>@GetApprovalHistoryStatus(approval.value)</strong>
+                                    <small>@approval.value.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy 'às' HH:mm")</small>
+                                    @if (!string.IsNullOrWhiteSpace(approval.value.CustomerComment)) { <p>“@approval.value.CustomerComment”</p> }
+                                </article>
+                            }
+                        </div>
+                    </details>
+                }
             </section>
         }
 
@@ -597,6 +620,22 @@ else
             </div>
 
         </section>
+
+        @if (_serviceOrder.ArchivedAt is not null || _serviceOrder.Status is "Delivered" or "Cancelled")
+        {
+            <section class="archive-card">
+                <div><span class="action-caption">Organização</span><strong>@(_serviceOrder.ArchivedAt is null ? "Retirar esta OS da operação diária" : "Esta OS está arquivada")</strong>
+                    <small>@(_serviceOrder.ArchivedAt is null ? "Todos os dados, documentos e históricos continuarão preservados." : $"Arquivada em {_serviceOrder.ArchivedAt.Value.ToLocalTime():dd/MM/yyyy 'às' HH:mm}.")</small></div>
+                @if (_serviceOrder.ArchivedAt is null)
+                {
+                    <MudButton Class="archive-action" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Archive" OnClick="ArchiveAsync">Arquivar OS</MudButton>
+                }
+                else
+                {
+                    <MudButton Class="restore-action" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Unarchive" OnClick="RestoreAsync">Restaurar OS</MudButton>
+                }
+            </section>
+        }
 
     </div>
 }
@@ -785,7 +824,14 @@ else
             "Part" => 2,
             _ => throw new InvalidOperationException(
                 $"Tipo de item de orçamento desconhecido: {type}.")
-        };
+    };
+
+    private static string GetApprovalHistoryStatus(ServiceOrderApprovalHistoryModel approval)
+    {
+        if (approval.InvalidatedAt is not null && approval.Status == "Pending") return "Substituído por novo envio";
+        if (approval.Status == "Pending" && approval.ExpiresAt <= DateTimeOffset.UtcNow) return "Expirado";
+        return approval.Status switch { "Pending" => "Aguardando aprovação", "Approved" => "Aprovado", "Rejected" => "Recusado", _ => approval.Status };
+    }
 
     private async Task SaveDiagnosisAsync()
     {
@@ -1110,6 +1156,29 @@ else
         }
         catch (Exception exception) { Snackbar.Add(exception.Message, Severity.Error); }
         finally { _isDownloadingPdf = false; }
+    }
+
+    private async Task ArchiveAsync()
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync("Arquivar ordem de serviço",
+            "Arquivar esta ordem de serviço? Ela sairá da listagem principal, mas continuará disponível para consulta.",
+            yesText: "Arquivar", cancelText: "Cancelar");
+        if (confirmed != true) return;
+        await SetArchivedAsync(true);
+    }
+
+    private Task RestoreAsync() => SetArchivedAsync(false);
+
+    private async Task SetArchivedAsync(bool archived)
+    {
+        if (_serviceOrder is null) return;
+        try
+        {
+            await ServiceOrderService.SetArchivedAsync(Id, _serviceOrder.GarageId, archived);
+            Snackbar.Add(archived ? "Ordem de serviço arquivada." : "Ordem de serviço restaurada.", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception exception) { Snackbar.Add(exception.Message, Severity.Error); }
     }
 
     private sealed class EstimateItemEditModel

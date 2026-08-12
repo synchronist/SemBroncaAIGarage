@@ -27,6 +27,9 @@ using SemBroncaAI.Garage.Application.Features.ServiceOrders.StartDiagnosis;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.StartService;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.WaitForParts;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.Approval;
+using SemBroncaAI.Garage.Application.Features.ServiceOrders.ArchiveServiceOrder;
+using SemBroncaAI.Garage.Application.Features.ServiceOrders.RestoreServiceOrder;
+using SemBroncaAI.Garage.Application.Features.Estimates.ListEstimates;
 using SemBroncaAI.Garage.Application.Features.Vehicles.CreateVehicle;
 using SemBroncaAI.Garage.Application.Features.Vehicles.GetVehicleById;
 using SemBroncaAI.Garage.Application.Features.Vehicles.ListVehicles;
@@ -62,6 +65,7 @@ public static class DependencyInjection
         services.AddScoped<IVehicleRepository, VehicleRepository>();
         services.AddScoped<IVehicleQueryRepository, VehicleQueryRepository>();
         services.AddScoped<IServiceOrderRepository, ServiceOrderRepository>();
+        services.AddScoped<IEstimateQueryRepository, EstimateQueryRepository>();
         services.AddScoped<ILookupRepository, LookupRepository>();
         services.AddScoped<
     IServiceOrderQueryRepository,
@@ -99,6 +103,9 @@ public static class DependencyInjection
         services.AddScoped<CancelServiceOrderHandler>();
         services.AddScoped<SearchLookupHandler>();
         services.AddScoped<ListServiceOrdersHandler>();
+        services.AddScoped<ArchiveServiceOrderHandler>();
+        services.AddScoped<RestoreServiceOrderHandler>();
+        services.AddScoped<ListEstimatesHandler>();
         services.AddScoped<SaveDiagnosisHandler>();
         services.AddScoped<SaveEstimateHandler>();
 

@@ -51,6 +51,14 @@
 
         </div>
 
+        <div class="archive-filters" aria-label="Exibição de arquivamento">
+            @foreach (var filter in ArchiveFilters)
+            {
+                <button type="button" class="@GetArchiveFilterClass(filter.Value)"
+                        @onclick="() => SelectArchiveAsync(filter.Value)">@filter.Label</button>
+            }
+        </div>
+
     </section>
 
     @if (_isLoading)
@@ -96,6 +104,7 @@
 
                         <div class="order-number">
                             OS #@order.Number.ToString("D4")
+                            @if (order.ArchivedAt is not null) { <span class="archived-badge">Arquivada</span> }
                         </div>
 
                         <div class="vehicle-line">
@@ -190,6 +199,9 @@
         new("Canceladas", "Cancelled")
     ];
 
+    private static readonly (string Label, string Value)[] ArchiveFilters =
+        [("Ativas", "Active"), ("Arquivadas", "Archived"), ("Todas", "All")];
+
     private CancellationTokenSource? _searchCancellation;
 
     private ServiceOrderListModel? _data;
@@ -199,6 +211,7 @@
     private string _search = string.Empty;
 
     private string? _status;
+    private string _archive = "Active";
 
     private int _page = 1;
 
@@ -233,6 +246,7 @@
                     _garageId,
                     _search,
                     _status,
+                    _archive,
                     _page,
                     PageSize);
         }
@@ -282,6 +296,16 @@
 
         await LoadAsync();
     }
+
+    private async Task SelectArchiveAsync(string archive)
+    {
+        _archive = archive;
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private string GetArchiveFilterClass(string archive) =>
+        _archive == archive ? "archive-filter active" : "archive-filter";
 
     private async Task PreviousPageAsync()
     {

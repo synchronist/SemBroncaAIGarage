@@ -33,6 +33,11 @@ public sealed class ServiceOrderConfiguration
         builder.Property(x => x.CreatedAt)
             .IsRequired();
 
+        builder.Property(x => x.ArchivedAt)
+            .IsRequired(false);
+
+        builder.HasIndex(x => new { x.GarageId, x.ArchivedAt });
+
         builder.HasOne(x => x.Garage)
             .WithMany(x => x.ServiceOrders)
             .HasForeignKey(x => x.GarageId)

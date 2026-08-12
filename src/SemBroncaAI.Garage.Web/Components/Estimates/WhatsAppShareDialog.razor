@@ -1,0 +1,40 @@
+@using SemBroncaAI.Garage.Web.Models
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <div class="share-preview">
+            <div><small>Cliente</small><strong>@Model.CustomerName</strong></div>
+            <div><small>Telefone</small><strong>@(string.IsNullOrWhiteSpace(Model.Phone) ? "Não informado" : Model.Phone)</strong></div>
+            @if (Model.WhatsAppPhone is null)
+            {
+                <MudAlert Severity="Severity.Warning">O telefone não possui um formato brasileiro válido. Ainda é possível copiar a mensagem ou o link.</MudAlert>
+            }
+            <MudTextField T="string" @bind-Value="_message" Label="Mensagem" Variant="Variant.Outlined" Lines="12" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="CopyLinkAsync">Copiar link</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="CopyMessageAsync">Copiar mensagem</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(Model.WhatsAppPhone is null)" OnClick="OpenWhatsApp">
+            Abrir WhatsApp
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter, EditorRequired] public WhatsAppShareModel Model { get; set; } = default!;
+    private string _message = string.Empty;
+
+    protected override void OnInitialized() => _message = Model.Message;
+    private async Task CopyLinkAsync() { await JS.InvokeVoidAsync("sbgCopyText", Model.ApprovalLink); Snackbar.Add("Link copiado.", Severity.Success); }
+    private async Task CopyMessageAsync() { await JS.InvokeVoidAsync("sbgCopyText", _message); Snackbar.Add("Mensagem copiada.", Severity.Success); }
+    private async Task OpenWhatsApp()
+    {
+        var url = $"https://wa.me/{Model.WhatsAppPhone}?text={Uri.EscapeDataString(_message)}";
+        await JS.InvokeVoidAsync("open", url, "_blank", "noopener,noreferrer");
+        Dialog.Close();
+    }
+}

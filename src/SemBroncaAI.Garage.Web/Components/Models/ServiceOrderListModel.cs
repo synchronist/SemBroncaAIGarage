@@ -4,6 +4,7 @@ public sealed record ServiceOrderListItemModel(
     Guid Id,
     int Number,
     string Status,
+    DateTimeOffset? ArchivedAt,
     DateTimeOffset CreatedAt,
     string CustomerComplaint,
     Guid CustomerId,

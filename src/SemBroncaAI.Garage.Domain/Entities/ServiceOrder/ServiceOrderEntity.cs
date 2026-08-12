@@ -25,6 +25,8 @@ public sealed class ServiceOrderEntity : Entity
 
     public DateTimeOffset CreatedAt { get; private set; }
 
+    public DateTimeOffset? ArchivedAt { get; private set; }
+
     public GarageEntity Garage { get; private set; } = default!;
 
     public VehicleEntity Vehicle { get; private set; } = default!;
@@ -252,6 +254,19 @@ public sealed class ServiceOrderEntity : Entity
             description,
             internalNotes,
             actorId);
+    }
+
+    public void Archive(DateTimeOffset now)
+    {
+        if (ArchivedAt is not null) return;
+        if (Status is not (ServiceOrderStatus.Delivered or ServiceOrderStatus.Cancelled))
+            throw new InvalidOperationException("Somente ordens entregues ou canceladas podem ser arquivadas.");
+        ArchivedAt = now;
+    }
+
+    public void Restore()
+    {
+        ArchivedAt = null;
     }
 
     public void SaveEstimate(

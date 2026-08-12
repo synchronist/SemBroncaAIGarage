@@ -72,6 +72,7 @@ public sealed class ServiceOrderService
         Guid garageId,
         string? search = null,
         string? status = null,
+        string archive = "Active",
         int page = 1,
         int pageSize = 20,
         CancellationToken cancellationToken = default)
@@ -80,7 +81,8 @@ public sealed class ServiceOrderService
         {
             $"garageId={garageId}",
             $"page={page}",
-            $"pageSize={pageSize}"
+            $"pageSize={pageSize}",
+            $"archive={Uri.EscapeDataString(archive)}"
         };
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -145,6 +147,20 @@ public sealed class ServiceOrderService
         return result
             ?? throw new InvalidOperationException(
                 "A API não retornou o diagnóstico salvo.");
+    }
+
+    public async Task SetArchivedAsync(Guid id, Guid garageId, bool archived,
+        CancellationToken cancellationToken = default)
+    {
+        var action = archived ? "archive" : "restore";
+        var response = await _httpClient.PostAsync(
+            $"api/service-orders/{id}/{action}?garageId={garageId}", null, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = response.Content.Headers.ContentType?.MediaType == "application/json"
+                ? await response.Content.ReadFromJsonAsync<PdfError>(cancellationToken: cancellationToken) : null;
+            throw new InvalidOperationException(error?.Message ?? "Não foi possível atualizar o arquivamento da OS.");
+        }
     }
 
     public async Task<PdfDownload> DownloadPdfAsync(Guid id, Guid garageId, bool estimate, CancellationToken cancellationToken = default)

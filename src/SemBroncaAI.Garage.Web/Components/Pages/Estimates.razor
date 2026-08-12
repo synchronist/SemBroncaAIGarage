@@ -1,0 +1,135 @@
+@page "/estimates"
+@using SemBroncaAI.Garage.Web.Models
+@using SemBroncaAI.Garage.Web.Services
+@using SemBroncaAI.Garage.Web.Components.Estimates
+@inject EstimateService EstimateService
+@inject ServiceOrderService ServiceOrderService
+@inject GarageService GarageService
+@inject WhatsAppShareBuilder ShareBuilder
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<PageTitle>Orçamentos</PageTitle>
+
+<div class="estimates-page">
+    <header class="estimates-header"><div><h1>Central de orçamentos</h1><p>Acompanhe aprovações e ações comerciais em um só lugar.</p></div></header>
+
+    @if (_data is not null)
+    {
+        <section class="indicator-grid">
+            <article><span>Aguardando</span><strong>@_data.Indicators.Pending</strong></article>
+            <article><span>Aprovados</span><strong>@_data.Indicators.Approved</strong></article>
+            <article><span>Recusados</span><strong>@_data.Indicators.Rejected</strong></article>
+            <article class="indicator-value"><span>Valor aguardando</span><strong>@_data.Indicators.PendingValue.ToString("C", _ptBr)</strong></article>
+        </section>
+    }
+
+    <section class="estimates-toolbar">
+        <MudTextField T="string" Value="_search" ValueChanged="OnSearchChanged" Immediate="true"
+                      Placeholder="Buscar por OS, cliente, telefone, placa ou veículo..." Variant="Variant.Outlined"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+        <div class="commercial-filters">
+            @foreach (var filter in Filters)
+            {
+                <button type="button" class="@(_status == filter.Value ? "active" : null)" @onclick="() => SelectFilterAsync(filter.Value)">@filter.Label</button>
+            }
+        </div>
+    </section>
+
+    @if (_loading)
+    {
+        <div class="estimates-state"><MudProgressCircular Indeterminate="true" Color="Color.Primary" /><span>Carregando orçamentos...</span></div>
+    }
+    else if (_data is null || _data.Items.Count == 0)
+    {
+        <div class="estimates-state empty"><MudIcon Icon="@Icons.Material.Filled.RequestQuote" Size="Size.Large" />
+            <h2>@EmptyTitle</h2><p>@EmptyDescription</p>
+            @if (string.IsNullOrWhiteSpace(_search) && _status is null) { <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/service-orders"))">Ver ordens de serviço</MudButton> }
+        </div>
+    }
+    else
+    {
+        <div class="estimate-list">
+            @foreach (var item in _data.Items)
+            {
+                <article class="estimate-card">
+                    <div class="estimate-identification"><span>OS #@item.ServiceOrderNumber.ToString("D4")</span><strong>@item.CustomerName</strong><small>@item.CustomerPhone</small></div>
+                    <div class="estimate-vehicle"><strong>@item.Vehicle</strong><span>@item.Plate</span></div>
+                    <div class="estimate-date"><small>Orçamento / OS</small><span>@item.ServiceOrderCreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                        @if (item.SentAt is not null) { <small>Enviado @item.SentAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small> }
+                        @if (item.RespondedAt is not null) { <small>Respondido @item.RespondedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small> }
+                    </div>
+                    <div class="estimate-statuses"><span class="commercial-status status-@item.CommercialStatus.ToLowerInvariant()">@CommercialLabel(item.CommercialStatus)</span><small>OS: @OperationalLabel(item.ServiceOrderStatus)</small></div>
+                    <strong class="estimate-total">@item.Total.ToString("C", _ptBr)</strong>
+                    @if (!string.IsNullOrWhiteSpace(item.CustomerComment)) { <p class="estimate-comment"><strong>Comentário do cliente:</strong> @item.CustomerComment</p> }
+                    <div class="estimate-actions">
+                        <MudButton Class="estimate-action action-open" Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.OpenInNew"
+                                   OnClick="@(() => OpenOrder(item.ServiceOrderId))">Abrir OS</MudButton>
+                        @if (item.CommercialStatus != "NotSent")
+                        {
+                            <MudButton Class="estimate-action action-pdf" Variant="Variant.Outlined" Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Download"
+                                       OnClick="@(() => DownloadPdfAsync(item))">Baixar PDF</MudButton>
+                        }
+                        @if (item.CommercialStatus == "Pending" && item.ApprovalToken is not null)
+                        {
+                            <MudButton Class="estimate-action action-client" Variant="Variant.Text"
+                                       StartIcon="@Icons.Material.Filled.Visibility"
+                                       OnClick="@(() => OpenApproval(item))">Página do cliente</MudButton>
+                            <MudButton Class="estimate-action action-copy" Variant="Variant.Text"
+                                       StartIcon="@Icons.Material.Filled.ContentCopy"
+                                       OnClick="@(() => CopyLinkAsync(item))">Copiar link</MudButton>
+                            <MudButton Class="estimate-action action-whatsapp" Variant="Variant.Filled" Color="Color.Primary"
+                                       StartIcon="@Icons.Custom.Brands.WhatsApp"
+                                       OnClick="@(() => ShareAsync(item))">WhatsApp</MudButton>
+                        }
+                        @if (item.CommercialStatus is "Rejected" or "Expired")
+                        {
+                            <MudButton Class="estimate-action action-review" Variant="Variant.Text" Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Edit"
+                                       OnClick="@(() => OpenOrder(item.ServiceOrderId))">Revisar orçamento</MudButton>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+        @if (_data.TotalPages > 1)
+        {
+            <div class="estimate-pagination"><MudButton Variant="Variant.Outlined" Disabled="@(_page == 1)" OnClick="PreviousAsync">Anterior</MudButton><span>Página @_page de @_data.TotalPages</span><MudButton Variant="Variant.Outlined" Disabled="@(_page == _data.TotalPages)" OnClick="NextAsync">Próxima</MudButton></div>
+        }
+    }
+</div>
+
+@code {
+    private static readonly System.Globalization.CultureInfo _ptBr = System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
+    private static readonly (string Label, string? Value)[] Filters = [("Todos", null), ("Não enviados", "NotSent"), ("Aguardando", "Pending"), ("Aprovados", "Approved"), ("Recusados", "Rejected"), ("Expirados", "Expired")];
+    private EstimateListModel? _data; private CancellationTokenSource? _searchCts; private Guid _garageId;
+    private string _search = string.Empty; private string? _status; private int _page = 1; private bool _loading;
+    private string _garageName = "Oficina"; private string? _garagePhone;
+    private string EmptyTitle => !string.IsNullOrWhiteSpace(_search) ? "Nenhum orçamento encontrado para esta busca." : _status is not null ? "Nenhum orçamento encontrado neste filtro." : "Você ainda não possui orçamentos.";
+    private string EmptyDescription => "Ajuste a busca ou acompanhe as ordens de serviço existentes.";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Guid.TryParse(Configuration["Garage:Id"], out _garageId)) throw new InvalidOperationException("O identificador da oficina não foi configurado.");
+        try { var garage = await GarageService.GetAsync(_garageId); if (garage is not null) { _garageName = garage.Name; _garagePhone = garage.Phone; } } catch { }
+        await LoadAsync();
+    }
+    private async Task LoadAsync() { try { _loading = true; _data = await EstimateService.ListAsync(_garageId, _search, _status, _page, 10); } catch (Exception e) { Snackbar.Add($"Não foi possível carregar os orçamentos: {e.Message}", Severity.Error); } finally { _loading = false; } }
+    private async Task OnSearchChanged(string value) { _search = value; _searchCts?.Cancel(); _searchCts?.Dispose(); _searchCts = new(); try { await Task.Delay(300, _searchCts.Token); _page = 1; await LoadAsync(); } catch (OperationCanceledException) { } }
+    private async Task SelectFilterAsync(string? value) { _status = value; _page = 1; await LoadAsync(); }
+    private async Task PreviousAsync() { _page--; await LoadAsync(); }
+    private async Task NextAsync() { _page++; await LoadAsync(); }
+    private void OpenOrder(Guid id) => Navigation.NavigateTo($"/service-orders/{id}");
+    private string Link(EstimateListItemModel item) => ShareBuilder.BuildApprovalLink(item.ApprovalToken!, Navigation.BaseUri);
+    private void OpenApproval(EstimateListItemModel item) => Navigation.NavigateTo(Link(item), true);
+    private async Task CopyLinkAsync(EstimateListItemModel item) { await JS.InvokeVoidAsync("sbgCopyText", Link(item)); Snackbar.Add("Link copiado.", Severity.Success); }
+    private async Task ShareAsync(EstimateListItemModel item) { var parameters = new DialogParameters { ["Model"] = ShareBuilder.Build(item, _garageName, _garagePhone, Navigation.BaseUri) }; await DialogService.ShowAsync<WhatsAppShareDialog>("Compartilhar orçamento", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true }); }
+    private async Task DownloadPdfAsync(EstimateListItemModel item) { try { var file = await ServiceOrderService.DownloadPdfAsync(item.ServiceOrderId, _garageId, true); await JS.InvokeVoidAsync("sbgDownloadFile", file.FileName, "application/pdf", Convert.ToBase64String(file.Content)); } catch (Exception e) { Snackbar.Add(e.Message, Severity.Error); } }
+    private static string CommercialLabel(string value) => value switch { "NotSent" => "Não enviado", "Pending" => "Aguardando aprovação", "Approved" => "Aprovado", "Rejected" => "Recusado", "Expired" => "Expirado", _ => value };
+    private static string OperationalLabel(string value) => value switch { "Received" => "Recebido", "Diagnosis" => "Em diagnóstico", "WaitingApproval" => "Aguardando aprovação", "InProgress" => "Em serviço", "WaitingParts" => "Aguardando peças", "Finished" => "Finalizado", "Delivered" => "Entregue", "Cancelled" => "Cancelado", _ => value };
+}

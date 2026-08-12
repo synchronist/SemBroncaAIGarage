@@ -57,6 +57,13 @@ builder.Services.AddHttpClient<PublicApprovalService>((serviceProvider, client) 
     var baseUrl = serviceProvider.GetRequiredService<IConfiguration>()["Api:BaseUrl"] ?? throw new InvalidOperationException("A URL da API não foi configurada.");
     client.BaseAddress = new Uri(baseUrl);
 });
+builder.Services.AddHttpClient<EstimateService>((serviceProvider, client) =>
+{
+    var baseUrl = serviceProvider.GetRequiredService<IConfiguration>()["Api:BaseUrl"]
+        ?? throw new InvalidOperationException("A URL da API não foi configurada.");
+    client.BaseAddress = new Uri(baseUrl);
+});
+builder.Services.AddScoped<WhatsAppShareBuilder>();
 
 var app = builder.Build();
 

@@ -1,0 +1,4 @@
+.share-preview { display: grid; gap: 16px; min-width: min(520px, 70vw); }
+.share-preview > div { display: grid; gap: 3px; }
+.share-preview small { color: #6b7280; }
+@media (max-width: 600px) { .share-preview { min-width: 0; width: 100%; } ::deep .mud-dialog-actions { display: grid; grid-template-columns: 1fr; } }

@@ -79,3 +79,11 @@ Antes de publicar em Docker, monte o diretório do key ring do ASP.NET Core Data
 Como o token faz parte da URL, configure reverse proxy, access logs, APM e tracing para não registrar paths completos de `/approval/{token}` e `/api/public/approvals/{token}`. Atrás de proxy ou ingress, configure e restrinja `ForwardedHeaders` aos proxies conhecidos para que o rate limit utilize o IP real do cliente sem confiar em cabeçalhos forjados.
 
 Em produção, fixe a versão do pacote e do browser. A API e o Web precisam estar acessíveis entre si; em containers, `Web:BaseUrl` deve usar o hostname interno do serviço, não `localhost`.
+
+## Compartilhamento manual pelo WhatsApp
+
+A Central de Orçamentos apenas prepara a mensagem e abre `wa.me`; o envio continua sendo confirmado manualmente pela oficina e não é registrado como enviado. Configure `PublicAppBaseUrl` no projeto Web com a origem pública absoluta da aplicação (HTTPS em produção), por exemplo `https://garage.exemplo.com/`. Essa URL é usada para compor links de aprovação sem depender de `localhost` ou do endereço interno do container.
+
+Em desenvolvimento local, deixe `PublicAppBaseUrl` vazio em `src/SemBroncaAI.Garage.Web/appsettings.Development.json`. Nesse caso, a Central usa a origem real pela qual o navegador abriu o Web (`NavigationManager.BaseUri`), funcionando tanto com o perfil HTTP quanto com o HTTPS sem presumir uma porta. Para testar com IP, túnel ou outro endereço público, preencha `PublicAppBaseUrl` explicitamente; o valor configurado tem precedência sobre a origem do navegador.
+
+`localhost` funciona somente no próprio computador. Para abrir o link em um celular, configure `PublicAppBaseUrl` com o IP da máquina acessível na rede local, um túnel HTTPS ou o domínio público da aplicação. O Web também precisa estar escutando nesse endereço e qualquer certificado/firewall deve permitir o acesso; esta aplicação não cria nem gerencia túneis automaticamente.

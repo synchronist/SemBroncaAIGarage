@@ -23,8 +23,7 @@ public sealed class ServiceOrderQueryRepository
         var serviceOrders =
             _context.ServiceOrders
                 .AsNoTracking()
-                .Where(serviceOrder =>
-                    serviceOrder.GarageId == query.GarageId);
+                .ApplyTenantAndArchiveFilter(query.GarageId, query.Archive);
 
         if (query.Status.HasValue)
         {
@@ -94,6 +93,7 @@ public sealed class ServiceOrderQueryRepository
                         serviceOrder.Id,
                         serviceOrder.Number,
                         serviceOrder.Status,
+                        serviceOrder.ArchivedAt,
                         serviceOrder.CreatedAt,
                         serviceOrder.CustomerComplaint,
                         serviceOrder.Vehicle.Customer.Id,

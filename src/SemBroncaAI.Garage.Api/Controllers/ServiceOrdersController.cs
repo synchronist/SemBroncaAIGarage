@@ -12,6 +12,8 @@ using SemBroncaAI.Garage.Application.Features.ServiceOrders.SendForApproval;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.StartDiagnosis;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.StartService;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.WaitForParts;
+using SemBroncaAI.Garage.Application.Features.ServiceOrders.ArchiveServiceOrder;
+using SemBroncaAI.Garage.Application.Features.ServiceOrders.RestoreServiceOrder;
 using SemBroncaAI.Garage.Api.Services;
 
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.Approval;
@@ -48,6 +50,7 @@ public sealed class ServiceOrdersController : ControllerBase
     [FromQuery] Guid garageId,
     [FromQuery] string? search,
     [FromQuery] ServiceOrderStatus? status,
+    [FromQuery] ServiceOrderArchiveFilter archive,
     [FromQuery] int page,
     [FromQuery] int pageSize,
     [FromServices] ListServiceOrdersHandler handler,
@@ -58,6 +61,7 @@ public sealed class ServiceOrdersController : ControllerBase
                 garageId,
                 search,
                 status,
+                archive,
                 page,
                 pageSize);
 
@@ -124,6 +128,22 @@ public sealed class ServiceOrdersController : ControllerBase
         {
             return BadRequest(new { message = exception.Message });
         }
+    }
+
+    [HttpPost("{id:guid}/archive")]
+    public async Task<IActionResult> Archive(Guid id, [FromQuery] Guid garageId,
+        [FromServices] ArchiveServiceOrderHandler handler, CancellationToken cancellationToken)
+    {
+        try { await handler.HandleAsync(id, garageId, cancellationToken); return NoContent(); }
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException) { return BadRequest(new { message = exception.Message }); }
+    }
+
+    [HttpPost("{id:guid}/restore")]
+    public async Task<IActionResult> Restore(Guid id, [FromQuery] Guid garageId,
+        [FromServices] RestoreServiceOrderHandler handler, CancellationToken cancellationToken)
+    {
+        try { await handler.HandleAsync(id, garageId, cancellationToken); return NoContent(); }
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException) { return BadRequest(new { message = exception.Message }); }
     }
 
     [HttpGet("{id:guid}/documents/{documentType}/pdf")]

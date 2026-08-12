@@ -115,6 +115,12 @@ public sealed class GetServiceOrderByIdHandler
                 approval.RespondedAt, approval.CustomerName, approval.CustomerComment, token);
         }
 
+        var approvalHistory = serviceOrder.EstimateApprovals
+            .OrderByDescending(item => item.CreatedAt)
+            .Select(item => new ApprovalHistoryResponse(item.Status, item.CreatedAt, item.ExpiresAt,
+                item.RespondedAt, item.InvalidatedAt, item.CustomerName, item.CustomerComment))
+            .ToArray();
+
         return new GetServiceOrderByIdResponse(
             serviceOrder.Id,
             serviceOrder.GarageId,
@@ -128,6 +134,8 @@ public sealed class GetServiceOrderByIdHandler
             diagnosisResponse,
             estimateResponse,
             approvalResponse,
-            history);
+            approvalHistory,
+            history,
+            serviceOrder.ArchivedAt);
     }
 }

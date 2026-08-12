@@ -39,11 +39,17 @@ public sealed record ServiceOrderDetailsModel(
     IReadOnlyCollection<ServiceOrderHistoryItem> History,
     ServiceOrderDiagnosisModel? Diagnosis,
     ServiceOrderEstimateModel? Estimate,
-    ServiceOrderApprovalModel? Approval = null);
+    ServiceOrderApprovalModel? Approval = null,
+    IReadOnlyCollection<ServiceOrderApprovalHistoryModel>? ApprovalHistory = null,
+    DateTimeOffset? ArchivedAt = null);
 
 public sealed record ServiceOrderApprovalModel(string Status, DateTimeOffset CreatedAt,
     DateTimeOffset ExpiresAt, DateTimeOffset? RespondedAt, string? CustomerName,
     string? CustomerComment, string? Token);
+
+public sealed record ServiceOrderApprovalHistoryModel(string Status, DateTimeOffset CreatedAt,
+    DateTimeOffset ExpiresAt, DateTimeOffset? RespondedAt, DateTimeOffset? InvalidatedAt,
+    string? CustomerName, string? CustomerComment);
 
 public sealed record ServiceOrderDiagnosisModel(
     Guid Id,
