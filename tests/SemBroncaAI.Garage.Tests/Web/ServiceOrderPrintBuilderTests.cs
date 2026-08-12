@@ -21,6 +21,8 @@ public sealed class ServiceOrderPrintBuilderTests
         document.Garage.Name.ShouldBe("Oficina do João");
         document.Garage.City.ShouldBe("Boituva");
         document.Garage.State.ShouldBe("SP");
+        document.Garage.PrimaryColor.ShouldBe(ServiceOrderPrintBuilder.DefaultPrimaryColor);
+        document.Garage.LogoUrl.ShouldBeNull();
     }
 
     [Fact]
@@ -29,6 +31,15 @@ public sealed class ServiceOrderPrintBuilderTests
         var document = ServiceOrderPrintBuilder.Build(Order(false, false), Garage());
         document.Diagnosis.ShouldBeNull();
         document.Estimate.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Build_Should_Map_Configured_Logo_And_Color()
+    {
+        var garage = Garage(); garage.LogoStorageKey = $"{garage.Id:N}/logo.png"; garage.PrimaryColor = "#123ABC";
+        var document = ServiceOrderPrintBuilder.Build(Order(false, false), garage, "https://api/logo");
+        document.Garage.LogoUrl.ShouldBe("https://api/logo");
+        document.Garage.PrimaryColor.ShouldBe("#123ABC");
     }
 
     private static GarageSettingsModel Garage() => new()

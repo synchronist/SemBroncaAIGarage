@@ -12,6 +12,9 @@ using SemBroncaAI.Garage.Application.Features.ServiceOrders.SendForApproval;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.StartDiagnosis;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.StartService;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.WaitForParts;
+using SemBroncaAI.Garage.Api.Services;
+
+using SemBroncaAI.Garage.Application.Features.ServiceOrders.Approval;
 
 namespace SemBroncaAI.Garage.Api.Controllers;
 
@@ -123,6 +126,31 @@ public sealed class ServiceOrdersController : ControllerBase
         }
     }
 
+    [HttpGet("{id:guid}/documents/{documentType}/pdf")]
+    public async Task<IActionResult> DownloadPdf(Guid id, string documentType, [FromQuery] Guid garageId,
+        [FromServices] GetServiceOrderByIdHandler handler, [FromServices] IDocumentPdfGenerator generator,
+        CancellationToken cancellationToken)
+    {
+        var order = await handler.HandleAsync(id, cancellationToken);
+        if (order is null || order.GarageId != garageId) return NotFound(new { message = "Ordem de serviço não encontrada." });
+        var estimate = documentType.Equals("estimate", StringComparison.OrdinalIgnoreCase);
+        if (!estimate && !documentType.Equals("service-order", StringComparison.OrdinalIgnoreCase)) return BadRequest(new { message = "Tipo de documento inválido." });
+        if (estimate && order.Estimate is null) return BadRequest(new { message = "A ordem de serviço não possui orçamento." });
+        try
+        {
+            var route = estimate ? $"service-orders/{id}/estimate/print" : $"service-orders/{id}/print";
+            var selector = estimate ? ".estimate-document" : ".service-order-document";
+            var bytes = await generator.GenerateAsync(route, selector, cancellationToken);
+            var prefix = estimate ? "ORCAMENTO" : "OS";
+            var fileName = DocumentFileName.Create(prefix, order.Number, order.Vehicle.Plate);
+            return File(bytes, "application/pdf", fileName);
+        }
+        catch
+        {
+            return StatusCode(500, new { message = "Não foi possível gerar o PDF. Verifique a instalação do Chromium." });
+        }
+    }
+
     [HttpPost("{id:guid}/start-diagnosis")]
     public Task<IActionResult> StartDiagnosis(
         Guid id,
@@ -146,6 +174,11 @@ public sealed class ServiceOrdersController : ControllerBase
         CancellationToken cancellationToken) =>
         ExecuteTransition(() =>
             handler.HandleAsync(id, null, cancellationToken));
+
+    [HttpPost("{id:guid}/revise-estimate")]
+    public Task<IActionResult> ReviseEstimate(Guid id, [FromServices] ReviseEstimateHandler handler,
+        CancellationToken cancellationToken) => ExecuteTransition(async () =>
+        { await handler.HandleAsync(id, cancellationToken); return new { status = "Diagnosis" }; });
 
     [HttpPost("{id:guid}/wait-for-parts")]
     public Task<IActionResult> WaitForParts(

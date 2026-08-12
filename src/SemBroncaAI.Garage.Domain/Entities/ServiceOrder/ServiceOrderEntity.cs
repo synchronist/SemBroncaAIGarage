@@ -7,6 +7,7 @@ namespace SemBroncaAI.Garage.Domain.Entities.ServiceOrder;
 public sealed class ServiceOrderEntity : Entity
 {
     private readonly List<ServiceOrderHistoryEntity> _history = [];
+    private readonly List<ServiceOrderEstimateApprovalEntity> _estimateApprovals = [];
 
     public Guid GarageId { get; private set; }
 
@@ -30,6 +31,8 @@ public sealed class ServiceOrderEntity : Entity
 
     public IReadOnlyCollection<ServiceOrderHistoryEntity> History =>
         _history.AsReadOnly();
+    public IReadOnlyCollection<ServiceOrderEstimateApprovalEntity> EstimateApprovals => _estimateApprovals.AsReadOnly();
+    public ServiceOrderEstimateApprovalEntity? CurrentEstimateApproval => _estimateApprovals.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
 
     private ServiceOrderEntity()
     {
@@ -86,7 +89,8 @@ public sealed class ServiceOrderEntity : Entity
             actorId);
     }
 
-    public void SendForApproval(Guid? actorId = null)
+    public ServiceOrderEstimateApprovalEntity SendForApproval(string tokenHash, string protectedToken,
+        DateTimeOffset expiresAt, DateTimeOffset now, Guid? actorId = null)
     {
         EnsureStatus(ServiceOrderStatus.Diagnosis);
 
@@ -102,15 +106,24 @@ public sealed class ServiceOrderEntity : Entity
                 "Registre um orçamento válido antes de enviar a ordem para aprovação.");
         }
 
+        foreach (var approval in _estimateApprovals) approval.Invalidate(now);
+        var request = new ServiceOrderEstimateApprovalEntity(Id, tokenHash, protectedToken,
+            expiresAt, Estimate.UpdatedAt, Estimate.Total, now);
+        _estimateApprovals.Add(request);
+
         ChangeStatus(
             ServiceOrderStatus.WaitingApproval,
             ServiceOrderMessages.SentForApproval,
             actorId);
+        return request;
     }
 
     public void StartService(Guid? actorId = null)
     {
         EnsureStatus(ServiceOrderStatus.WaitingApproval);
+
+        if (CurrentEstimateApproval?.Status != EstimateApprovalStatus.Approved)
+            throw new InvalidOperationException("O serviço só pode ser iniciado após a aprovação do orçamento pelo cliente.");
 
         ChangeStatus(
             ServiceOrderStatus.InProgress,
@@ -167,6 +180,8 @@ public sealed class ServiceOrderEntity : Entity
             ServiceOrderStatus.InProgress,
             ServiceOrderStatus.WaitingParts,
             ServiceOrderStatus.Finished);
+
+        foreach (var approval in _estimateApprovals) approval.Invalidate(DateTimeOffset.UtcNow);
 
         ChangeStatus(
             ServiceOrderStatus.Cancelled,
@@ -256,6 +271,34 @@ public sealed class ServiceOrderEntity : Entity
             return;
         }
 
+        foreach (var approval in _estimateApprovals) approval.Invalidate(DateTimeOffset.UtcNow);
         Estimate.Update(items);
+    }
+
+    public void ApproveEstimate(Guid approvalId, string? customerName, DateTimeOffset now)
+    {
+        EnsureStatus(ServiceOrderStatus.WaitingApproval);
+        var approval = _estimateApprovals.SingleOrDefault(x => x.Id == approvalId)
+            ?? throw new InvalidOperationException("Solicitação de aprovação não encontrada.");
+        approval.Approve(customerName, now);
+    }
+
+    public void RejectEstimate(Guid approvalId, string? customerName, string? comment, DateTimeOffset now)
+    {
+        EnsureStatus(ServiceOrderStatus.WaitingApproval);
+        var approval = _estimateApprovals.SingleOrDefault(x => x.Id == approvalId)
+            ?? throw new InvalidOperationException("Solicitação de aprovação não encontrada.");
+        approval.Reject(customerName, comment, now);
+    }
+
+    public void ReviseRejectedEstimate(Guid? actorId = null)
+    {
+        EnsureStatus(ServiceOrderStatus.WaitingApproval);
+        var current = CurrentEstimateApproval
+            ?? throw new InvalidOperationException("Não há solicitação de aprovação para revisar.");
+        if (current.Status != EstimateApprovalStatus.Rejected && !current.IsExpired(DateTimeOffset.UtcNow))
+            throw new InvalidOperationException("Somente um orçamento recusado ou expirado pode ser revisado.");
+        foreach (var approval in _estimateApprovals) approval.Invalidate(DateTimeOffset.UtcNow);
+        ChangeStatus(ServiceOrderStatus.Diagnosis, "Orçamento reaberto para revisão.", actorId);
     }
 }

@@ -22,7 +22,7 @@ public sealed class GarageSettingsHandlerTests
     {
         var garage = Create(); var repository = new Repository(garage); var unitOfWork = new UnitOfWork();
         var handler = new UpdateGarageSettingsHandler(repository, unitOfWork);
-        var response = await handler.HandleAsync(garage.Id, new("Oficina Nova", garage.Document, "1188", "novo@oficina.com", null, "Rua A", "10", null, "Centro", "Boituva", "SP"));
+        var response = await handler.HandleAsync(garage.Id, new("Oficina Nova", garage.Document, "1188", "novo@oficina.com", null, "Rua A", "10", null, "Centro", "Boituva", "SP", "#F97316"));
 
         repository.RequestedId.ShouldBe(garage.Id); repository.ExcludedId.ShouldBe(garage.Id);
         response.Name.ShouldBe("Oficina Nova"); response.City.ShouldBe("Boituva"); unitOfWork.SaveCount.ShouldBe(1);
@@ -33,7 +33,7 @@ public sealed class GarageSettingsHandlerTests
     {
         var garage = Create(); var handler = new UpdateGarageSettingsHandler(new Repository(garage), new UnitOfWork());
         await Should.ThrowAsync<InvalidOperationException>(() => handler.HandleAsync(Guid.CreateVersion7(),
-            new("Outra", "999", "1188", "a@b.com", null, null, null, null, null, null, null)));
+            new("Outra", "999", "1188", "a@b.com", null, null, null, null, null, null, null, null)));
         garage.Name.ShouldBe("Oficina");
     }
 

@@ -4,10 +4,12 @@ namespace SemBroncaAI.Garage.Web.Services;
 
 public static class ServiceOrderPrintBuilder
 {
-    public static ServiceOrderPrintModel Build(ServiceOrderDetailsModel order, GarageSettingsModel garage) =>
+    public const string DefaultPrimaryColor = "#F97316";
+    public static ServiceOrderPrintModel Build(ServiceOrderDetailsModel order, GarageSettingsModel garage, string? logoUrl = null) =>
         new(order.Id, order.Number, order.Status, order.CustomerComplaint, order.Mileage, order.CreatedAt,
             new(garage.Name, garage.Document, garage.Phone, garage.Email, garage.PostalCode, garage.Street,
-                garage.Number, garage.Complement, garage.Neighborhood, garage.City, garage.State),
+                garage.Number, garage.Complement, garage.Neighborhood, garage.City, garage.State,
+                garage.LogoStorageKey is null ? null : logoUrl, garage.PrimaryColor ?? DefaultPrimaryColor),
             new(order.Customer.Name, order.Customer.Document, order.Customer.Phone, order.Customer.Email),
             new(order.Vehicle.Plate, order.Vehicle.Brand, order.Vehicle.Model, order.Vehicle.Version,
                 order.Vehicle.Year, order.Vehicle.Color, order.Vehicle.Fuel),

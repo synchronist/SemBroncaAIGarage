@@ -26,6 +26,7 @@ public sealed class GarageDbContext : DbContext, IUnitOfWork
         Set<ServiceOrderEstimateEntity>();
     public DbSet<ServiceOrderEstimateItemEntity> ServiceOrderEstimateItems =>
         Set<ServiceOrderEstimateItemEntity>();
+    public DbSet<ServiceOrderEstimateApprovalEntity> ServiceOrderEstimateApprovals => Set<ServiceOrderEstimateApprovalEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

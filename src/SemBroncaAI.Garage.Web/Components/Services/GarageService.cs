@@ -37,5 +37,30 @@ public sealed class GarageService(HttpClient httpClient)
             ?? throw new InvalidOperationException("A API não retornou os dados da oficina.");
     }
 
+    public async Task<GarageSettingsModel> UploadLogoAsync(Guid id, Stream stream, string fileName, string contentType, CancellationToken cancellationToken = default)
+    {
+        using var content = new MultipartFormDataContent();
+        using var file = new StreamContent(stream); file.Headers.ContentType = new(contentType);
+        content.Add(file, "file", fileName);
+        var response = await httpClient.PostAsync($"api/garages/{id}/logo", content, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = response.Content.Headers.ContentType?.MediaType == "application/json"
+                ? await response.Content.ReadFromJsonAsync<ApiError>(cancellationToken: cancellationToken) : null;
+            throw new InvalidOperationException(error?.Message ?? "Não foi possível enviar a logo.");
+        }
+        return await response.Content.ReadFromJsonAsync<GarageSettingsModel>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("A API não retornou os dados da oficina.");
+    }
+
+    public string GetLogoUrl(Guid id, string? version = null)
+    {
+        var path = $"api/garages/{id}/logo";
+        if (!string.IsNullOrWhiteSpace(version))
+            path += $"?v={Uri.EscapeDataString(version)}";
+
+        return new Uri(httpClient.BaseAddress!, path).ToString();
+    }
+
     private sealed record ApiError(string Message);
 }

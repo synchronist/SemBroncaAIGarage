@@ -41,7 +41,7 @@ public sealed class GarageServiceTests
         exception.Message.ShouldBe("A cidade deve possuir no máximo 100 caracteres.");
     }
 
-    private static UpdateGarageSettingsRequest Request() => new("Oficina", "123", "1199", "a@b.com", null, null, null, null, null, null, "sp");
+    private static UpdateGarageSettingsRequest Request() => new("Oficina", "123", "1199", "a@b.com", null, null, null, null, null, null, "sp", null);
     private static GarageService CreateService(HttpStatusCode status, string mediaType, string body) =>
         new(new HttpClient(new Handler(status, mediaType, body)) { BaseAddress = new Uri("http://localhost/") });
 

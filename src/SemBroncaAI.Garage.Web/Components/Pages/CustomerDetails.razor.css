@@ -24,3 +24,5 @@
 .future-action-note { color: #94a3b8; font-size: 10px; text-align: right; }
 @media (max-width: 800px) { .customer-info-card, .vehicles-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .details-header { flex-direction: column; } .customer-info-card, .vehicles-grid { grid-template-columns: 1fr; } }
+@media(max-width:768px){.details-header{margin-bottom:16px}.details-header>:deep(.mud-button-root),.vehicle-actions>:deep(.mud-button-root){min-height:44px}.customer-info-card{gap:14px;padding:16px;margin-bottom:16px}.vehicle-card{padding:16px}.vehicle-actions{display:grid;grid-template-columns:1fr 1fr}.vehicle-actions>:deep(.mud-button-root){margin:0}}@media(max-width:430px){.details-title h1{font-size:23px}.vehicle-actions{grid-template-columns:1fr}.vehicle-data{grid-template-columns:1fr 1fr}}
+@media(max-width:430px){.details-header>:deep(.mud-button-root),.vehicles-empty>:deep(.mud-button-root){width:100%;margin:0}.customer-info-card,.vehicle-card,.vehicles-empty{border-radius:10px}.vehicles-empty{padding:24px 16px;text-align:center}.customer-info-card strong,.vehicle-data{overflow-wrap:anywhere}}

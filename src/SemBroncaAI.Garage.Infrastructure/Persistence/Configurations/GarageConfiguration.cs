@@ -33,6 +33,8 @@ public sealed class GarageConfiguration : IEntityTypeConfiguration<GarageEntity>
         builder.Property(x => x.Neighborhood).HasMaxLength(100);
         builder.Property(x => x.City).HasMaxLength(100);
         builder.Property(x => x.State).HasMaxLength(2);
+        builder.Property(x => x.LogoStorageKey).HasMaxLength(200);
+        builder.Property(x => x.PrimaryColor).HasMaxLength(7);
 
         builder.Property(x => x.Active)
             .IsRequired();

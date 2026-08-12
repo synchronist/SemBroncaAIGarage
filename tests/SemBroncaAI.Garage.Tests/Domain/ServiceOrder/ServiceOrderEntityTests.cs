@@ -132,7 +132,7 @@ public class ServiceOrderEntityTests
                 150m)
         ]);
 
-        order.SendForApproval();
+        SendForApproval(order);
 
         order.Status.ShouldBe(
             ServiceOrderStatus.WaitingApproval);
@@ -164,7 +164,7 @@ public class ServiceOrderEntityTests
         order.StartDiagnosis();
 
         var exception = Should.Throw<InvalidOperationException>(
-            () => order.SendForApproval());
+            () => SendForApproval(order));
 
         exception.Message.ShouldBe(
             "Registre o diagnóstico antes de enviar a ordem para aprovação.");
@@ -237,7 +237,7 @@ public class ServiceOrderEntityTests
     {
         var order = CreateOrderInDiagnosisWithDiagnosis();
 
-        var exception = Should.Throw<InvalidOperationException>(() => order.SendForApproval());
+        var exception = Should.Throw<InvalidOperationException>(() => SendForApproval(order));
 
         exception.Message.ShouldBe(
             "Registre um orçamento válido antes de enviar a ordem para aprovação.");
@@ -252,7 +252,7 @@ public class ServiceOrderEntityTests
             new ServiceOrderEstimateItemData("Mão de obra", EstimateItemType.Service, 1, 100m)
         ]);
 
-        order.SendForApproval();
+        SendForApproval(order);
 
         order.Status.ShouldBe(ServiceOrderStatus.WaitingApproval);
         order.History.Last().Description.ShouldBe(ServiceOrderMessages.SentForApproval);
@@ -269,5 +269,12 @@ public class ServiceOrderEntityTests
         order.StartDiagnosis();
         order.SaveDiagnosis("Folga identificada na suspensão.");
         return order;
+    }
+
+    private static ServiceOrderEstimateApprovalEntity SendForApproval(ServiceOrderEntity order)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return order.SendForApproval(Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
+            "protected-token", now.AddDays(7), now);
     }
 }

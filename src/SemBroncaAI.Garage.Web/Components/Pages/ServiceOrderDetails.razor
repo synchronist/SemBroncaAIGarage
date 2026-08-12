@@ -6,6 +6,8 @@
 @inject ServiceOrderService ServiceOrderService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject IConfiguration Configuration
+@inject IJSRuntime JS
 
 <PageTitle>Ordem de serviço</PageTitle>
 
@@ -74,6 +76,9 @@ else
                        OnClick="OpenPrintView">
                 Imprimir OS
             </MudButton>
+            <MudButton Variant="Variant.Outlined" Disabled="_isDownloadingPdf" StartIcon="@Icons.Material.Filled.Download" OnClick="@(() => DownloadPdfAsync(false))">
+                @(_isDownloadingPdf ? "Gerando PDF..." : "Baixar OS em PDF")
+            </MudButton>
 
             @if (_serviceOrder.Estimate is not null)
             {
@@ -81,6 +86,9 @@ else
                            StartIcon="@Icons.Material.Filled.RequestQuote"
                            OnClick="OpenEstimatePrintView">
                     Imprimir orçamento
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Disabled="_isDownloadingPdf" StartIcon="@Icons.Material.Filled.Download" OnClick="@(() => DownloadPdfAsync(true))">
+                    @(_isDownloadingPdf ? "Gerando PDF..." : "Baixar orçamento em PDF")
                 </MudButton>
             }
 
@@ -506,6 +514,28 @@ else
 
         </section>
 
+        @if (_serviceOrder.Approval is not null)
+        {
+            <section class="approval-office-card">
+                <div><span class="action-caption">Aprovação do cliente</span><strong>@ApprovalStatusLabel</strong>
+                    <small>Enviado em @_serviceOrder.Approval.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy 'às' HH:mm")</small>
+                    @if (_serviceOrder.Approval.RespondedAt is not null) { <small>Respondido em @_serviceOrder.Approval.RespondedAt.Value.ToLocalTime().ToString("dd/MM/yyyy 'às' HH:mm")</small> }
+                    @if (!string.IsNullOrWhiteSpace(_serviceOrder.Approval.CustomerComment)) { <p><b>Motivo:</b> @_serviceOrder.Approval.CustomerComment</p> }
+                </div>
+                <div class="action-buttons">
+                    @if (_serviceOrder.Approval.Token is not null)
+                    {
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="CopyApprovalLinkAsync">Copiar link</MudButton>
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.OpenInNew" OnClick="OpenApprovalPage">Abrir página do cliente</MudButton>
+                    }
+                    @if (_serviceOrder.Approval.Status == "Rejected" || ApprovalExpired)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ReviseEstimateAsync">Revisar orçamento</MudButton>
+                    }
+                </div>
+            </section>
+        }
+
         <section class="action-card">
 
             <div>
@@ -585,6 +615,7 @@ else
     private bool _isSavingDiagnosis;
 
     private bool _isSavingEstimate;
+    private bool _isDownloadingPdf;
 
     private readonly List<EstimateItemEditModel> _estimateItems = [];
 
@@ -612,7 +643,21 @@ else
         _isSavingDiagnosis ||
         (_serviceOrder?.Status == "Diagnosis" &&
          (_serviceOrder.Diagnosis is null ||
-          _serviceOrder.Estimate is null));
+          _serviceOrder.Estimate is null)) ||
+        (_serviceOrder?.Status == "WaitingApproval" && _serviceOrder.Approval?.Status != "Approved");
+
+    private bool ApprovalExpired => _serviceOrder?.Approval is { Status: "Pending" } approval && DateTimeOffset.UtcNow >= approval.ExpiresAt;
+    private string ApprovalStatusLabel => ApprovalExpired ? "Link expirado" : _serviceOrder?.Approval?.Status switch
+    { "Pending" => "Aguardando aprovação", "Approved" => "✓ Aprovado pelo cliente", "Rejected" => "✕ Recusado", _ => "Link invalidado" };
+    private string ApprovalLink => new Uri(new Uri(Navigation.BaseUri), $"approval/{_serviceOrder!.Approval!.Token}").ToString();
+
+    private async Task CopyApprovalLinkAsync()
+    {
+        await JS.InvokeVoidAsync("sbgCopyText", ApprovalLink);
+        Snackbar.Add("Link copiado.", Severity.Success);
+    }
+    private void OpenApprovalPage() => Navigation.NavigateTo(ApprovalLink, true);
+    private Task ReviseEstimateAsync() => ExecuteTransitionAsync("revise-estimate");
 
     protected override async Task OnParametersSetAsync()
     {
@@ -1052,6 +1097,19 @@ else
     private void OpenEstimatePrintView()
     {
         Navigation.NavigateTo($"/service-orders/{Id}/estimate/print");
+    }
+
+    private async Task DownloadPdfAsync(bool estimate)
+    {
+        if (_isDownloadingPdf || !Guid.TryParse(Configuration["Garage:Id"], out var garageId)) return;
+        try
+        {
+            _isDownloadingPdf = true;
+            var download = await ServiceOrderService.DownloadPdfAsync(Id, garageId, estimate);
+            await JS.InvokeVoidAsync("sbgDownloadFile", download.FileName, "application/pdf", Convert.ToBase64String(download.Content));
+        }
+        catch (Exception exception) { Snackbar.Add(exception.Message, Severity.Error); }
+        finally { _isDownloadingPdf = false; }
     }
 
     private sealed class EstimateItemEditModel

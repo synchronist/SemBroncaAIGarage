@@ -342,3 +342,30 @@
         flex-direction: column;
     }
 }
+
+@media (max-width: 768px) {
+    .receive-page { width: 100%; }
+    .receive-header { gap: 12px; margin-bottom: 16px; }
+    .receive-header h1 { font-size: 24px; }
+    .receive-header p { margin-top: 4px; font-size: 12px; line-height: 1.5; }
+    .receive-header :deep(.mud-chip) { align-self: flex-start; max-width: 100%; }
+    .search-section, .information-card, .complaint-card { width: 100%; padding: 16px; }
+    .empty-state { min-height: 280px; padding: 32px 16px; }
+    .empty-state p { line-height: 1.5; }
+    .lookup-result { min-height: 56px; }
+    .receive-footer { gap: 14px; margin-top: 18px; padding-top: 16px; text-align: center; }
+    .footer-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: 10px; }
+    .footer-actions :deep(.mud-button-root), .complaint-actions :deep(.mud-button-root) { min-height: 46px; margin: 0; }
+    .footer-actions :deep(.mud-button-root:last-child) { grid-column: 1 / -1; }
+    .complaint-actions { gap: 10px; }
+    .complaint-actions :deep(.mud-button-root) { width: 100%; }
+    .complaint-actions span { line-height: 1.5; text-align: center; }
+}
+
+@media (max-width: 430px) {
+    .receive-header :deep(.mud-chip) { width: 100%; justify-content: center; }
+    .search-section, .information-card, .complaint-card { border-radius: 10px; }
+    .footer-actions { grid-template-columns: 1fr; }
+    .footer-actions :deep(.mud-button-root:last-child) { grid-column: auto; }
+    .card-information span, .lookup-result-customer { overflow-wrap: anywhere; }
+}

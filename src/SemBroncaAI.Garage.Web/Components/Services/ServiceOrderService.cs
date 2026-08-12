@@ -147,6 +147,23 @@ public sealed class ServiceOrderService
                 "A API não retornou o diagnóstico salvo.");
     }
 
+    public async Task<PdfDownload> DownloadPdfAsync(Guid id, Guid garageId, bool estimate, CancellationToken cancellationToken = default)
+    {
+        var type = estimate ? "estimate" : "service-order";
+        var response = await _httpClient.GetAsync($"api/service-orders/{id}/documents/{type}/pdf?garageId={garageId}", cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = response.Content.Headers.ContentType?.MediaType == "application/json"
+                ? await response.Content.ReadFromJsonAsync<PdfError>(cancellationToken: cancellationToken) : null;
+            throw new InvalidOperationException(error?.Message ?? "Não foi possível gerar o PDF.");
+        }
+        var disposition = response.Content.Headers.ContentDisposition;
+        var fileName = disposition?.FileNameStar ?? disposition?.FileName?.Trim('"') ?? "documento.pdf";
+        return new(await response.Content.ReadAsByteArrayAsync(cancellationToken), fileName);
+    }
+
+    private sealed record PdfError(string Message);
+
     public async Task<SaveEstimateResponse> SaveEstimateAsync(
         Guid serviceOrderId,
         IReadOnlyCollection<SaveEstimateItemRequest> items,
@@ -165,3 +182,5 @@ public sealed class ServiceOrderService
                 "A API não retornou o orçamento salvo.");
     }
 }
+
+public sealed record PdfDownload(byte[] Content, string FileName);

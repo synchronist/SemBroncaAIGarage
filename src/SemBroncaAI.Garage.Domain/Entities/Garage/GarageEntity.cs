@@ -17,6 +17,8 @@ public sealed class GarageEntity : Entity
     public string? Neighborhood { get; private set; }
     public string? City { get; private set; }
     public string? State { get; private set; }
+    public string? LogoStorageKey { get; private set; }
+    public string? PrimaryColor { get; private set; }
     public bool Active { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public ICollection<VehicleEntity> Vehicles { get; private set; } = [];
@@ -67,6 +69,19 @@ public sealed class GarageEntity : Entity
         Neighborhood = NormalizeOptional(neighborhood, nameof(neighborhood), 100);
         City = NormalizeOptional(city, nameof(city), 100);
         State = normalizedState;
+    }
+
+    public void UpdateBranding(string? logoStorageKey, string? primaryColor)
+    {
+        if (logoStorageKey is not null && (logoStorageKey.Contains("..") || Path.IsPathRooted(logoStorageKey)))
+            throw new ArgumentException("A referência da logo é inválida.", nameof(logoStorageKey));
+
+        var normalizedColor = string.IsNullOrWhiteSpace(primaryColor) ? null : primaryColor.Trim().ToUpperInvariant();
+        if (normalizedColor is not null && !System.Text.RegularExpressions.Regex.IsMatch(normalizedColor, "^#[0-9A-F]{6}$"))
+            throw new ArgumentException("A cor principal deve usar o formato #RRGGBB.", nameof(primaryColor));
+
+        LogoStorageKey = logoStorageKey;
+        PrimaryColor = normalizedColor;
     }
 
     private void SetBusinessData(string name, string document, string phone, string email)

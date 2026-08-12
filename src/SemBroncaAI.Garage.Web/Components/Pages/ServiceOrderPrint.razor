@@ -8,6 +8,7 @@
 @inject IJSRuntime JS
 
 <PageTitle>Impressão da OS</PageTitle>
+<style>.garage-logo{width:44px;height:44px;object-fit:contain}.service-order-document .document-header{border-bottom-color:var(--brand-color)}.service-order-document .order-heading strong{color:var(--brand-color)}</style>
 
 @if (_loading)
 {
@@ -23,9 +24,9 @@ else
         <button type="button" @onclick="GoBack">Voltar</button>
         <button type="button" class="primary" @onclick="PrintAsync">Imprimir</button>
     </div>
-    <article class="service-order-document">
+    <article class="service-order-document" style="--brand-color: @_document.Garage.PrimaryColor">
         <header class="document-header">
-            <div class="brand-mark">SB</div>
+            @if (_document.Garage.LogoUrl is not null) { <img class="garage-logo" src="@_document.Garage.LogoUrl" alt="Logo da oficina" /> }
             <div class="garage-heading">
                 <h1>@_document.Garage.Name</h1>
                 <p>@_document.Garage.Document</p>
@@ -78,7 +79,7 @@ else
             if (order is null || order.GarageId != garageId) return;
             var garage = await GarageService.GetAsync(garageId);
             if (garage is null) return;
-            _document = ServiceOrderPrintBuilder.Build(order, garage);
+            _document = ServiceOrderPrintBuilder.Build(order, garage, GarageService.GetLogoUrl(garageId, garage.LogoStorageKey));
         }
         finally { _loading = false; }
     }

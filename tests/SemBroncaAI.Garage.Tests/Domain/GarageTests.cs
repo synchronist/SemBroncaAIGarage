@@ -125,4 +125,24 @@ public class GarageTests
             null, null, null, null, null, new string('X', 101), "sp"));
         exception.Message.ShouldContain("100 caracteres");
     }
+
+    [Fact]
+    public void Should_Update_Valid_Branding_Without_Changing_Garage_Identity()
+    {
+        var garage = new GarageEntity("Oficina", "123", "1199", "a@b.com");
+        var id = garage.Id; var createdAt = garage.CreatedAt; var active = garage.Active;
+        garage.UpdateBranding($"{garage.Id:N}/logo.png", "#1a2b3c");
+        garage.LogoStorageKey.ShouldBe($"{garage.Id:N}/logo.png"); garage.PrimaryColor.ShouldBe("#1A2B3C");
+        garage.Id.ShouldBe(id); garage.CreatedAt.ShouldBe(createdAt); garage.Active.ShouldBe(active);
+    }
+
+    [Theory]
+    [InlineData("red")]
+    [InlineData("#12345")]
+    [InlineData("#GG0000")]
+    public void Should_Reject_Invalid_Primary_Color(string color)
+    {
+        var garage = new GarageEntity("Oficina", "123", "1199", "a@b.com");
+        Should.Throw<ArgumentException>(() => garage.UpdateBranding(null, color));
+    }
 }

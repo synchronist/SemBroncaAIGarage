@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\SemBroncaAI.Garage.Application\SemBroncaAI.Garage.Application.csproj" />
     <ProjectReference Include="..\..\src\SemBroncaAI.Garage.Domain\SemBroncaAI.Garage.Domain.csproj" />
     <ProjectReference Include="..\..\src\SemBroncaAI.Garage.Web\SemBroncaAI.Garage.Web.csproj" />
+    <ProjectReference Include="..\..\src\SemBroncaAI.Garage.Api\SemBroncaAI.Garage.Api.csproj" />
   </ItemGroup>
 
 </Project>

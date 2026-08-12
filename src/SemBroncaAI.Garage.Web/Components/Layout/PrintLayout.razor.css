@@ -1,1 +1,1 @@
-.print-layout{min-height:100vh;padding:28px;background:#eef1f4}@media print{.print-layout{min-height:0;padding:0;background:#fff}}
+.print-layout{min-height:100vh;padding:28px;background:#eef1f4}@media(max-width:520px){.print-layout{padding:0}}@media print{.print-layout{min-height:0;padding:0;background:#fff}}

@@ -1,5 +1,7 @@
 ﻿using SemBroncaAI.Garage.Domain.Entities.ServiceOrder;
 
+using SemBroncaAI.Garage.Application.Features.ServiceOrders.Approval;
+
 namespace SemBroncaAI.Garage.Application.Features.ServiceOrders.GetServiceOrderById;
 
 public sealed record ServiceOrderHistoryResponse(
@@ -40,6 +42,7 @@ public sealed record GetServiceOrderByIdResponse(
     ServiceOrderVehicleResponse Vehicle,
     ServiceOrderDiagnosisResponse? Diagnosis,
     ServiceOrderEstimateResponse? Estimate,
+    ApprovalSummaryResponse? Approval,
     IReadOnlyCollection<ServiceOrderHistoryResponse> History);
 public sealed record ServiceOrderDiagnosisResponse(
     Guid Id,

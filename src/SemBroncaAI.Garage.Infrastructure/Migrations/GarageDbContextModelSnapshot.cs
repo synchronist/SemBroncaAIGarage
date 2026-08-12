@@ -95,6 +95,10 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<string>("LogoStorageKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -116,6 +120,10 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                     b.Property<string>("PostalCode")
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
+
+                    b.Property<string>("PrimaryColor")
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)");
 
                     b.Property<string>("State")
                         .HasMaxLength(2)
@@ -203,6 +211,65 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                     b.HasIndex("VehicleId");
 
                     b.ToTable("ServiceOrders", (string)null);
+                });
+
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.ServiceOrder.ServiceOrderEstimateApprovalEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CustomerComment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("CustomerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("EstimateTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("EstimateUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("InvalidatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProtectedToken")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("RespondedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ServiceOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceOrderId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("ServiceOrderEstimateApprovals", (string)null);
                 });
 
             modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.ServiceOrder.ServiceOrderEstimateEntity", b =>
@@ -395,6 +462,15 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                     b.Navigation("Vehicle");
                 });
 
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.ServiceOrder.ServiceOrderEstimateApprovalEntity", b =>
+                {
+                    b.HasOne("SemBroncaAI.Garage.Domain.Entities.ServiceOrder.ServiceOrderEntity", null)
+                        .WithMany("EstimateApprovals")
+                        .HasForeignKey("ServiceOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.ServiceOrder.ServiceOrderEstimateEntity", b =>
                 {
                     b.HasOne("SemBroncaAI.Garage.Domain.Entities.ServiceOrder.ServiceOrderEntity", null)
@@ -460,6 +536,8 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                     b.Navigation("Diagnosis");
 
                     b.Navigation("Estimate");
+
+                    b.Navigation("EstimateApprovals");
 
                     b.Navigation("History");
                 });

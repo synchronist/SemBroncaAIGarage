@@ -9,6 +9,6 @@ public sealed class GetGarageSettingsHandler(IGarageRepository repository)
         var garage = await repository.GetByIdAsync(garageId, cancellationToken);
         return garage is null ? null : new(garage.Id, garage.Name, garage.Document, garage.Phone, garage.Email,
             garage.PostalCode, garage.Street, garage.Number, garage.Complement, garage.Neighborhood, garage.City,
-            garage.State, garage.Active, garage.CreatedAt);
+            garage.State, garage.LogoStorageKey, garage.PrimaryColor, garage.Active, garage.CreatedAt);
     }
 }

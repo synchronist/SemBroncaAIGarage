@@ -1,16 +1,21 @@
 ﻿using SemBroncaAI.Garage.Domain.Interfaces;
 
+using SemBroncaAI.Garage.Application.Abstractions.Security;
+using SemBroncaAI.Garage.Application.Features.ServiceOrders.Approval;
+
 namespace SemBroncaAI.Garage.Application.Features.ServiceOrders.GetServiceOrderById;
 
 public sealed class GetServiceOrderByIdHandler
 {
     private readonly IServiceOrderRepository _serviceOrderRepository;
+    private readonly IApprovalTokenService? _tokenService;
     ServiceOrderDiagnosisResponse? diagnosisResponse = null;
 
     public GetServiceOrderByIdHandler(
-        IServiceOrderRepository serviceOrderRepository)
+        IServiceOrderRepository serviceOrderRepository, IApprovalTokenService? tokenService = null)
     {
         _serviceOrderRepository = serviceOrderRepository;
+        _tokenService = tokenService;
     }
 
     public async Task<GetServiceOrderByIdResponse?> HandleAsync(
@@ -97,6 +102,19 @@ public sealed class GetServiceOrderByIdHandler
                     item.Total)).ToArray());
         }
 
+        ApprovalSummaryResponse? approvalResponse = null;
+        if (serviceOrder.CurrentEstimateApproval is { } approval)
+        {
+            string? token = null;
+            if (_tokenService is not null)
+            {
+                try { token = _tokenService.Unprotect(approval.ProtectedToken); }
+                catch { token = null; }
+            }
+            approvalResponse = new(approval.Status, approval.CreatedAt, approval.ExpiresAt,
+                approval.RespondedAt, approval.CustomerName, approval.CustomerComment, token);
+        }
+
         return new GetServiceOrderByIdResponse(
             serviceOrder.Id,
             serviceOrder.GarageId,
@@ -109,6 +127,7 @@ public sealed class GetServiceOrderByIdHandler
             vehicleResponse,
             diagnosisResponse,
             estimateResponse,
+            approvalResponse,
             history);
     }
 }

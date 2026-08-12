@@ -21,6 +21,8 @@ public sealed class ServiceOrderEstimatePrintBuilderTests
         document.Garage.Name.ShouldBe("Oficina");
         document.Garage.City.ShouldBeNull();
         document.Garage.State.ShouldBeNull();
+        document.Garage.PrimaryColor.ShouldBe(ServiceOrderPrintBuilder.DefaultPrimaryColor);
+        typeof(EstimateDiagnosisPrintModel).GetProperty("InternalNotes").ShouldBeNull();
     }
 
     [Fact]

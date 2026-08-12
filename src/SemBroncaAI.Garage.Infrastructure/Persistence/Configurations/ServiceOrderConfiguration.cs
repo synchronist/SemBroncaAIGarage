@@ -45,5 +45,7 @@ public sealed class ServiceOrderConfiguration
 
         builder.Navigation(x => x.History)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Navigation(x => x.EstimateApprovals)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

@@ -38,7 +38,12 @@ public sealed record ServiceOrderDetailsModel(
     ServiceOrderVehicleModel Vehicle,
     IReadOnlyCollection<ServiceOrderHistoryItem> History,
     ServiceOrderDiagnosisModel? Diagnosis,
-    ServiceOrderEstimateModel? Estimate);
+    ServiceOrderEstimateModel? Estimate,
+    ServiceOrderApprovalModel? Approval = null);
+
+public sealed record ServiceOrderApprovalModel(string Status, DateTimeOffset CreatedAt,
+    DateTimeOffset ExpiresAt, DateTimeOffset? RespondedAt, string? CustomerName,
+    string? CustomerComment, string? Token);
 
 public sealed record ServiceOrderDiagnosisModel(
     Guid Id,

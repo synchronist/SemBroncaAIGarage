@@ -34,6 +34,7 @@ public sealed class ServiceOrderRepository : IServiceOrderRepository
             .Include(x => x.Diagnosis)
             .Include(x => x.Estimate!)
                 .ThenInclude(x => x.Items)
+            .Include(x => x.EstimateApprovals)
             .FirstOrDefaultAsync(
                 x => x.Id == id,
                 cancellationToken);
@@ -51,10 +52,23 @@ public sealed class ServiceOrderRepository : IServiceOrderRepository
             .Include(x => x.Diagnosis)
             .Include(x => x.Estimate!)
                 .ThenInclude(x => x.Items)
+            .Include(x => x.EstimateApprovals)
             .FirstOrDefaultAsync(
                 x => x.GarageId == garageId &&
                      x.Number == number,
                 cancellationToken);
+    }
+
+    public async Task<ServiceOrderEntity?> GetByApprovalTokenHashAsync(string tokenHash,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.ServiceOrders
+            .Include(x => x.Garage)
+            .Include(x => x.Vehicle).ThenInclude(x => x.Customer)
+            .Include(x => x.Diagnosis)
+            .Include(x => x.Estimate!).ThenInclude(x => x.Items)
+            .Include(x => x.EstimateApprovals)
+            .FirstOrDefaultAsync(x => x.EstimateApprovals.Any(a => a.TokenHash == tokenHash), cancellationToken);
     }
 
     public void RemoveEstimateItems(

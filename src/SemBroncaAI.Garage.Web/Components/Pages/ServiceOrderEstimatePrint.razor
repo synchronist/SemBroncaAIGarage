@@ -9,6 +9,7 @@
 @inject IJSRuntime JS
 
 <PageTitle>Impressão do orçamento</PageTitle>
+<style>.garage-logo{width:44px;height:44px;object-fit:contain}.estimate-document .document-header{border-bottom-color:var(--brand-color)}.estimate-document .document-heading strong,.estimate-document .accepted-total strong{color:var(--brand-color)}</style>
 
 @if (_loading)
 {
@@ -21,9 +22,9 @@ else if (_document is null)
 else
 {
     <div class="document-actions no-print"><button @onclick="GoBack">Voltar</button><button class="primary" @onclick="PrintAsync">Imprimir</button></div>
-    <article class="estimate-document">
+    <article class="estimate-document" style="--brand-color: @_document.Garage.PrimaryColor">
         <header class="document-header">
-            <div class="brand-mark">SB</div>
+            @if (_document.Garage.LogoUrl is not null) { <img class="garage-logo" src="@_document.Garage.LogoUrl" alt="Logo da oficina" /> }
             <div class="garage-heading"><h1>@_document.Garage.Name</h1><p>@_document.Garage.Document</p>
                 @if (!string.IsNullOrWhiteSpace(Address)){<p>@Address</p>}<p>@_document.Garage.Phone · @_document.Garage.Email</p></div>
             <div class="document-heading"><span>ORÇAMENTO</span><strong>OS #@_document.ServiceOrderNumber.ToString("D4")</strong></div>
@@ -71,7 +72,7 @@ else
             if (order is null || order.GarageId != garageId) return;
             var garage = await GarageService.GetAsync(garageId);
             if (garage is null) return;
-            _document = ServiceOrderEstimatePrintBuilder.Build(order, garage);
+            _document = ServiceOrderEstimatePrintBuilder.Build(order, garage, GarageService.GetLogoUrl(garageId, garage.LogoStorageKey));
         }
         finally { _loading = false; }
     }

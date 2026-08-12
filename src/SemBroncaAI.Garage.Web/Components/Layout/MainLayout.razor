@@ -12,7 +12,12 @@
 
 <div class="sbg-layout">
 
-    <aside class="sbg-sidebar">
+    @if (_mobileMenuOpen)
+    {
+        <button class="sbg-drawer-backdrop" type="button" aria-label="Fechar menu" @onclick="CloseMobileMenu"></button>
+    }
+
+    <aside class="sbg-sidebar @(_mobileMenuOpen ? "is-open" : null)">
 
         <div class="sbg-brand">
             <div class="sbg-brand-icon">
@@ -26,7 +31,7 @@
             </div>
         </div>
 
-        <nav class="sbg-menu">
+        <nav class="sbg-menu" @onclick="CloseMobileMenu">
 
             <NavLink href="/"
                      Match="NavLinkMatch.All"
@@ -88,7 +93,12 @@
 
         <header class="sbg-topbar">
 
-            <div></div>
+            <div class="sbg-mobile-brand">
+                <button class="sbg-menu-button" type="button" aria-label="Abrir menu" aria-expanded="@_mobileMenuOpen" @onclick="ToggleMobileMenu">
+                    <MudIcon Icon="@Icons.Material.Filled.Menu" />
+                </button>
+                <div><strong>@_garageName</strong><span>@_garageLocation</span></div>
+            </div>
 
             <div class="sbg-topbar-actions">
 
@@ -121,6 +131,9 @@
 </div>
 
 @code {
+    private bool _mobileMenuOpen;
+    private void ToggleMobileMenu() => _mobileMenuOpen = !_mobileMenuOpen;
+    private void CloseMobileMenu() => _mobileMenuOpen = false;
     private string _garageName = "Oficina";
     private string _garageLocation = "SBGarage";
 
