@@ -1,4 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using SemBroncaAI.Garage.Infrastructure.Identity;
 using SemBroncaAI.Garage.Domain.Entities.Customer;
 using SemBroncaAI.Garage.Domain.Entities.Garage;
 using SemBroncaAI.Garage.Domain.Entities.ServiceOrder;
@@ -7,7 +10,7 @@ using SemBroncaAI.Garage.Domain.Interfaces;
 
 namespace SemBroncaAI.Garage.Infrastructure.Persistence;
 
-public sealed class GarageDbContext : DbContext, IUnitOfWork
+public sealed class GarageDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>, IUnitOfWork
 {
     public GarageDbContext(DbContextOptions<GarageDbContext> options)
         : base(options)

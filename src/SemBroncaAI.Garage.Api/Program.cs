@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using SemBroncaAI.Garage.Infrastructure;
 using SemBroncaAI.Garage.Api.Services;
 using SemBroncaAI.Garage.Application.Abstractions.Security;
+using SemBroncaAI.Garage.Infrastructure.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,8 @@ builder.Services.AddDataProtection();
 builder.Services.AddScoped<IDocumentPdfGenerator, PlaywrightDocumentPdfGenerator>();
 builder.Services.AddSingleton<IApprovalTokenService, ApprovalTokenService>();
 builder.Services.AddRateLimiter(ApprovalRateLimiting.Configure);
+if (builder.Environment.IsDevelopment())
+    builder.Services.AddHostedService<DevelopmentIdentitySeedHostedService>();
 
 builder.Services
     .AddControllers()

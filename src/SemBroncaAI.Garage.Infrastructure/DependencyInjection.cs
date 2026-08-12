@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Identity;
+using SemBroncaAI.Garage.Infrastructure.Identity;
 using SemBroncaAI.Garage.Application.Abstractions.Persistence;
 using SemBroncaAI.Garage.Application.Features.Customers.CreateCustomer;
 using SemBroncaAI.Garage.Application.Features.Customers.GetCustomerById;
@@ -56,6 +58,13 @@ public static class DependencyInjection
         services.AddDbContext<GarageDbContext>(options =>
             options.UseNpgsql(connectionString));
 
+        services.AddIdentityCore<ApplicationUser>(ConfigureIdentity)
+            .AddRoles<IdentityRole<Guid>>()
+            .AddEntityFrameworkStores<GarageDbContext>()
+            .AddDefaultTokenProviders();
+
+        services.AddScoped<IDevelopmentIdentitySeedStore, IdentityDevelopmentSeedStore>();
+
         services.AddScoped<IUnitOfWork>(sp =>
             sp.GetRequiredService<GarageDbContext>());
 
@@ -110,5 +119,19 @@ public static class DependencyInjection
         services.AddScoped<SaveEstimateHandler>();
 
         return services;
+    }
+
+    public static void ConfigureIdentity(IdentityOptions options)
+    {
+        options.User.RequireUniqueEmail = true;
+        options.Password.RequiredLength = 10;
+        options.Password.RequireUppercase = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireDigit = true;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequiredUniqueChars = 4;
+        options.Lockout.AllowedForNewUsers = true;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
     }
 }

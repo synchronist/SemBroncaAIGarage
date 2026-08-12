@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SemBroncaAI.Garage.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SemBroncaAI.Garage.Infrastructure.Persistence;
 namespace SemBroncaAI.Garage.Infrastructure.Migrations
 {
     [DbContext(typeof(GarageDbContext))]
-    partial class GarageDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260812200614_AddIdentityFoundation")]
+    partial class AddIdentityFoundation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

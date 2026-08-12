@@ -87,3 +87,13 @@ A Central de Orçamentos apenas prepara a mensagem e abre `wa.me`; o envio conti
 Em desenvolvimento local, deixe `PublicAppBaseUrl` vazio em `src/SemBroncaAI.Garage.Web/appsettings.Development.json`. Nesse caso, a Central usa a origem real pela qual o navegador abriu o Web (`NavigationManager.BaseUri`), funcionando tanto com o perfil HTTP quanto com o HTTPS sem presumir uma porta. Para testar com IP, túnel ou outro endereço público, preencha `PublicAppBaseUrl` explicitamente; o valor configurado tem precedência sobre a origem do navegador.
 
 `localhost` funciona somente no próprio computador. Para abrir o link em um celular, configure `PublicAppBaseUrl` com o IP da máquina acessível na rede local, um túnel HTTPS ou o domínio público da aplicação. O Web também precisa estar escutando nesse endereço e qualquer certificado/firewall deve permitir o acesso; esta aplicação não cria nem gerencia túneis automaticamente.
+
+## Identity em Development
+
+O seed de Identity roda somente no ambiente `Development`, usa a Garage indicada em `IdentitySeed:GarageId` e é idempotente para as roles `PlatformAdmin`, `Owner`, `Receptionist` e `Mechanic` e para o Owner local. Ele nunca cria uma Garage e não aplica migrations automaticamente. Antes de iniciar a API após aplicar manualmente a migration de Identity, configure a senha fora do repositório:
+
+```powershell
+dotnet user-secrets set "IdentitySeed:OwnerPassword" "sua-senha-local" --project src/SemBroncaAI.Garage.Api
+```
+
+Alternativamente, defina a variável `IdentitySeed__OwnerPassword`. Sem senha, com Garage inexistente ou com usuário associado a outra Garage, a inicialização em Development falha com mensagem explícita. A senha deve ter ao menos 10 caracteres, letras maiúsculas e minúsculas e um dígito; símbolo não é obrigatório. O lockout está preparado para 15 minutos após 5 tentativas inválidas.
