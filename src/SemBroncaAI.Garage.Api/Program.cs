@@ -20,11 +20,27 @@ builder.Services.AddAuthentication(IdentityConstants.BearerScheme)
         options.RefreshTokenExpiration = TimeSpan.FromDays(7);
     });
 builder.Services.AddAuthorization(options =>
-    options.AddPolicy("ActiveUser", policy =>
-        policy.RequireAuthenticatedUser().AddRequirements(new ActiveUserRequirement())));
+{
+    var activeUserPolicy = new AuthorizationPolicyBuilder(IdentityConstants.BearerScheme)
+        .RequireAuthenticatedUser()
+        .AddRequirements(new ActiveUserRequirement())
+        .Build();
+    options.AddPolicy("ActiveUser", activeUserPolicy);
+    options.AddPolicy("TenantUser", policy => policy
+        .AddAuthenticationSchemes(IdentityConstants.BearerScheme)
+        .RequireAuthenticatedUser()
+        .AddRequirements(new ActiveUserRequirement())
+        .RequireClaim("garage_id")
+        .RequireAssertion(context => !context.User.IsInRole(ApplicationRoles.PlatformAdmin)));
+    options.FallbackPolicy = activeUserPolicy;
+});
 builder.Services.AddScoped<IAuthorizationHandler, ActiveUserAuthorizationHandler>();
 builder.Services.AddScoped<IIdentityLoginGateway, IdentityLoginGateway>();
 builder.Services.AddScoped<IdentityLoginService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<HttpContextCurrentUser>();
+builder.Services.AddScoped<SemBroncaAI.Garage.Application.Abstractions.Security.ICurrentUser>(sp => sp.GetRequiredService<HttpContextCurrentUser>());
+builder.Services.AddScoped<SemBroncaAI.Garage.Application.Abstractions.Security.ICurrentGarage>(sp => sp.GetRequiredService<HttpContextCurrentUser>());
 builder.Services.AddRateLimiter(options =>
 {
     ApprovalRateLimiting.Configure(options);

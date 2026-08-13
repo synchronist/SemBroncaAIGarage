@@ -20,6 +20,10 @@ public sealed class ApiAuthenticationHandler(
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", session!.AccessToken);
         }
+        else if (authenticationState.User.FindFirstValue(AuthConstants.ApiAccessTokenClaim) is { } accessToken)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        }
 
         return await base.SendAsync(request, cancellationToken);
     }
@@ -29,6 +33,7 @@ public static class AuthConstants
 {
     public const string CookieScheme = "SBGarage.Web";
     public const string SessionIdClaim = "sbg:session_id";
+    public const string ApiAccessTokenClaim = "sbg:api_access_token";
 }
 
 public sealed class AuthenticatedApiHttpClient : IDisposable

@@ -4,6 +4,7 @@ using SemBroncaAI.Garage.Api.Controllers;
 using Microsoft.AspNetCore.RateLimiting;
 using SemBroncaAI.Garage.Web.Models;
 using SemBroncaAI.Garage.Web.Services;
+using System.Security.Claims;
 using Shouldly;
 
 namespace SemBroncaAI.Garage.Tests.Web;
@@ -74,5 +75,28 @@ public sealed class WebAuthenticationTests
         {
             method.GetCustomAttribute<AuthorizeAttribute>().ShouldBeNull();
         }
+    }
+
+    [Fact]
+    public void Authenticated_logo_should_use_server_session_or_validated_playwright_bridge()
+    {
+        var store = new ServerApiSessionStore();
+        store.Set("browser-session", new ApiSession("browser-token", DateTimeOffset.UtcNow.AddMinutes(5),
+            new CurrentUserModel(Guid.NewGuid(), "Owner", null, "owner", Guid.NewGuid(), ["Owner"])));
+        var browser = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(AuthConstants.SessionIdClaim, "browser-session")], "cookie"));
+        WebAuthenticationEndpoints.ResolveApiAccessToken(browser, store).ShouldBe("browser-token");
+
+        var playwright = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(AuthConstants.ApiAccessTokenClaim, "validated-bridge-token")], "bridge"));
+        WebAuthenticationEndpoints.ResolveApiAccessToken(playwright, store).ShouldBe("validated-bridge-token");
+    }
+
+    [Fact]
+    public void Logo_should_not_be_available_without_authenticated_server_credential()
+    {
+        WebAuthenticationEndpoints.ResolveApiAccessToken(
+            new ClaimsPrincipal(new ClaimsIdentity()),
+            new ServerApiSessionStore()).ShouldBeNull();
     }
 }

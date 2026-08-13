@@ -162,10 +162,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (!Guid.TryParse(Configuration["Garage:Id"], out var garageId)) return;
         try
         {
-            var garage = await GarageService.GetAsync(garageId);
+            var garage = await GarageService.GetAsync();
             if (garage is null) return;
             _garageName = string.IsNullOrWhiteSpace(garage.Name) ? "Oficina" : garage.Name;
             _garageLocation = !string.IsNullOrWhiteSpace(garage.City) && !string.IsNullOrWhiteSpace(garage.State)

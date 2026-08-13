@@ -1,5 +1,6 @@
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Authentication;
 using MudBlazor.Services;
 using SemBroncaAI.Garage.Web.Components;
 using SemBroncaAI.Garage.Web.Services;
@@ -12,7 +13,17 @@ builder.Services
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddMudServices();
 
-builder.Services.AddAuthentication(AuthConstants.CookieScheme)
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultScheme = "SBGarage.Dynamic";
+        options.DefaultChallengeScheme = AuthConstants.CookieScheme;
+    })
+    .AddPolicyScheme("SBGarage.Dynamic", null, options =>
+        options.ForwardDefaultSelector = context =>
+            context.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                ? ApiBearerBridgeHandler.SchemeName
+                : AuthConstants.CookieScheme)
+    .AddScheme<AuthenticationSchemeOptions, ApiBearerBridgeHandler>(ApiBearerBridgeHandler.SchemeName, null)
     .AddCookie(AuthConstants.CookieScheme, options =>
     {
         options.Cookie.Name = builder.Environment.IsDevelopment()
@@ -46,7 +57,11 @@ builder.Services.AddAuthentication(AuthConstants.CookieScheme)
             return Task.CompletedTask;
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+    options.AddPolicy("TenantUser", policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("garage_id")
+        .RequireAssertion(context => !context.User.IsInRole("PlatformAdmin"))));
 builder.Services.AddSingleton<IServerApiSessionStore, ServerApiSessionStore>();
 
 var apiBaseUrl = builder.Configuration["Api:BaseUrl"]

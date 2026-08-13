@@ -5,57 +5,22 @@ using SemBroncaAI.Garage.Application.Features.Garages.GetGarageSettings;
 using SemBroncaAI.Garage.Application.Features.Garages.UpdateGarageSettings;
 using SemBroncaAI.Garage.Application.Features.Garages.UploadGarageLogo;
 using SemBroncaAI.Garage.Application.Abstractions.Storage;
+using SemBroncaAI.Garage.Application.Abstractions.Security;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SemBroncaAI.Garage.Api.Controllers;
 
 [ApiController]
-[Route("api/garages")]
-public sealed class GaragesController : ControllerBase
+[Route("api/garage")]
+[Authorize(Policy = "TenantUser")]
+public sealed class GaragesController(ICurrentGarage currentGarage) : ControllerBase
 {
-    [HttpPost]
-    public async Task<IActionResult> Create(
-        [FromBody] CreateGarageCommand command,
-        [FromServices] CreateGarageHandler handler,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var response = await handler.HandleAsync(
-                command,
-                cancellationToken);
-
-            return CreatedAtAction(
-                nameof(GetById),
-                new { id = response.Id },
-                response);
-        }
-        catch (InvalidOperationException exception)
-        {
-            return BadRequest(new
-            {
-                message = exception.Message
-            });
-        }
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> GetAll(
-        [FromServices] IGarageRepository garageRepository,
-        CancellationToken cancellationToken)
-    {
-        var garages = await garageRepository.GetAllAsync(
-            cancellationToken);
-
-        return Ok(garages);
-    }
-
-    [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetById(
-        Guid id,
+    [HttpGet("settings")]
+    public async Task<IActionResult> GetSettings(
         [FromServices] GetGarageSettingsHandler handler,
         CancellationToken cancellationToken)
     {
-        var garage = await handler.HandleAsync(id, cancellationToken);
+        var garage = await handler.HandleAsync(currentGarage.RequireGarageId(), cancellationToken);
 
         if (garage is null)
         {
@@ -68,16 +33,15 @@ public sealed class GaragesController : ControllerBase
         return Ok(garage);
     }
 
-    [HttpPut("{id:guid}")]
+    [HttpPut("settings")]
     public async Task<IActionResult> Update(
-        Guid id,
         [FromBody] UpdateGarageSettingsCommand command,
         [FromServices] UpdateGarageSettingsHandler handler,
         CancellationToken cancellationToken)
     {
         try
         {
-            return Ok(await handler.HandleAsync(id, command, cancellationToken));
+            return Ok(await handler.HandleAsync(currentGarage.RequireGarageId(), command, cancellationToken));
         }
         catch (InvalidOperationException exception)
         {
@@ -89,15 +53,15 @@ public sealed class GaragesController : ControllerBase
         }
     }
 
-    [HttpPost("{id:guid}/logo")]
+    [HttpPost("logo")]
     [RequestSizeLimit(UploadGarageLogoHandler.MaximumBytes + 64 * 1024)]
-    public async Task<IActionResult> UploadLogo(Guid id, IFormFile file,
+    public async Task<IActionResult> UploadLogo(IFormFile file,
         [FromServices] UploadGarageLogoHandler handler, CancellationToken cancellationToken)
     {
         try
         {
             await using var stream = file.OpenReadStream();
-            return Ok(await handler.HandleAsync(id, stream, file.Length, file.ContentType, cancellationToken));
+            return Ok(await handler.HandleAsync(currentGarage.RequireGarageId(), stream, file.Length, file.ContentType, cancellationToken));
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
         {
@@ -105,11 +69,11 @@ public sealed class GaragesController : ControllerBase
         }
     }
 
-    [HttpGet("{id:guid}/logo")]
-    public async Task<IActionResult> GetLogo(Guid id, [FromServices] IGarageRepository repository,
+    [HttpGet("logo")]
+    public async Task<IActionResult> GetLogo([FromServices] IGarageRepository repository,
         [FromServices] IBrandAssetStorage storage, CancellationToken cancellationToken)
     {
-        var garage = await repository.GetByIdAsync(id, cancellationToken);
+        var garage = await repository.GetByIdAsync(currentGarage.RequireGarageId(), cancellationToken);
         if (garage?.LogoStorageKey is null) return NotFound();
         var asset = await storage.OpenAsync(garage.LogoStorageKey, cancellationToken);
         return asset is null ? NotFound() : File(asset.Content, asset.ContentType);

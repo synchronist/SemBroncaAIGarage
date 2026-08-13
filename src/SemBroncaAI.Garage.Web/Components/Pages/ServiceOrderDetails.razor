@@ -1,5 +1,6 @@
 ﻿@page "/service-orders/{Id:guid}"
 
+@attribute [Authorize(Policy = "TenantUser")]
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
 
@@ -1147,11 +1148,11 @@ else
 
     private async Task DownloadPdfAsync(bool estimate)
     {
-        if (_isDownloadingPdf || !Guid.TryParse(Configuration["Garage:Id"], out var garageId)) return;
+        if (_isDownloadingPdf) return;
         try
         {
             _isDownloadingPdf = true;
-            var download = await ServiceOrderService.DownloadPdfAsync(Id, garageId, estimate);
+            var download = await ServiceOrderService.DownloadPdfAsync(Id, estimate);
             await JS.InvokeVoidAsync("sbgDownloadFile", download.FileName, "application/pdf", Convert.ToBase64String(download.Content));
         }
         catch (Exception exception) { Snackbar.Add(exception.Message, Severity.Error); }
@@ -1174,7 +1175,7 @@ else
         if (_serviceOrder is null) return;
         try
         {
-            await ServiceOrderService.SetArchivedAsync(Id, _serviceOrder.GarageId, archived);
+            await ServiceOrderService.SetArchivedAsync(Id, archived);
             Snackbar.Add(archived ? "Ordem de serviço arquivada." : "Ordem de serviço restaurada.", Severity.Success);
             await LoadAsync();
         }

@@ -1,4 +1,5 @@
 @page "/customers/{Id:guid}"
+@attribute [Authorize(Policy = "TenantUser")]
 @using SemBroncaAI.Garage.Web.Components.Customers
 @using SemBroncaAI.Garage.Web.Components.Vehicles
 @using SemBroncaAI.Garage.Web.Models
@@ -60,25 +61,23 @@ else
 @code {
     [Parameter] public Guid Id { get; set; }
     private CustomerDetailsModel? _customer;
-    private Guid _garageId;
     private bool _isLoading;
 
     protected override async Task OnParametersSetAsync()
     {
-        if (!Guid.TryParse(Configuration["Garage:Id"], out _garageId)) throw new InvalidOperationException("O identificador da oficina não foi configurado.");
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
-        try { _isLoading = true; _customer = await CustomerService.GetByIdAsync(Id, _garageId); }
+        try { _isLoading = true; _customer = await CustomerService.GetByIdAsync(Id); }
         catch (Exception exception) { Snackbar.Add(exception.Message, Severity.Error); }
         finally { _isLoading = false; }
     }
 
     private async Task OpenEditDialogAsync()
     {
-        var parameters = new DialogParameters { ["GarageId"] = _garageId, ["Customer"] = _customer };
+        var parameters = new DialogParameters { ["Customer"] = _customer };
         var dialog = await DialogService.ShowAsync<CustomerFormDialog>("Editar cliente", parameters, new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true });
         var result = await dialog.Result;
         if (result is { Canceled: false }) { Snackbar.Add("Cliente atualizado com sucesso.", Severity.Success); await LoadAsync(); }
@@ -86,7 +85,7 @@ else
 
     private async Task AddVehicleAsync()
     {
-        var parameters = new DialogParameters { ["GarageId"] = _garageId, ["PreselectedCustomerId"] = _customer!.Id, ["PreselectedCustomerName"] = _customer.Name };
+        var parameters = new DialogParameters { ["PreselectedCustomerId"] = _customer!.Id, ["PreselectedCustomerName"] = _customer.Name };
         var dialog = await DialogService.ShowAsync<VehicleFormDialog>("Adicionar veículo", parameters, new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true });
         var result = await dialog.Result;
         if (result is { Canceled: false }) { Snackbar.Add("Veículo cadastrado com sucesso.", Severity.Success); await LoadAsync(); }

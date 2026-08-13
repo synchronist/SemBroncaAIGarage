@@ -1,14 +1,15 @@
 @page "/service-orders/{Id:guid}/print"
 @layout PrintLayout
+@attribute [Authorize(Policy = "TenantUser")]
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
+@using SemBroncaAI.Garage.Web.Components.Documents
 @inject ServiceOrderService ServiceOrderService
 @inject GarageService GarageService
 @inject IConfiguration Configuration
 @inject IJSRuntime JS
 
 <PageTitle>Impressão da OS</PageTitle>
-<style>.garage-logo{width:44px;height:44px;object-fit:contain}.service-order-document .document-header{border-bottom-color:var(--brand-color)}.service-order-document .order-heading strong{color:var(--brand-color)}</style>
 
 @if (_loading)
 {
@@ -25,16 +26,7 @@ else
         <button type="button" class="primary" @onclick="PrintAsync">Imprimir</button>
     </div>
     <article class="service-order-document" style="--brand-color: @_document.Garage.PrimaryColor">
-        <header class="document-header">
-            @if (_document.Garage.LogoUrl is not null) { <img class="garage-logo" src="@_document.Garage.LogoUrl" alt="Logo da oficina" /> }
-            <div class="garage-heading">
-                <h1>@_document.Garage.Name</h1>
-                <p>@_document.Garage.Document</p>
-                @if (!string.IsNullOrWhiteSpace(FormatAddress(_document.Garage))) { <p>@FormatAddress(_document.Garage)</p> }
-                <p>@_document.Garage.Phone · @_document.Garage.Email</p>
-            </div>
-            <div class="order-heading"><span>ORDEM DE SERVIÇO</span><strong>#@_document.Number.ToString("D4")</strong></div>
-        </header>
+        <DocumentBrandHeader Garage="_document.Garage" Title="ORDEM DE SERVIÇO" Number="@($"#{_document.Number:D4}")" />
 
         <section class="order-strip">
             <div><small>Data de abertura</small><strong>@_document.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</strong></div>
@@ -74,12 +66,11 @@ else
         _loading = true;
         try
         {
-            if (!Guid.TryParse(Configuration["Garage:Id"], out var garageId)) return;
             var order = await ServiceOrderService.GetByIdAsync(Id);
-            if (order is null || order.GarageId != garageId) return;
-            var garage = await GarageService.GetAsync(garageId);
+            if (order is null) return;
+            var garage = await GarageService.GetAsync();
             if (garage is null) return;
-            _document = ServiceOrderPrintBuilder.Build(order, garage, GarageService.GetLogoUrl(garageId, garage.LogoStorageKey));
+            _document = ServiceOrderPrintBuilder.Build(order, garage, GarageService.GetLogoUrl(garage.LogoStorageKey));
         }
         finally { _loading = false; }
     }
@@ -89,11 +80,4 @@ else
     private static string Currency(decimal value) => value.ToString("C2", new System.Globalization.CultureInfo("pt-BR"));
     private static string TypeLabel(string type) => type == "Service" ? "Serviço" : type == "Part" ? "Peça" : type;
     private static string StatusLabel(string status) => status switch { "Received" => "Recebida", "Diagnosis" => "Diagnóstico", "WaitingApproval" => "Aguardando aprovação", "InProgress" => "Em serviço", "WaitingParts" => "Aguardando peças", "Finished" => "Finalizada", "Delivered" => "Entregue", "Cancelled" => "Cancelada", _ => status };
-    private static string FormatAddress(GaragePrintModel garage)
-    {
-        var street = string.Join(", ", new[] { garage.Street, garage.Number }.Where(value => !string.IsNullOrWhiteSpace(value)));
-        var district = string.Join(" - ", new[] { garage.Neighborhood, garage.Complement }.Where(value => !string.IsNullOrWhiteSpace(value)));
-        var city = string.IsNullOrWhiteSpace(garage.City) ? null : string.IsNullOrWhiteSpace(garage.State) ? garage.City : $"{garage.City}/{garage.State}";
-        return string.Join(" · ", new[] { street, district, city, garage.PostalCode }.Where(value => !string.IsNullOrWhiteSpace(value)));
-    }
 }

@@ -8,16 +8,16 @@ public sealed class CustomerService
     private readonly HttpClient _httpClient;
     public CustomerService(HttpClient httpClient) => _httpClient = httpClient;
 
-    public async Task<CustomerListModel> ListAsync(Guid garageId, string? search, int page, int pageSize, CancellationToken cancellationToken = default)
+    public async Task<CustomerListModel> ListAsync(string? search, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        var url = $"api/customers?garageId={garageId}&search={Uri.EscapeDataString(search?.Trim() ?? string.Empty)}&page={page}&pageSize={pageSize}";
+        var url = $"api/customers?search={Uri.EscapeDataString(search?.Trim() ?? string.Empty)}&page={page}&pageSize={pageSize}";
         return await _httpClient.GetFromJsonAsync<CustomerListModel>(url, cancellationToken)
             ?? new CustomerListModel(page, pageSize, 0, 0, []);
     }
 
-    public async Task<CustomerDetailsModel?> GetByIdAsync(Guid id, Guid garageId, CancellationToken cancellationToken = default)
+    public async Task<CustomerDetailsModel?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.GetAsync($"api/customers/{id}?garageId={garageId}", cancellationToken);
+        var response = await _httpClient.GetAsync($"api/customers/{id}", cancellationToken);
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<CustomerDetailsModel>(cancellationToken: cancellationToken);

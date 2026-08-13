@@ -16,6 +16,7 @@ public static class WebAuthenticationEndpoints
             .RequireRateLimiting(LoginRateLimitPolicy);
         endpoints.MapPost("/auth/logout", LogoutAsync);
         endpoints.MapGet("/auth/me", MeAsync).RequireAuthorization();
+        endpoints.MapGet("/auth/garage-logo", GarageLogoAsync).RequireAuthorization();
         return endpoints;
     }
 
@@ -122,6 +123,43 @@ public static class WebAuthenticationEndpoints
         var user = await response.Content.ReadFromJsonAsync<CurrentUserModel>(
             cancellationToken: context.RequestAborted);
         return user is null ? Results.Unauthorized() : Results.Json(user);
+    }
+
+    private static async Task<IResult> GarageLogoAsync(
+        HttpContext context,
+        IHttpClientFactory httpClientFactory,
+        IServerApiSessionStore sessionStore)
+    {
+        var accessToken = ResolveApiAccessToken(context.User, sessionStore);
+
+        if (accessToken is null)
+            return Results.Unauthorized();
+
+        var client = httpClientFactory.CreateClient("AuthenticationApi");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "api/garage/logo");
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+        using var response = await client.SendAsync(request, context.RequestAborted);
+        if (!response.IsSuccessStatusCode)
+            return response.StatusCode == System.Net.HttpStatusCode.NotFound
+                ? Results.NotFound()
+                : Results.Unauthorized();
+
+        var bytes = await response.Content.ReadAsByteArrayAsync(context.RequestAborted);
+        return Results.File(bytes, response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream");
+    }
+
+    public static string? ResolveApiAccessToken(
+        ClaimsPrincipal principal,
+        IServerApiSessionStore sessionStore)
+    {
+        var accessToken = principal.FindFirstValue(AuthConstants.ApiAccessTokenClaim);
+        if (accessToken is not null) return accessToken;
+
+        var sessionId = principal.FindFirstValue(AuthConstants.SessionIdClaim);
+        return sessionId is not null && sessionStore.TryGet(sessionId, out var session)
+            ? session!.AccessToken
+            : null;
     }
 
     private static async Task<IResult> LogoutAsync(

@@ -1,0 +1,43 @@
+@using SemBroncaAI.Garage.Web.Models
+
+<header class="document-header">
+    @if (!_logoFailed && !string.IsNullOrWhiteSpace(Garage.LogoUrl))
+    {
+        <div class="document-logo-frame">
+            <img class="document-logo" src="@Garage.LogoUrl" alt="Logo da oficina" @onerror="HideBrokenLogo" />
+        </div>
+    }
+    <div class="garage-heading">
+        <h1>@Garage.Name</h1>
+        <p>@Garage.Document</p>
+        @if (!string.IsNullOrWhiteSpace(Address)) { <p>@Address</p> }
+        <p>@Garage.Phone · @Garage.Email</p>
+    </div>
+    <div class="document-kind">
+        <span>@Title</span>
+        <strong>@Number</strong>
+    </div>
+</header>
+
+@code {
+    [Parameter, EditorRequired] public GaragePrintModel Garage { get; set; } = default!;
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Number { get; set; } = string.Empty;
+    private bool _logoFailed;
+
+    private string Address
+    {
+        get
+        {
+            var street = string.Join(", ", new[] { Garage.Street, Garage.Number }.Where(value => !string.IsNullOrWhiteSpace(value)));
+            var district = string.Join(" - ", new[] { Garage.Neighborhood, Garage.Complement }.Where(value => !string.IsNullOrWhiteSpace(value)));
+            var city = string.IsNullOrWhiteSpace(Garage.City) ? null : string.IsNullOrWhiteSpace(Garage.State) ? Garage.City : $"{Garage.City}/{Garage.State}";
+            return string.Join(" · ", new[] { street, district, city, Garage.PostalCode }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        }
+    }
+
+    private void HideBrokenLogo()
+    {
+        _logoFailed = true;
+    }
+}

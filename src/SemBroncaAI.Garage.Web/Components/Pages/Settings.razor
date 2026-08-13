@@ -1,4 +1,5 @@
 @page "/settings"
+@attribute [Authorize(Policy = "TenantUser")]
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
 @inject GarageService GarageService
@@ -45,14 +46,16 @@
                 <div class="card-title"><MudIcon Icon="@Icons.Material.Filled.Palette"/><div><h2>Identidade visual</h2><p>Personalização aplicada aos documentos da oficina.</p></div></div>
                 <div class="branding-grid">
                     <div class="branding-fields">
-                        <div class="logo-current">@if (_model.LogoStorageKey is not null) { <img src="@GarageService.GetLogoUrl(_garageId, _model.LogoStorageKey)" alt="Logo da oficina" /> } else { <span>Sem logo</span> }</div>
+                        <div class="logo-current">@if (_model.LogoStorageKey is not null) { <img src="@GarageService.GetLogoUrl(_model.LogoStorageKey)" alt="Logo da oficina" /> } else { <span>Sem logo</span> }</div>
                         <label class="upload-button">@(_uploading ? "Enviando..." : "Alterar logo")<InputFile OnChange="UploadLogoAsync" accept="image/png,image/jpeg,image/webp" disabled="@_uploading" /></label>
                         <small>PNG, JPEG ou WebP. Máximo de 2 MB.</small>
+                        <small class="logo-guidance">Para melhor resultado nos documentos, utilize PNG ou WebP com fundo transparente e boa resolução.</small>
                         <MudTextField @bind-Value="_model.PrimaryColor" Label="Cor principal" Placeholder="#F97316" />
                         <input class="color-picker" type="color" value="@DocumentColor" @oninput="ColorChanged" aria-label="Selecionar cor principal" />
                     </div>
                     <div class="document-preview" style="--brand-color: @DocumentColor">
-                        <div class="preview-head">@if (_model.LogoStorageKey is not null) { <img src="@GarageService.GetLogoUrl(_garageId, _model.LogoStorageKey)" alt="" /> }<div><strong>@_model.Name</strong><span>@_model.Document</span><span>@PreviewLocation</span></div></div>
+                        <span class="preview-label">Prévia nos documentos</span>
+                        <div class="preview-head">@if (_model.LogoStorageKey is not null) { <div class="preview-logo-frame"><img src="@GarageService.GetLogoUrl(_model.LogoStorageKey)" alt="Logo da oficina" /></div> }<div><strong>@_model.Name</strong><span>@_model.Document</span><span>@PreviewLocation</span></div></div>
                         <div class="preview-title"><i></i>Documento de demonstração</div>
                     </div>
                 </div>
@@ -63,13 +66,12 @@
 </div>
 
 @code {
-    private GarageSettingsModel? _model; private MudForm? _form; private Guid _garageId; private bool _loading = true; private bool _saving; private bool _uploading;
+    private GarageSettingsModel? _model; private MudForm? _form; private bool _loading = true; private bool _saving; private bool _uploading;
     private string DocumentColor => string.IsNullOrWhiteSpace(_model?.PrimaryColor) ? "#F97316" : _model.PrimaryColor;
     private string PreviewLocation => string.Join(" - ", new[] { _model?.City, _model?.State }.Where(x => !string.IsNullOrWhiteSpace(x)));
     protected override async Task OnInitializedAsync()
     {
-        if (!Guid.TryParse(Configuration["Garage:Id"], out _garageId)) throw new InvalidOperationException("O identificador da oficina não foi configurado.");
-        try { _model = await GarageService.GetAsync(_garageId); }
+        try { _model = await GarageService.GetAsync(); }
         catch { Snackbar.Add("Não foi possível carregar as configurações da oficina.", Severity.Error); }
         finally { _loading = false; }
     }
@@ -80,7 +82,7 @@
         try
         {
             _saving = true;
-            _model = await GarageService.UpdateAsync(_garageId, new(_model.Name, _model.Document, _model.Phone, _model.Email,
+            _model = await GarageService.UpdateAsync(new(_model.Name, _model.Document, _model.Phone, _model.Email,
                 _model.PostalCode, _model.Street, _model.Number, _model.Complement, _model.Neighborhood, _model.City, _model.State, _model.PrimaryColor));
             Snackbar.Add("Configurações salvas com sucesso.", Severity.Success);
         }
@@ -95,7 +97,7 @@
         {
             _uploading = true; var file = args.File;
             await using var stream = file.OpenReadStream(2 * 1024 * 1024);
-            _model = await GarageService.UploadLogoAsync(_garageId, stream, file.Name, file.ContentType);
+            _model = await GarageService.UploadLogoAsync(stream, file.Name, file.ContentType);
             Snackbar.Add("Logo atualizada com sucesso.", Severity.Success);
         }
         catch (Exception exception) { Snackbar.Add(exception.Message, Severity.Error); }

@@ -1,4 +1,5 @@
 @page "/customers"
+@attribute [Authorize(Policy = "TenantUser")]
 @using SemBroncaAI.Garage.Web.Components.Customers
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
@@ -61,7 +62,6 @@
 @code {
     private CustomerListModel? _data;
     private CancellationTokenSource? _searchCancellation;
-    private Guid _garageId;
     private string _search = string.Empty;
     private int _page = 1;
     private const int PageSize = 12;
@@ -69,14 +69,12 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (!Guid.TryParse(Configuration["Garage:Id"], out _garageId))
-            throw new InvalidOperationException("O identificador da oficina não foi configurado.");
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
-        try { _isLoading = true; _data = await CustomerService.ListAsync(_garageId, _search, _page, PageSize); }
+        try { _isLoading = true; _data = await CustomerService.ListAsync(_search, _page, PageSize); }
         catch (Exception exception) { Snackbar.Add(exception.Message, Severity.Error); }
         finally { _isLoading = false; }
     }
@@ -93,7 +91,7 @@
 
     private async Task OpenCreateDialogAsync()
     {
-        var parameters = new DialogParameters { ["GarageId"] = _garageId };
+        var parameters = new DialogParameters();
         var dialog = await DialogService.ShowAsync<CustomerFormDialog>("Novo cliente", parameters, new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true });
         var result = await dialog.Result;
         if (result is { Canceled: false }) { Snackbar.Add("Cliente cadastrado com sucesso.", Severity.Success); await LoadAsync(); }

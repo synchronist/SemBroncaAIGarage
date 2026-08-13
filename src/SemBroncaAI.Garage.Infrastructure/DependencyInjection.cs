@@ -63,6 +63,7 @@ public static class DependencyInjection
             .AddSignInManager()
             .AddEntityFrameworkStores<GarageDbContext>()
             .AddDefaultTokenProviders();
+        services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, ApplicationUserClaimsPrincipalFactory>();
 
         services.AddScoped<IDevelopmentIdentitySeedStore, IdentityDevelopmentSeedStore>();
 

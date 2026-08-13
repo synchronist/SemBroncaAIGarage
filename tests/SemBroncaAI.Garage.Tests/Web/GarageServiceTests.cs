@@ -14,7 +14,7 @@ public sealed class GarageServiceTests
         const string json = """{"id":"019fb7ee-1479-7f7b-95a1-496112008629","name":"Oficina","document":"123","phone":"1199","email":"a@b.com","postalCode":null,"street":null,"number":null,"complement":null,"neighborhood":null,"city":"Boituva","state":"SP","active":true,"createdAt":"2026-08-08T00:00:00Z"}""";
         var service = CreateService(HttpStatusCode.OK, "application/json", json);
 
-        var result = await service.UpdateAsync(Guid.CreateVersion7(), Request());
+        var result = await service.UpdateAsync(Request());
 
         result.Name.ShouldBe("Oficina"); result.State.ShouldBe("SP");
     }
@@ -26,7 +26,7 @@ public sealed class GarageServiceTests
             "Microsoft.EntityFrameworkCore.DbUpdateException: technical details");
 
         var exception = await Should.ThrowAsync<InvalidOperationException>(() =>
-            service.UpdateAsync(Guid.CreateVersion7(), Request()));
+            service.UpdateAsync(Request()));
 
         exception.Message.ShouldBe("Não foi possível salvar as configurações.");
         exception.Message.ShouldNotContain("Json");
@@ -37,7 +37,7 @@ public sealed class GarageServiceTests
     public async Task Update_Should_Preserve_Json_Api_Error_Message()
     {
         var service = CreateService(HttpStatusCode.BadRequest, "application/json", """{"message":"A cidade deve possuir no máximo 100 caracteres."}""");
-        var exception = await Should.ThrowAsync<InvalidOperationException>(() => service.UpdateAsync(Guid.CreateVersion7(), Request()));
+        var exception = await Should.ThrowAsync<InvalidOperationException>(() => service.UpdateAsync(Request()));
         exception.Message.ShouldBe("A cidade deve possuir no máximo 100 caracteres.");
     }
 

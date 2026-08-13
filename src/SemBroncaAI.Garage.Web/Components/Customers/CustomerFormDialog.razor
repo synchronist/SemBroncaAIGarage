@@ -29,7 +29,6 @@
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
-    [Parameter] public Guid GarageId { get; set; }
     [Parameter] public CustomerDetailsModel? Customer { get; set; }
 
     private MudForm? _form;
@@ -58,7 +57,7 @@
         {
             _isSaving = true;
             _error = null;
-            var request = new SaveCustomerRequest(GarageId, _name, _document, _phone, _email);
+            var request = new SaveCustomerRequest(_name, _document, _phone, _email);
             if (Customer is null)
                 await CustomerService.CreateAsync(request);
             else

@@ -1,5 +1,6 @@
 ﻿@page "/"
 
+@attribute [Authorize(Policy = "TenantUser")]
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
 
@@ -336,7 +337,6 @@
 
     private CancellationTokenSource? _searchCancellation;
 
-    private Guid _garageId;
 
     private string _searchText = string.Empty;
 
@@ -371,20 +371,9 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        var garageId =
-            Configuration["Garage:Id"];
-
-        if (!Guid.TryParse(
-                garageId,
-                out _garageId))
-        {
-            throw new InvalidOperationException(
-                "O identificador da oficina não foi configurado.");
-        }
-
         if (VehicleId.HasValue && _selectedVehicle?.VehicleId != VehicleId.Value)
         {
-            var vehicle = await VehicleService.GetByIdAsync(VehicleId.Value, _garageId);
+            var vehicle = await VehicleService.GetByIdAsync(VehicleId.Value);
             if (vehicle is null) { Snackbar.Add("Veículo não encontrado.", Severity.Error); return; }
             SelectVehicle(new LookupResult(vehicle.Id, vehicle.Customer.Id, vehicle.GarageId, vehicle.Plate, vehicle.Brand, vehicle.Model, vehicle.Version, vehicle.Year, vehicle.Color, vehicle.Fuel, vehicle.Mileage, vehicle.Customer.Name, vehicle.Customer.Phone, vehicle.Customer.Document, vehicle.Customer.Email));
         }
@@ -426,7 +415,6 @@
 
             var results =
                 await LookupService.SearchAsync(
-                    _garageId,
                     value.Trim(),
                     cancellationToken);
 
@@ -506,7 +494,6 @@
 
             var request =
                 new CreateServiceOrderRequest(
-                    _selectedVehicle.GarageId,
                     _selectedVehicle.VehicleId,
                     _customerComplaint.Trim(),
                     _mileage);

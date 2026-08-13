@@ -23,8 +23,4 @@
     <ProjectReference Include="..\SemBroncaAI.Garage.Infrastructure\SemBroncaAI.Garage.Infrastructure.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Remove="Controllers\CustomersController.cs" />
-  </ItemGroup>
-
 </Project>

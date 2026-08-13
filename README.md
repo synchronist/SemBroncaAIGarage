@@ -106,4 +106,12 @@ Sessões marcadas com **Lembrar meu acesso** usam cookie persistente; as demais 
 
 O cofre de credenciais do BFF usa memória local nesta fase incremental. Reiniciar o Web invalida as sessões existentes, e múltiplas réplicas exigirão um store distribuído protegido antes de produção. Não registre cookies, cabeçalhos `Authorization`, senhas nem corpos do login em access logs/APM. O logout remove a credencial server-side e o cookie. Antiforgery protege login/logout baseados em cookie; a chamada Web→API usa bearer e não depende de cookie do navegador.
 
-O endpoint autenticado da API é `GET /api/auth/me`. Para validar a cadeia completa no navegador, `GET /auth/me` no Web usa o cookie e consulta esse endpoint da API server-side; o bearer nunca chega ao browser. Os demais módulos ainda mantêm os contratos atuais com `GarageId` até a migração de tenant da Fase 3. Os endpoints `/api/public/approvals/{token}` e `/approval/{token}` continuam anônimos.
+O endpoint autenticado da API é `GET /api/auth/me`. Para validar a cadeia completa no navegador, `GET /auth/me` no Web usa o cookie e consulta esse endpoint da API server-side; o bearer nunca chega ao browser. Os endpoints `/api/public/approvals/{token}` e `/approval/{token}` continuam anônimos.
+
+## Isolamento de tenant
+
+Os módulos internos obtêm o tenant exclusivamente da claim `garage_id` emitida pelo Identity. `ICurrentUser` e `ICurrentGarage` expõem esse contexto sem dependência de `HttpContext`; a API valida usuário ativo, security stamp e Garage existente. Customers, Vehicles, Lookup, Service Orders, Estimates, Settings, branding e documentos não aceitam mais `GarageId` em query string, rota ou body. Os repositories continuam filtrando por Garage como defesa em profundidade.
+
+A API exige autenticação por fallback policy. Login e aprovação pública são os únicos endpoints marcados com `AllowAnonymous`. Operações tenant exigem a policy `TenantUser`; `PlatformAdmin` sem Garage não recebe acesso operacional. A configuração `Garage:Id` permanece somente no seed da API em Development e não é usada pelo Web para autorização.
+
+Logo e PDF também preservam o tenant autenticado. A logo interna passa por endpoint protegido do BFF. Para PDF, a API encaminha ao Playwright o bearer opaco já autenticado somente como header server-to-server; a rota imprimível valida a credencial contra a API e não a expõe em HTML ou JavaScript.

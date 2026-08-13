@@ -8,6 +8,15 @@ public interface IServiceOrderRepository
         Guid id,
         CancellationToken cancellationToken = default);
 
+    async Task<ServiceOrderEntity?> GetByIdAsync(
+        Guid id,
+        Guid garageId,
+        CancellationToken cancellationToken = default)
+    {
+        var order = await GetByIdAsync(id, cancellationToken);
+        return order?.GarageId == garageId ? order : null;
+    }
+
     Task<ServiceOrderEntity?> GetByNumberAsync(
         Guid garageId,
         int number,

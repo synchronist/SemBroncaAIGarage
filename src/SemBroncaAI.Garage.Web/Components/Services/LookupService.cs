@@ -13,7 +13,6 @@ public sealed class LookupService
     }
 
     public async Task<IReadOnlyList<LookupResult>> SearchAsync(
-        Guid garageId,
         string query,
         CancellationToken cancellationToken = default)
     {
@@ -25,7 +24,7 @@ public sealed class LookupService
         var encodedQuery = Uri.EscapeDataString(query);
 
         var url =
-            $"api/lookup?garageId={garageId}&query={encodedQuery}";
+            $"api/lookup?query={encodedQuery}";
 
         var result =
             await _httpClient.GetFromJsonAsync<List<LookupResult>>(

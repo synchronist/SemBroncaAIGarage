@@ -1,21 +1,23 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SemBroncaAI.Garage.Application.Features.Lookup;
+using SemBroncaAI.Garage.Application.Abstractions.Security;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SemBroncaAI.Garage.Api.Controllers;
 
 [ApiController]
 [Route("api/lookup")]
-public sealed class LookupController : ControllerBase
+[Authorize(Policy = "TenantUser")]
+public sealed class LookupController(ICurrentGarage currentGarage) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> Search(
-        [FromQuery] Guid garageId,
         [FromQuery] string query,
         [FromServices] SearchLookupHandler handler,
         CancellationToken cancellationToken)
     {
         var results = await handler.HandleAsync(
-            garageId,
+            currentGarage.RequireGarageId(),
             query,
             cancellationToken);
 

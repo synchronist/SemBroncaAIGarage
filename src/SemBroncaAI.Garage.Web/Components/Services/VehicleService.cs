@@ -3,11 +3,11 @@ using SemBroncaAI.Garage.Web.Models;
 namespace SemBroncaAI.Garage.Web.Services;
 public sealed class VehicleService(HttpClient client)
 {
-    public async Task<VehicleListModel> ListAsync(Guid garageId, string? search, int page, int pageSize, CancellationToken token = default) =>
-        await client.GetFromJsonAsync<VehicleListModel>($"api/vehicles?garageId={garageId}&search={Uri.EscapeDataString(search ?? string.Empty)}&page={page}&pageSize={pageSize}", token) ?? new(page, pageSize, 0, 0, []);
-    public async Task<VehicleDetailsModel?> GetByIdAsync(Guid id, Guid garageId, CancellationToken token = default)
+    public async Task<VehicleListModel> ListAsync(string? search, int page, int pageSize, CancellationToken token = default) =>
+        await client.GetFromJsonAsync<VehicleListModel>($"api/vehicles?search={Uri.EscapeDataString(search ?? string.Empty)}&page={page}&pageSize={pageSize}", token) ?? new(page, pageSize, 0, 0, []);
+    public async Task<VehicleDetailsModel?> GetByIdAsync(Guid id, CancellationToken token = default)
     {
-        var response = await client.GetAsync($"api/vehicles/{id}?garageId={garageId}", token);
+        var response = await client.GetAsync($"api/vehicles/{id}", token);
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<VehicleDetailsModel>(cancellationToken: token);

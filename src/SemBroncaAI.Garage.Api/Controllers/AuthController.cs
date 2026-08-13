@@ -19,6 +19,7 @@ public sealed class AuthController(
         "Não foi possível entrar com as credenciais informadas.";
 
     [HttpPost("login")]
+    [AllowAnonymous]
     [EnableRateLimiting(AuthenticationRateLimiting.LoginPolicy)]
     public async Task<IActionResult> Login(
         [FromBody] LoginRequest request,

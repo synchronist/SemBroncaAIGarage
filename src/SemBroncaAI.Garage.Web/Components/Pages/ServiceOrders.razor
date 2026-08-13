@@ -1,5 +1,6 @@
 ﻿@page "/service-orders"
 
+@attribute [Authorize(Policy = "TenantUser")]
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
 
@@ -206,7 +207,6 @@
 
     private ServiceOrderListModel? _data;
 
-    private Guid _garageId;
 
     private string _search = string.Empty;
 
@@ -221,17 +221,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var garageId =
-            Configuration["Garage:Id"];
-
-        if (!Guid.TryParse(
-                garageId,
-                out _garageId))
-        {
-            throw new InvalidOperationException(
-                "O identificador da oficina não foi configurado.");
-        }
-
         await LoadAsync();
     }
 
@@ -243,7 +232,6 @@
 
             _data =
                 await ServiceOrderService.ListAsync(
-                    _garageId,
                     _search,
                     _status,
                     _archive,

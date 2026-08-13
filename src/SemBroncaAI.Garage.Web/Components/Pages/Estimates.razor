@@ -1,4 +1,5 @@
 @page "/estimates"
+@attribute [Authorize(Policy = "TenantUser")]
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
 @using SemBroncaAI.Garage.Web.Components.Estimates
@@ -107,7 +108,7 @@
 @code {
     private static readonly System.Globalization.CultureInfo _ptBr = System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
     private static readonly (string Label, string? Value)[] Filters = [("Todos", null), ("Não enviados", "NotSent"), ("Aguardando", "Pending"), ("Aprovados", "Approved"), ("Recusados", "Rejected"), ("Expirados", "Expired")];
-    private EstimateListModel? _data; private CancellationTokenSource? _searchCts; private Guid _garageId;
+    private EstimateListModel? _data; private CancellationTokenSource? _searchCts;
     private string _search = string.Empty; private string? _status; private int _page = 1; private bool _loading;
     private string _garageName = "Oficina"; private string? _garagePhone;
     private string EmptyTitle => !string.IsNullOrWhiteSpace(_search) ? "Nenhum orçamento encontrado para esta busca." : _status is not null ? "Nenhum orçamento encontrado neste filtro." : "Você ainda não possui orçamentos.";
@@ -115,11 +116,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (!Guid.TryParse(Configuration["Garage:Id"], out _garageId)) throw new InvalidOperationException("O identificador da oficina não foi configurado.");
-        try { var garage = await GarageService.GetAsync(_garageId); if (garage is not null) { _garageName = garage.Name; _garagePhone = garage.Phone; } } catch { }
+        try { var garage = await GarageService.GetAsync(); if (garage is not null) { _garageName = garage.Name; _garagePhone = garage.Phone; } } catch { }
         await LoadAsync();
     }
-    private async Task LoadAsync() { try { _loading = true; _data = await EstimateService.ListAsync(_garageId, _search, _status, _page, 10); } catch (Exception e) { Snackbar.Add($"Não foi possível carregar os orçamentos: {e.Message}", Severity.Error); } finally { _loading = false; } }
+    private async Task LoadAsync() { try { _loading = true; _data = await EstimateService.ListAsync(_search, _status, _page, 10); } catch (Exception e) { Snackbar.Add($"Não foi possível carregar os orçamentos: {e.Message}", Severity.Error); } finally { _loading = false; } }
     private async Task OnSearchChanged(string value) { _search = value; _searchCts?.Cancel(); _searchCts?.Dispose(); _searchCts = new(); try { await Task.Delay(300, _searchCts.Token); _page = 1; await LoadAsync(); } catch (OperationCanceledException) { } }
     private async Task SelectFilterAsync(string? value) { _status = value; _page = 1; await LoadAsync(); }
     private async Task PreviousAsync() { _page--; await LoadAsync(); }
@@ -129,7 +129,7 @@
     private void OpenApproval(EstimateListItemModel item) => Navigation.NavigateTo(Link(item), true);
     private async Task CopyLinkAsync(EstimateListItemModel item) { await JS.InvokeVoidAsync("sbgCopyText", Link(item)); Snackbar.Add("Link copiado.", Severity.Success); }
     private async Task ShareAsync(EstimateListItemModel item) { var parameters = new DialogParameters { ["Model"] = ShareBuilder.Build(item, _garageName, _garagePhone, Navigation.BaseUri) }; await DialogService.ShowAsync<WhatsAppShareDialog>("Compartilhar orçamento", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true }); }
-    private async Task DownloadPdfAsync(EstimateListItemModel item) { try { var file = await ServiceOrderService.DownloadPdfAsync(item.ServiceOrderId, _garageId, true); await JS.InvokeVoidAsync("sbgDownloadFile", file.FileName, "application/pdf", Convert.ToBase64String(file.Content)); } catch (Exception e) { Snackbar.Add(e.Message, Severity.Error); } }
+    private async Task DownloadPdfAsync(EstimateListItemModel item) { try { var file = await ServiceOrderService.DownloadPdfAsync(item.ServiceOrderId, true); await JS.InvokeVoidAsync("sbgDownloadFile", file.FileName, "application/pdf", Convert.ToBase64String(file.Content)); } catch (Exception e) { Snackbar.Add(e.Message, Severity.Error); } }
     private static string CommercialLabel(string value) => value switch { "NotSent" => "Não enviado", "Pending" => "Aguardando aprovação", "Approved" => "Aprovado", "Rejected" => "Recusado", "Expired" => "Expirado", _ => value };
     private static string OperationalLabel(string value) => value switch { "Received" => "Recebido", "Diagnosis" => "Em diagnóstico", "WaitingApproval" => "Aguardando aprovação", "InProgress" => "Em serviço", "WaitingParts" => "Aguardando peças", "Finished" => "Finalizado", "Delivered" => "Entregue", "Cancelled" => "Cancelado", _ => value };
 }

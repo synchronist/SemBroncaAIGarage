@@ -24,7 +24,6 @@
 </MudDialog>
 @code {
     [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
-    [Parameter] public Guid GarageId { get; set; }
     [Parameter] public Guid? PreselectedCustomerId { get; set; }
     [Parameter] public string? PreselectedCustomerName { get; set; }
     [Parameter] public VehicleDetailsModel? Vehicle { get; set; }
@@ -36,12 +35,12 @@
         _plate=Vehicle.Plate; _brand=Vehicle.Brand; _model=Vehicle.Model; _version=Vehicle.Version; _year=Vehicle.Year; _color=Vehicle.Color; _fuel=Vehicle.Fuel; _mileage=Vehicle.Mileage;
         _selectedCustomer = new CustomerListItemModel(Vehicle.Customer.Id, Vehicle.Customer.Name, Vehicle.Customer.Document, Vehicle.Customer.Phone, Vehicle.Customer.Email, true, default, 0);
     }
-    private async Task<IEnumerable<CustomerListItemModel>> SearchCustomersAsync(string value, CancellationToken token) => (await CustomerService.ListAsync(GarageId, value, 1, 20, token)).Items;
+    private async Task<IEnumerable<CustomerListItemModel>> SearchCustomersAsync(string value, CancellationToken token) => (await CustomerService.ListAsync(value, 1, 20, token)).Items;
     private void SelectCustomer(CustomerListItemModel? customer) { _selectedCustomer=customer; _customerId=customer?.Id ?? Guid.Empty; }
     private async Task SaveAsync()
     {
         await _form!.ValidateAsync(); if (!_form.IsValid || _customerId==Guid.Empty) return;
-        try { _saving=true; _error=null; var request=new SaveVehicleRequest(GarageId,_customerId,_plate,_brand,_model,_version,_year,_color,_fuel,_mileage); if(Vehicle is null) await VehicleService.CreateAsync(request); else await VehicleService.UpdateAsync(Vehicle.Id,request); Dialog.Close(DialogResult.Ok(true)); }
+        try { _saving=true; _error=null; var request=new SaveVehicleRequest(_customerId,_plate,_brand,_model,_version,_year,_color,_fuel,_mileage); if(Vehicle is null) await VehicleService.CreateAsync(request); else await VehicleService.UpdateAsync(Vehicle.Id,request); Dialog.Close(DialogResult.Ok(true)); }
         catch(Exception ex){_error=ex.Message;} finally{_saving=false;}
     }
     private void Cancel()=>Dialog.Cancel();

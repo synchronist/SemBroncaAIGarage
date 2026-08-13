@@ -69,7 +69,6 @@ public sealed class ServiceOrderService
     }
 
     public async Task<ServiceOrderListModel> ListAsync(
-        Guid garageId,
         string? search = null,
         string? status = null,
         string archive = "Active",
@@ -79,7 +78,6 @@ public sealed class ServiceOrderService
     {
         var parameters = new List<string>
         {
-            $"garageId={garageId}",
             $"page={page}",
             $"pageSize={pageSize}",
             $"archive={Uri.EscapeDataString(archive)}"
@@ -149,12 +147,12 @@ public sealed class ServiceOrderService
                 "A API não retornou o diagnóstico salvo.");
     }
 
-    public async Task SetArchivedAsync(Guid id, Guid garageId, bool archived,
+    public async Task SetArchivedAsync(Guid id, bool archived,
         CancellationToken cancellationToken = default)
     {
         var action = archived ? "archive" : "restore";
         var response = await _httpClient.PostAsync(
-            $"api/service-orders/{id}/{action}?garageId={garageId}", null, cancellationToken);
+            $"api/service-orders/{id}/{action}", null, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             var error = response.Content.Headers.ContentType?.MediaType == "application/json"
@@ -163,10 +161,10 @@ public sealed class ServiceOrderService
         }
     }
 
-    public async Task<PdfDownload> DownloadPdfAsync(Guid id, Guid garageId, bool estimate, CancellationToken cancellationToken = default)
+    public async Task<PdfDownload> DownloadPdfAsync(Guid id, bool estimate, CancellationToken cancellationToken = default)
     {
         var type = estimate ? "estimate" : "service-order";
-        var response = await _httpClient.GetAsync($"api/service-orders/{id}/documents/{type}/pdf?garageId={garageId}", cancellationToken);
+        var response = await _httpClient.GetAsync($"api/service-orders/{id}/documents/{type}/pdf", cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             var error = response.Content.Headers.ContentType?.MediaType == "application/json"

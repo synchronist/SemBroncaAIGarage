@@ -1,4 +1,5 @@
 @page "/vehicles"
+@attribute [Authorize(Policy = "TenantUser")]
 @using SemBroncaAI.Garage.Web.Components.Vehicles
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
@@ -17,10 +18,10 @@ else{<div class="list">@foreach(var v in _data.Items){<article><strong class="pl
 @if(_data.TotalPages>1){<div class="pagination"><MudButton Variant="Variant.Outlined" Disabled="@(_page==1)" OnClick="Prev">Anterior</MudButton><span>Página @_page de @_data.TotalPages</span><MudButton Variant="Variant.Outlined" Disabled="@(_page>=_data.TotalPages)" OnClick="Next">Próxima</MudButton></div>}}
 </div>
 @code{
-private VehicleListModel? _data;private Guid _garageId;private string _search="";private int _page=1;private bool _loading;private CancellationTokenSource? _cts;
-protected override async Task OnInitializedAsync(){if(!Guid.TryParse(Configuration["Garage:Id"],out _garageId))throw new InvalidOperationException("Oficina não configurada.");await Load();}
-private async Task Load(){try{_loading=true;_data=await VehicleService.ListAsync(_garageId,_search,_page,12);}catch(Exception e){Snackbar.Add(e.Message,Severity.Error);}finally{_loading=false;}}
+private VehicleListModel? _data;private string _search="";private int _page=1;private bool _loading;private CancellationTokenSource? _cts;
+protected override async Task OnInitializedAsync(){await Load();}
+private async Task Load(){try{_loading=true;_data=await VehicleService.ListAsync(_search,_page,12);}catch(Exception e){Snackbar.Add(e.Message,Severity.Error);}finally{_loading=false;}}
 private async Task SearchChanged(string value){_search=value;_cts?.Cancel();_cts?.Dispose();_cts=new();try{await Task.Delay(300,_cts.Token);_page=1;await Load();}catch(OperationCanceledException){}}
-private async Task CreateAsync(){var p=new DialogParameters{{"GarageId",_garageId}};var d=await DialogService.ShowAsync<VehicleFormDialog>("Novo veículo",p,new DialogOptions{CloseButton=true,FullWidth=true,MaxWidth=MaxWidth.Medium});var r=await d.Result;if(r is{Canceled:false}){Snackbar.Add("Veículo cadastrado.",Severity.Success);await Load();}}
+private async Task CreateAsync(){var p=new DialogParameters();var d=await DialogService.ShowAsync<VehicleFormDialog>("Novo veículo",p,new DialogOptions{CloseButton=true,FullWidth=true,MaxWidth=MaxWidth.Medium});var r=await d.Result;if(r is{Canceled:false}){Snackbar.Add("Veículo cadastrado.",Severity.Success);await Load();}}
 private void Open(Guid id)=>Navigation.NavigateTo($"/vehicles/{id}");private async Task Prev(){_page--;await Load();}private async Task Next(){_page++;await Load();}
 }

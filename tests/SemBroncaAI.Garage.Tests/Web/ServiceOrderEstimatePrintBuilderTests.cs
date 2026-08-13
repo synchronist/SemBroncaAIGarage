@@ -31,6 +31,26 @@ public sealed class ServiceOrderEstimatePrintBuilderTests
         ServiceOrderEstimatePrintBuilder.Build(Order(withEstimate: false), Garage()).ShouldBeNull();
     }
 
+    [Fact]
+    public void Build_Should_Omit_Logo_When_Garage_Has_No_Logo()
+    {
+        var document = ServiceOrderEstimatePrintBuilder.Build(Order(withEstimate: true), Garage(), "/auth/garage-logo");
+        document.ShouldNotBeNull();
+        document.Garage.LogoUrl.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("horizontal")]
+    [InlineData("square")]
+    [InlineData("vertical")]
+    public void Valid_logo_shapes_should_use_same_authenticated_document_route(string shape)
+    {
+        var garage = Garage(); garage.LogoStorageKey = $"garage/logo-{shape}.webp";
+        var document = ServiceOrderEstimatePrintBuilder.Build(Order(withEstimate: true), garage, "/auth/garage-logo");
+        document.ShouldNotBeNull();
+        document.Garage.LogoUrl.ShouldBe("/auth/garage-logo");
+    }
+
     private static GarageSettingsModel Garage() => new()
     {
         Id = Guid.CreateVersion7(), Name = "Oficina", Document = "123", Phone = "1199", Email = "a@b.com"

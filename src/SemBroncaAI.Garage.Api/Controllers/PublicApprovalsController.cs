@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using SemBroncaAI.Garage.Application.Abstractions.Security;
 using SemBroncaAI.Garage.Application.Abstractions.Storage;
@@ -11,6 +12,7 @@ namespace SemBroncaAI.Garage.Api.Controllers;
 
 [ApiController]
 [Route("api/public/approvals")]
+[AllowAnonymous]
 [EnableRateLimiting("public-approval")]
 public sealed class PublicApprovalsController : ControllerBase
 {

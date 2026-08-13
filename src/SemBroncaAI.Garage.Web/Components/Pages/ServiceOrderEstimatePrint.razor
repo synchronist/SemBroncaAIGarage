@@ -1,7 +1,9 @@
 @page "/service-orders/{Id:guid}/estimate/print"
 @layout PrintLayout
+@attribute [Authorize(Policy = "TenantUser")]
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
+@using SemBroncaAI.Garage.Web.Components.Documents
 @inject ServiceOrderService ServiceOrderService
 @inject GarageService GarageService
 @inject IConfiguration Configuration
@@ -9,7 +11,7 @@
 @inject IJSRuntime JS
 
 <PageTitle>Impressão do orçamento</PageTitle>
-<style>.garage-logo{width:44px;height:44px;object-fit:contain}.estimate-document .document-header{border-bottom-color:var(--brand-color)}.estimate-document .document-heading strong,.estimate-document .accepted-total strong{color:var(--brand-color)}</style>
+<style>.estimate-document .accepted-total strong{color:var(--brand-color)}</style>
 
 @if (_loading)
 {
@@ -23,12 +25,7 @@ else
 {
     <div class="document-actions no-print"><button @onclick="GoBack">Voltar</button><button class="primary" @onclick="PrintAsync">Imprimir</button></div>
     <article class="estimate-document" style="--brand-color: @_document.Garage.PrimaryColor">
-        <header class="document-header">
-            @if (_document.Garage.LogoUrl is not null) { <img class="garage-logo" src="@_document.Garage.LogoUrl" alt="Logo da oficina" /> }
-            <div class="garage-heading"><h1>@_document.Garage.Name</h1><p>@_document.Garage.Document</p>
-                @if (!string.IsNullOrWhiteSpace(Address)){<p>@Address</p>}<p>@_document.Garage.Phone · @_document.Garage.Email</p></div>
-            <div class="document-heading"><span>ORÇAMENTO</span><strong>OS #@_document.ServiceOrderNumber.ToString("D4")</strong></div>
-        </header>
+        <DocumentBrandHeader Garage="_document.Garage" Title="ORÇAMENTO" Number="@($"OS #{_document.ServiceOrderNumber:D4}")" />
 
         <section class="identification avoid-break">
             <div><small>Data</small><strong>@_document.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</strong></div>
@@ -61,18 +58,16 @@ else
 @code {
     [Parameter] public Guid Id { get; set; }
     private ServiceOrderEstimatePrintModel? _document; private bool _loading = true;
-    private string Address => _document is null ? string.Empty : FormatAddress(_document.Garage);
     protected override async Task OnParametersSetAsync()
     {
         _loading = true;
         try
         {
-            if (!Guid.TryParse(Configuration["Garage:Id"], out var garageId)) return;
             var order = await ServiceOrderService.GetByIdAsync(Id);
-            if (order is null || order.GarageId != garageId) return;
-            var garage = await GarageService.GetAsync(garageId);
+            if (order is null) return;
+            var garage = await GarageService.GetAsync();
             if (garage is null) return;
-            _document = ServiceOrderEstimatePrintBuilder.Build(order, garage, GarageService.GetLogoUrl(garageId, garage.LogoStorageKey));
+            _document = ServiceOrderEstimatePrintBuilder.Build(order, garage, GarageService.GetLogoUrl(garage.LogoStorageKey));
         }
         finally { _loading = false; }
     }
@@ -80,11 +75,4 @@ else
     private void GoBack() => Navigation.NavigateTo($"/service-orders/{Id}");
     private static string Currency(decimal value) => value.ToString("C2", new System.Globalization.CultureInfo("pt-BR"));
     private static string TypeLabel(string type) => type == "Service" ? "Serviço" : type == "Part" ? "Peça" : type;
-    private static string FormatAddress(GaragePrintModel garage)
-    {
-        var street = string.Join(", ", new[] { garage.Street, garage.Number }.Where(value => !string.IsNullOrWhiteSpace(value)));
-        var district = string.Join(" - ", new[] { garage.Neighborhood, garage.Complement }.Where(value => !string.IsNullOrWhiteSpace(value)));
-        var city = string.IsNullOrWhiteSpace(garage.City) ? null : string.IsNullOrWhiteSpace(garage.State) ? garage.City : $"{garage.City}/{garage.State}";
-        return string.Join(" · ", new[] { street, district, city, garage.PostalCode }.Where(value => !string.IsNullOrWhiteSpace(value)));
-    }
 }

@@ -17,21 +17,29 @@ using SemBroncaAI.Garage.Application.Features.ServiceOrders.RestoreServiceOrder;
 using SemBroncaAI.Garage.Api.Services;
 
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.Approval;
+using SemBroncaAI.Garage.Application.Abstractions.Security;
+using SemBroncaAI.Garage.Domain.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SemBroncaAI.Garage.Api.Controllers;
 
 [ApiController]
 [Route("api/service-orders")]
-public sealed class ServiceOrdersController : ControllerBase
+[Authorize(Policy = "TenantUser")]
+public sealed class ServiceOrdersController(
+    ICurrentGarage currentGarage,
+    ICurrentUser currentUser,
+    IServiceOrderRepository repository) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Create(
-        [FromBody] CreateServiceOrderCommand command,
+        [FromBody] CreateServiceOrderRequest request,
         [FromServices] CreateServiceOrderHandler handler,
         CancellationToken cancellationToken)
     {
         try
         {
+            var command = new CreateServiceOrderCommand(currentGarage.RequireGarageId(), request.VehicleId, request.CustomerComplaint, request.Mileage);
             var response = await handler.HandleAsync(command, cancellationToken);
 
             return CreatedAtAction(
@@ -47,7 +55,6 @@ public sealed class ServiceOrdersController : ControllerBase
 
     [HttpGet]
     public async Task<IActionResult> List(
-    [FromQuery] Guid garageId,
     [FromQuery] string? search,
     [FromQuery] ServiceOrderStatus? status,
     [FromQuery] ServiceOrderArchiveFilter archive,
@@ -58,7 +65,7 @@ public sealed class ServiceOrdersController : ControllerBase
     {
         var query =
             new ListServiceOrdersQuery(
-                garageId,
+                currentGarage.RequireGarageId(),
                 search,
                 status,
                 archive,
@@ -79,6 +86,8 @@ public sealed class ServiceOrdersController : ControllerBase
         [FromServices] GetServiceOrderByIdHandler handler,
         CancellationToken cancellationToken)
     {
+        if (!await HasAccessAsync(id, cancellationToken))
+            return NotFound(new { message = "Ordem de serviço não encontrada." });
         var response = await handler.HandleAsync(id, cancellationToken);
 
         return response is null
@@ -95,11 +104,13 @@ public sealed class ServiceOrdersController : ControllerBase
     {
         try
         {
+            if (!await HasAccessAsync(id, cancellationToken))
+                return NotFound(new { message = "Ordem de serviço não encontrada." });
             var response =
                 await handler.HandleAsync(
                     id,
                     command,
-                    null,
+                    currentUser.UserId,
                     cancellationToken);
 
             return Ok(response);
@@ -122,6 +133,8 @@ public sealed class ServiceOrdersController : ControllerBase
     {
         try
         {
+            if (!await HasAccessAsync(id, cancellationToken))
+                return NotFound(new { message = "Ordem de serviço não encontrada." });
             return Ok(await handler.HandleAsync(id, command, cancellationToken));
         }
         catch (Exception exception) when (exception is InvalidOperationException or ArgumentException)
@@ -131,28 +144,29 @@ public sealed class ServiceOrdersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/archive")]
-    public async Task<IActionResult> Archive(Guid id, [FromQuery] Guid garageId,
+    public async Task<IActionResult> Archive(Guid id,
         [FromServices] ArchiveServiceOrderHandler handler, CancellationToken cancellationToken)
     {
-        try { await handler.HandleAsync(id, garageId, cancellationToken); return NoContent(); }
+        try { await handler.HandleAsync(id, currentGarage.RequireGarageId(), cancellationToken); return NoContent(); }
         catch (Exception exception) when (exception is InvalidOperationException or ArgumentException) { return BadRequest(new { message = exception.Message }); }
     }
 
     [HttpPost("{id:guid}/restore")]
-    public async Task<IActionResult> Restore(Guid id, [FromQuery] Guid garageId,
+    public async Task<IActionResult> Restore(Guid id,
         [FromServices] RestoreServiceOrderHandler handler, CancellationToken cancellationToken)
     {
-        try { await handler.HandleAsync(id, garageId, cancellationToken); return NoContent(); }
+        try { await handler.HandleAsync(id, currentGarage.RequireGarageId(), cancellationToken); return NoContent(); }
         catch (Exception exception) when (exception is InvalidOperationException or ArgumentException) { return BadRequest(new { message = exception.Message }); }
     }
 
     [HttpGet("{id:guid}/documents/{documentType}/pdf")]
-    public async Task<IActionResult> DownloadPdf(Guid id, string documentType, [FromQuery] Guid garageId,
+    public async Task<IActionResult> DownloadPdf(Guid id, string documentType,
         [FromServices] GetServiceOrderByIdHandler handler, [FromServices] IDocumentPdfGenerator generator,
         CancellationToken cancellationToken)
     {
+        if (!await HasAccessAsync(id, cancellationToken)) return NotFound(new { message = "Ordem de serviço não encontrada." });
         var order = await handler.HandleAsync(id, cancellationToken);
-        if (order is null || order.GarageId != garageId) return NotFound(new { message = "Ordem de serviço não encontrada." });
+        if (order is null) return NotFound(new { message = "Ordem de serviço não encontrada." });
         var estimate = documentType.Equals("estimate", StringComparison.OrdinalIgnoreCase);
         if (!estimate && !documentType.Equals("service-order", StringComparison.OrdinalIgnoreCase)) return BadRequest(new { message = "Tipo de documento inválido." });
         if (estimate && order.Estimate is null) return BadRequest(new { message = "A ordem de serviço não possui orçamento." });
@@ -160,7 +174,8 @@ public sealed class ServiceOrdersController : ControllerBase
         {
             var route = estimate ? $"service-orders/{id}/estimate/print" : $"service-orders/{id}/print";
             var selector = estimate ? ".estimate-document" : ".service-order-document";
-            var bytes = await generator.GenerateAsync(route, selector, cancellationToken);
+            var accessToken = Request.Headers.Authorization.ToString()["Bearer ".Length..];
+            var bytes = await generator.GenerateAsync(route, selector, accessToken, cancellationToken);
             var prefix = estimate ? "ORCAMENTO" : "OS";
             var fileName = DocumentFileName.Create(prefix, order.Number, order.Vehicle.Plate);
             return File(bytes, "application/pdf", fileName);
@@ -177,7 +192,7 @@ public sealed class ServiceOrdersController : ControllerBase
         [FromServices] StartDiagnosisHandler handler,
         CancellationToken cancellationToken) =>
         ExecuteTransition(() =>
-            handler.HandleAsync(id, null, cancellationToken));
+            TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
 
     [HttpPost("{id:guid}/send-for-approval")]
     public Task<IActionResult> SendForApproval(
@@ -185,7 +200,7 @@ public sealed class ServiceOrdersController : ControllerBase
         [FromServices] SendForApprovalHandler handler,
         CancellationToken cancellationToken) =>
         ExecuteTransition(() =>
-            handler.HandleAsync(id, null, cancellationToken));
+            TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
 
     [HttpPost("{id:guid}/start-service")]
     public Task<IActionResult> StartService(
@@ -193,12 +208,13 @@ public sealed class ServiceOrdersController : ControllerBase
         [FromServices] StartServiceHandler handler,
         CancellationToken cancellationToken) =>
         ExecuteTransition(() =>
-            handler.HandleAsync(id, null, cancellationToken));
+            TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
 
     [HttpPost("{id:guid}/revise-estimate")]
     public Task<IActionResult> ReviseEstimate(Guid id, [FromServices] ReviseEstimateHandler handler,
-        CancellationToken cancellationToken) => ExecuteTransition(async () =>
-        { await handler.HandleAsync(id, cancellationToken); return new { status = "Diagnosis" }; });
+        CancellationToken cancellationToken) => ExecuteTransition(() =>
+            TenantTransition(id, cancellationToken, async () =>
+            { await handler.HandleAsync(id, currentUser.UserId, cancellationToken); return new { status = "Diagnosis" }; }));
 
     [HttpPost("{id:guid}/wait-for-parts")]
     public Task<IActionResult> WaitForParts(
@@ -206,7 +222,7 @@ public sealed class ServiceOrdersController : ControllerBase
         [FromServices] WaitForPartsHandler handler,
         CancellationToken cancellationToken) =>
         ExecuteTransition(() =>
-            handler.HandleAsync(id, null, cancellationToken));
+            TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
 
     [HttpPost("{id:guid}/resume-service")]
     public Task<IActionResult> ResumeService(
@@ -214,7 +230,7 @@ public sealed class ServiceOrdersController : ControllerBase
         [FromServices] ResumeServiceHandler handler,
         CancellationToken cancellationToken) =>
         ExecuteTransition(() =>
-            handler.HandleAsync(id, null, cancellationToken));
+            TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
 
     [HttpPost("{id:guid}/finish")]
     public Task<IActionResult> Finish(
@@ -222,7 +238,7 @@ public sealed class ServiceOrdersController : ControllerBase
         [FromServices] FinishServiceHandler handler,
         CancellationToken cancellationToken) =>
         ExecuteTransition(() =>
-            handler.HandleAsync(id, null, cancellationToken));
+            TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
 
     [HttpPost("{id:guid}/deliver")]
     public Task<IActionResult> Deliver(
@@ -230,7 +246,7 @@ public sealed class ServiceOrdersController : ControllerBase
         [FromServices] DeliverServiceOrderHandler handler,
         CancellationToken cancellationToken) =>
         ExecuteTransition(() =>
-            handler.HandleAsync(id, null, cancellationToken));
+            TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
 
     [HttpPost("{id:guid}/cancel")]
     public Task<IActionResult> Cancel(
@@ -238,7 +254,18 @@ public sealed class ServiceOrdersController : ControllerBase
         [FromServices] CancelServiceOrderHandler handler,
         CancellationToken cancellationToken) =>
         ExecuteTransition(() =>
-            handler.HandleAsync(id, null, cancellationToken));
+            TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
+
+    private async Task<TResponse> TenantTransition<TResponse>(
+        Guid id, CancellationToken cancellationToken, Func<Task<TResponse>> action)
+    {
+        if (!await HasAccessAsync(id, cancellationToken))
+            throw new InvalidOperationException("Ordem de serviço não encontrada.");
+        return await action();
+    }
+
+    private async Task<bool> HasAccessAsync(Guid id, CancellationToken cancellationToken) =>
+        await repository.GetByIdAsync(id, currentGarage.RequireGarageId(), cancellationToken) is not null;
 
     private async Task<IActionResult> ExecuteTransition<TResponse>(
         Func<Task<TResponse>> action)
@@ -256,3 +283,5 @@ public sealed class ServiceOrdersController : ControllerBase
         }
     }
 }
+
+public sealed record CreateServiceOrderRequest(Guid VehicleId, string CustomerComplaint, int Mileage);

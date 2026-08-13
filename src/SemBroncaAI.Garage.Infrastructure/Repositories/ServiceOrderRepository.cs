@@ -59,6 +59,20 @@ public sealed class ServiceOrderRepository : IServiceOrderRepository
                 cancellationToken);
     }
 
+    public async Task<ServiceOrderEntity?> GetByIdAsync(
+        Guid id,
+        Guid garageId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.ServiceOrders
+            .Include(x => x.Vehicle).ThenInclude(x => x.Customer)
+            .Include(x => x.History)
+            .Include(x => x.Diagnosis)
+            .Include(x => x.Estimate!).ThenInclude(x => x.Items)
+            .Include(x => x.EstimateApprovals)
+            .FirstOrDefaultAsync(x => x.Id == id && x.GarageId == garageId, cancellationToken);
+    }
+
     public async Task<ServiceOrderEntity?> GetByApprovalTokenHashAsync(string tokenHash,
         CancellationToken cancellationToken = default)
     {
