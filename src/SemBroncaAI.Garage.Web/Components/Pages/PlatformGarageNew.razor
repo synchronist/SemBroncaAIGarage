@@ -1,0 +1,80 @@
+@page "/platform-admin/garages/new"
+@layout PlatformAdminLayout
+@attribute [Authorize(Policy = PlatformAuthorization.Policy)]
+@using Microsoft.AspNetCore.Components.Forms
+@using SemBroncaAI.Garage.Application.Abstractions.Security
+@using SemBroncaAI.Garage.Application.Features.PlatformAdministration
+@using SemBroncaAI.Garage.Web.Services
+@using System.ComponentModel.DataAnnotations
+@inject PlatformGarageService Service
+@inject NavigationManager Navigation
+
+<PageTitle>Nova oficina | SemBroncaAI</PageTitle>
+<a class="back" href="/platform-admin/garages"><MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" />Voltar para oficinas</a>
+<header class="page-head"><span class="eyebrow">ONBOARDING</span><h1>Nova oficina</h1><p>Cadastre o tenant e configure o acesso do primeiro proprietário.</p></header>
+@if (_error is not null) { <div class="error" role="alert"><MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small" /><span>@_error</span></div> }
+<EditForm EditContext="_editContext" OnValidSubmit="SubmitAsync" OnInvalidSubmit="HandleInvalidSubmit" FormName="platform-garage-new" novalidate><DataAnnotationsValidator />
+    <section><header><span class="step">1</span><div><h2>Dados da oficina</h2><p>Informações administrativas do novo cliente.</p></div></header><div class="grid">
+        <div class="field"><label for="garage-name">Nome da oficina</label><InputText id="garage-name" class="platform-input" @bind-Value="_form.Name" placeholder="Ex.: Oficina Avenida" /><ValidationMessage For="@(() => _form.Name)" /></div>
+        <div class="field"><label for="garage-document">Documento/CNPJ</label><InputText id="garage-document" class="platform-input" @bind-Value="_form.Document" placeholder="12.345.678/0001-90" maxlength="20" oninput="sbgMaskDocument(this)" /><ValidationMessage For="@(() => _form.Document)" /></div>
+        <div class="field"><label for="garage-phone">Telefone</label><InputText id="garage-phone" class="platform-input" @bind-Value="_form.Phone" placeholder="(15) 99999-9999" maxlength="15" inputmode="tel" oninput="sbgMaskBrazilianPhone(this)" /><ValidationMessage For="@(() => _form.Phone)" /></div>
+        <div class="field"><label for="garage-email">E-mail administrativo</label><InputText id="garage-email" class="platform-input" type="text" inputmode="email" autocomplete="email" @bind-Value="_form.Email" placeholder="contato@oficina.com.br" /><ValidationMessage For="@(() => _form.Email)" /></div>
+    </div></section>
+    <section><header><span class="step">2</span><div><h2>Dados do proprietário</h2><p>Conta Owner responsável pela oficina.</p></div></header><div class="grid">
+        <div class="field"><label for="owner-name">Nome completo</label><InputText id="owner-name" class="platform-input" @bind-Value="_form.OwnerName" placeholder="Nome do proprietário" /><ValidationMessage For="@(() => _form.OwnerName)" /></div>
+        <div class="field"><label for="owner-email">E-mail de acesso</label><InputText id="owner-email" class="platform-input" type="text" inputmode="email" autocomplete="email" @bind-Value="_form.OwnerEmail" placeholder="owner@oficina.com.br" /><ValidationMessage For="@(() => _form.OwnerEmail)" /></div>
+        <div class="field wide"><label for="owner-username">Username</label><InputText id="owner-username" class="platform-input" @bind-Value="_form.OwnerUserName" placeholder="Identificador para acesso" maxlength="101" /><ValidationMessage For="@(() => _form.OwnerUserName)" /></div>
+    </div></section>
+    <section><header><span class="step">3</span><div><h2>Senha inicial</h2><p>O proprietário poderá alterá-la posteriormente pela recuperação de senha.</p></div></header><div class="grid">
+        <div class="field"><label for="initial-password">Senha inicial</label><div class="password"><InputText id="initial-password" class="platform-input" type="@(_showPassword ? "text" : "password")" @bind-Value="_form.InitialPassword" autocomplete="new-password" /><button type="button" @onclick="TogglePassword" aria-label="@(_showPassword ? "Ocultar senha inicial" : "Mostrar senha inicial")" title="@(_showPassword ? "Ocultar senha" : "Mostrar senha")"><MudIcon Icon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)" Size="Size.Small" /></button></div><ValidationMessage For="@(() => _form.InitialPassword)" /></div>
+        <div class="field"><label for="confirm-password">Confirmar senha</label><div class="password"><InputText id="confirm-password" class="platform-input" type="@(_showPassword ? "text" : "password")" @bind-Value="_form.ConfirmPassword" autocomplete="new-password" /><button type="button" @onclick="TogglePassword" aria-label="@(_showPassword ? "Ocultar confirmação de senha" : "Mostrar confirmação de senha")" title="@(_showPassword ? "Ocultar senha" : "Mostrar senha")"><MudIcon Icon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)" Size="Size.Small" /></button></div><ValidationMessage For="@(() => _form.ConfirmPassword)" /></div>
+    </div><div class="password-hint"><MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" /><span>Mínimo de 10 caracteres, com letra maiúscula, minúscula, número e quatro caracteres distintos.</span></div></section>
+    <div class="actions"><a href="/platform-admin/garages">Cancelar</a><button type="submit" disabled="@_saving">@if(_saving){<MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Inherit" />}<span>@(_saving ? "Criando oficina..." : "Criar oficina")</span></button></div>
+</EditForm>
+
+@code {
+    private readonly FormModel _form = new();
+    private EditContext _editContext = null!;
+    private ValidationMessageStore _serverErrors = null!;
+    private bool _saving, _showPassword;
+    private string? _error;
+    protected override void OnInitialized() { _editContext = new EditContext(_form); _serverErrors = new ValidationMessageStore(_editContext); _editContext.OnFieldChanged += (_, args) => _serverErrors.Clear(args.FieldIdentifier); }
+    private void TogglePassword() => _showPassword = !_showPassword;
+    private void HandleInvalidSubmit(EditContext _) { _saving = false; _error = "Revise os campos destacados abaixo."; }
+    private async Task SubmitAsync()
+    {
+        _saving = true; _error = null; _serverErrors.Clear();
+        try
+        {
+            var result = await Service.CreateAsync(new(_form.Name.Trim(), PlatformGarageInputRules.NormalizeDocument(_form.Document), PlatformGarageInputRules.NormalizePhone(_form.Phone), _form.Email.Trim(), _form.OwnerName.Trim(), _form.OwnerEmail.Trim(), _form.OwnerUserName.Trim(), _form.InitialPassword, _form.ConfirmPassword));
+            Navigation.NavigateTo($"/platform-admin/garages/{result.GarageId}?created=true");
+        }
+        catch (PlatformGarageFormValidationException exception)
+        {
+            foreach (var item in exception.Errors)
+            {
+                if (!FieldProperties.TryGetValue(item.Key, out var property)) continue;
+                var field = new FieldIdentifier(_form, property);
+                var existing = _editContext.GetValidationMessages(field).ToHashSet(StringComparer.Ordinal);
+                _serverErrors.Add(field, item.Value.Where(message => !existing.Contains(message)));
+            }
+            _editContext.NotifyValidationStateChanged(); _error = exception.Message;
+        }
+        catch { _error = "Não foi possível concluir o cadastro. Tente novamente."; }
+        finally { _saving = false; }
+    }
+    private static readonly IReadOnlyDictionary<string, string> FieldProperties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    { ["name"] = nameof(FormModel.Name), ["document"] = nameof(FormModel.Document), ["phone"] = nameof(FormModel.Phone), ["email"] = nameof(FormModel.Email), ["ownerName"] = nameof(FormModel.OwnerName), ["ownerEmail"] = nameof(FormModel.OwnerEmail), ["ownerUserName"] = nameof(FormModel.OwnerUserName), ["initialPassword"] = nameof(FormModel.InitialPassword), ["confirmPassword"] = nameof(FormModel.ConfirmPassword) };
+    private sealed class FormModel
+    {
+        [Required(ErrorMessage = "Informe o nome da oficina."), MaxLength(150, ErrorMessage = "O nome da oficina deve ter no máximo 150 caracteres.")] public string Name { get; set; } = "";
+        [Required(ErrorMessage = "Informe um documento válido."), MaxLength(20, ErrorMessage = "Informe um documento válido.")] public string Document { get; set; } = "";
+        [Required(ErrorMessage = "Informe um telefone válido."), BrazilianPhone(ErrorMessage = "Informe um telefone válido.")] public string Phone { get; set; } = "";
+        [ProductEmail(150, ErrorMessage = "Informe um e-mail válido.")] public string Email { get; set; } = "";
+        [Required(ErrorMessage = "Informe o nome do proprietário."), MaxLength(256, ErrorMessage = "O nome do proprietário é muito longo.")] public string OwnerName { get; set; } = "";
+        [ProductEmail(256, ErrorMessage = "Informe um e-mail válido.")] public string OwnerEmail { get; set; } = "";
+        [Required(ErrorMessage = "Informe um nome de usuário."), MaxLength(100, ErrorMessage = "O nome de usuário é muito longo.")] public string OwnerUserName { get; set; } = "";
+        [Required(ErrorMessage = PlatformGarageInputRules.PasswordMessage), PasswordPolicy(ErrorMessage = PlatformGarageInputRules.PasswordMessage)] public string InitialPassword { get; set; } = "";
+        [Required(ErrorMessage = "Confirme a senha."), Compare(nameof(InitialPassword), ErrorMessage = "As senhas não coincidem.")] public string ConfirmPassword { get; set; } = "";
+    }
+}

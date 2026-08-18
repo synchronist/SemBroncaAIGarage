@@ -11,9 +11,10 @@ public interface IIdentityLoginGateway
     Task<ApplicationUser?> FindByEmailAsync(string identifier);
     Task<ApplicationUser?> FindByNameAsync(string identifier);
     Task<SignInResult> CheckPasswordAsync(ApplicationUser user, string password);
+    Task<bool> VerifyPasswordAsync(ApplicationUser user, string password);
     Task<IList<string>> GetRolesAsync(ApplicationUser user);
     Task<ClaimsPrincipal> CreatePrincipalAsync(ApplicationUser user);
-    Task<bool> GarageExistsAsync(Guid garageId, CancellationToken cancellationToken);
+    Task<bool?> GetGarageActiveAsync(Guid garageId, CancellationToken cancellationToken);
 }
 
 public sealed class IdentityLoginGateway(
@@ -30,14 +31,20 @@ public sealed class IdentityLoginGateway(
     public Task<SignInResult> CheckPasswordAsync(ApplicationUser user, string password) =>
         signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
 
+    public Task<bool> VerifyPasswordAsync(ApplicationUser user, string password) =>
+        userManager.CheckPasswordAsync(user, password);
+
     public Task<IList<string>> GetRolesAsync(ApplicationUser user) =>
         userManager.GetRolesAsync(user);
 
     public Task<ClaimsPrincipal> CreatePrincipalAsync(ApplicationUser user) =>
         signInManager.CreateUserPrincipalAsync(user);
 
-    public Task<bool> GarageExistsAsync(Guid garageId, CancellationToken cancellationToken) =>
-        dbContext.Garages.AsNoTracking().AnyAsync(garage => garage.Id == garageId, cancellationToken);
+    public Task<bool?> GetGarageActiveAsync(Guid garageId, CancellationToken cancellationToken) =>
+        dbContext.Garages.AsNoTracking()
+            .Where(garage => garage.Id == garageId)
+            .Select(garage => (bool?)garage.Active)
+            .SingleOrDefaultAsync(cancellationToken);
 }
 
 public sealed class IdentityLoginService(IIdentityLoginGateway gateway)
@@ -58,7 +65,14 @@ public sealed class IdentityLoginService(IIdentityLoginGateway gateway)
 
         var passwordResult = await gateway.CheckPasswordAsync(user, password);
         if (!passwordResult.Succeeded)
-            return passwordResult.IsLockedOut ? IdentityLoginResult.LockedOut : IdentityLoginResult.Failed;
+        {
+            if (!passwordResult.IsLockedOut)
+                return IdentityLoginResult.Failed;
+
+            return await gateway.VerifyPasswordAsync(user, password)
+                ? IdentityLoginResult.LockedOut
+                : IdentityLoginResult.Failed;
+        }
 
         var roles = await gateway.GetRolesAsync(user);
         var isPlatformAdmin = roles.Contains(ApplicationRoles.PlatformAdmin, StringComparer.Ordinal);
@@ -67,19 +81,27 @@ public sealed class IdentityLoginService(IIdentityLoginGateway gateway)
             if (user.GarageId is not null)
                 return IdentityLoginResult.Failed;
         }
-        else if (user.GarageId is null ||
-            !await gateway.GarageExistsAsync(user.GarageId.Value, cancellationToken))
+        else if (user.GarageId is null)
         {
             return IdentityLoginResult.Failed;
         }
+        else
+        {
+            var garageActive = await gateway.GetGarageActiveAsync(user.GarageId.Value, cancellationToken);
+            if (garageActive is null)
+                return IdentityLoginResult.Failed;
+            if (!garageActive.Value)
+                return IdentityLoginResult.GarageInactive;
+        }
 
         var principal = await gateway.CreatePrincipalAsync(user);
-        return new IdentityLoginResult(true, false, principal);
+        return new IdentityLoginResult(true, false, false, principal);
     }
 }
 
-public sealed record IdentityLoginResult(bool Succeeded, bool IsLockedOut, ClaimsPrincipal? Principal)
+public sealed record IdentityLoginResult(bool Succeeded, bool IsLockedOut, bool IsGarageInactive, ClaimsPrincipal? Principal)
 {
-    public static IdentityLoginResult Failed { get; } = new(false, false, null);
-    public static IdentityLoginResult LockedOut { get; } = new(false, true, null);
+    public static IdentityLoginResult Failed { get; } = new(false, false, false, null);
+    public static IdentityLoginResult LockedOut { get; } = new(false, true, false, null);
+    public static IdentityLoginResult GarageInactive { get; } = new(false, false, true, null);
 }

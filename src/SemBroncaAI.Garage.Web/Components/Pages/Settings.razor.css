@@ -3,9 +3,11 @@
 @media(max-width:430px){.settings-card,.document-preview{border-radius:10px}.form-grid,.address-grid{gap:12px}.logo-current img,.preview-head img{object-fit:contain}.upload-button{width:100%}.document-preview{overflow:hidden}.preview-head{align-items:flex-start}.preview-head div{min-width:0}.preview-head strong,.preview-head span{overflow-wrap:anywhere}}
 
 /* A mesma área reservada usada nos cabeçalhos dos documentos. */
-.logo-current{box-sizing:border-box;overflow:hidden}.logo-current img{display:block;width:auto;height:auto;max-width:calc(100% - 12px);max-height:calc(100% - 10px);object-fit:contain;object-position:center}
+.logo-current{box-sizing:border-box;overflow:hidden;padding:5px 6px}.logo-current img{display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;object-position:center}
 .logo-guidance{max-width:250px;line-height:1.45;color:#475569!important}
 .preview-label{display:block;margin-bottom:16px;color:#64748b;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
 .preview-logo-frame{flex:0 0 72px;width:72px;height:58px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .preview-logo-frame img{display:block;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;object-position:center}
+.document-preview{padding:26px 28px}
+@media(max-width:768px){.document-preview{padding:20px}}
 @media(max-width:430px){.preview-logo-frame{flex-basis:64px;width:64px;height:54px}}

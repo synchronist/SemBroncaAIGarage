@@ -1,5 +1,6 @@
 @page "/vehicles"
-@attribute [Authorize(Policy = "TenantUser")]
+@attribute [Authorize(Policy = ApplicationPermissions.ViewCustomersVehicles)]
+@using SemBroncaAI.Garage.Application.Abstractions.Security
 @using SemBroncaAI.Garage.Web.Components.Vehicles
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
@@ -10,7 +11,7 @@
 @inject ISnackbar Snackbar
 <PageTitle>Veículos</PageTitle>
 <div class="vehicles-page">
-<header><div><h1>Veículos</h1><p>Consulte a frota atendida pela oficina.</p></div><MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateAsync">Novo veículo</MudButton></header>
+<header><div><h1>Veículos</h1><p>Consulte a frota atendida pela oficina.</p></div><AuthorizeView Policy="@ApplicationPermissions.ManageCustomersVehicles"><MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateAsync">Novo veículo</MudButton></AuthorizeView></header>
 <section class="toolbar"><MudTextField T="string" Value="_search" ValueChanged="SearchChanged" Immediate="true" Placeholder="Buscar placa, veículo ou cliente..." Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" /></section>
 @if(_loading){<div class="state"><MudProgressCircular Indeterminate="true" Color="Color.Primary" />Carregando veículos...</div>}
 else if(_data is null||_data.Items.Count==0){<div class="state"><MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Size="Size.Large"/><h2>Nenhum veículo encontrado</h2></div>}

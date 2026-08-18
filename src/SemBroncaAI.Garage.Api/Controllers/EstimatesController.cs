@@ -11,6 +11,7 @@ namespace SemBroncaAI.Garage.Api.Controllers;
 public sealed class EstimatesController(ICurrentGarage currentGarage) : ControllerBase
 {
     [HttpGet]
+    [Authorize(Policy = ApplicationPermissions.ViewEstimateValues)]
     public async Task<IActionResult> List(
         [FromQuery] string? search,
         [FromQuery] EstimateCommercialStatus? status,

@@ -25,18 +25,19 @@ public sealed class IdentityDevelopmentSeedStore(
         return await userManager.FindByEmailAsync(email) ?? await userManager.FindByNameAsync(userName);
     }
 
-    public async Task<ApplicationUser> CreateOwnerAsync(DevelopmentIdentitySeedOptions options, CancellationToken cancellationToken)
+    public async Task<ApplicationUser> CreateUserAsync(DevelopmentSeedUser seedUser, Guid? garageId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var user = ApplicationUser.CreateGarageUser(
-            options.OwnerName, options.OwnerEmail, options.OwnerUserName, options.GarageId);
+        var user = garageId is null
+            ? ApplicationUser.CreatePlatformAdmin(seedUser.Name, seedUser.Email, seedUser.UserName)
+            : ApplicationUser.CreateGarageUser(seedUser.Name, seedUser.Email, seedUser.UserName, garageId.Value);
         user.EmailConfirmed = true;
         user.LockoutEnabled = true;
-        EnsureSucceeded(await userManager.CreateAsync(user, options.OwnerPassword), "criar o Owner de Development");
+        EnsureSucceeded(await userManager.CreateAsync(user, seedUser.Password), $"criar o usuário {seedUser.Role} de Development");
         return user;
     }
 
-    public async Task EnsureOwnerRoleAsync(ApplicationUser user, CancellationToken cancellationToken)
+    public async Task EnsureRoleAsync(ApplicationUser user, string role, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!user.EmailConfirmed)
@@ -44,8 +45,8 @@ public sealed class IdentityDevelopmentSeedStore(
             user.EmailConfirmed = true;
             EnsureSucceeded(await userManager.UpdateAsync(user), "confirmar o e-mail do Owner de Development");
         }
-        if (await userManager.IsInRoleAsync(user, ApplicationRoles.Owner)) return;
-        EnsureSucceeded(await userManager.AddToRoleAsync(user, ApplicationRoles.Owner), "associar a role Owner");
+        if (await userManager.IsInRoleAsync(user, role)) return;
+        EnsureSucceeded(await userManager.AddToRoleAsync(user, role), $"associar a role {role}");
     }
 
     private static void EnsureSucceeded(IdentityResult result, string operation)

@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SemBroncaAI.Garage.Domain.Entities.ServiceOrder;
+using SemBroncaAI.Garage.Domain.Common;
 
 namespace SemBroncaAI.Garage.Infrastructure.Persistence.Configurations;
 
@@ -20,7 +21,7 @@ public sealed class ServiceOrderConfiguration
             .IsRequired();
 
         builder.Property(x => x.CustomerComplaint)
-            .HasMaxLength(1000)
+            .HasMaxLength(FieldLengthLimits.CustomerComplaint)
             .IsRequired();
 
         builder.Property(x => x.Mileage)
@@ -36,7 +37,15 @@ public sealed class ServiceOrderConfiguration
         builder.Property(x => x.ArchivedAt)
             .IsRequired(false);
 
+        builder.Property(x => x.Version)
+            .IsConcurrencyToken()
+            .IsRequired();
+
         builder.HasIndex(x => new { x.GarageId, x.ArchivedAt });
+
+        builder.HasIndex(x => new { x.GarageId, x.Number })
+            .IsUnique()
+            .HasDatabaseName(DatabaseConstraintNames.UniqueServiceOrderNumberPerGarage);
 
         builder.HasOne(x => x.Garage)
             .WithMany(x => x.ServiceOrders)

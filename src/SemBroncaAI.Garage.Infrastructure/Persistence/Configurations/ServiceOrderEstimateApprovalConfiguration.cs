@@ -15,6 +15,10 @@ public sealed class ServiceOrderEstimateApprovalConfiguration : IEntityTypeConfi
         builder.HasIndex(x => x.TokenHash).IsUnique();
         builder.Property(x => x.ProtectedToken).HasMaxLength(1000).IsRequired();
         builder.Property(x => x.Status).HasConversion<int>().IsRequired();
+        builder.HasIndex(x => new { x.ServiceOrderId, x.EstimateUpdatedAt })
+            .IsUnique()
+            .HasDatabaseName(ApprovalRequestPersistence.ActiveApprovalConstraint)
+            .HasFilter("\"Status\" = 1 AND \"InvalidatedAt\" IS NULL");
         builder.Property(x => x.CustomerName).HasMaxLength(200);
         builder.Property(x => x.CustomerComment).HasMaxLength(1000);
         builder.Property(x => x.RespondedAt).IsConcurrencyToken();

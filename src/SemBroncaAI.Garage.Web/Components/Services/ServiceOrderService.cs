@@ -147,6 +147,18 @@ public sealed class ServiceOrderService
                 "A API não retornou o diagnóstico salvo.");
     }
 
+    public async Task<ServiceOrderTechnicalHistoryPageModel> GetTechnicalHistoryAsync(
+        Guid id, int offset, int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _httpClient.GetAsync(
+            $"api/service-orders/{id}/technical-history?offset={offset}&pageSize={pageSize}", cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ServiceOrderTechnicalHistoryPageModel>(
+            cancellationToken: cancellationToken)
+            ?? new(offset, pageSize, 0, []);
+    }
+
     public async Task SetArchivedAsync(Guid id, bool archived,
         CancellationToken cancellationToken = default)
     {

@@ -1,15 +1,27 @@
 @page "/platform-admin"
-@layout AuthLayout
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "PlatformAdmin")]
+@layout PlatformAdminLayout
+@attribute [Authorize(Policy = PlatformAuthorization.Policy)]
+@using SemBroncaAI.Garage.Application.Abstractions.Security
+@using SemBroncaAI.Garage.Application.Features.PlatformAdministration
+@inject PlatformGarageService Service
 
-<PageTitle>Área administrativa | SBGarage</PageTitle>
+<PageTitle>Administração | SemBroncaAI</PageTitle>
 
-<main style="max-width:520px;padding:32px;border:1px solid #e5e7eb;border-radius:18px;background:#fff;text-align:center">
-    <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Primary" Size="Size.Large" />
-    <h1 style="margin:16px 0 8px;font-size:24px">Área administrativa</h1>
-    <p style="margin:0 0 24px;color:#6b7280">O acesso de PlatformAdmin está ativo. O painel administrativo será disponibilizado em uma fase futura.</p>
-    <form method="post" action="/auth/logout">
-        <AntiforgeryToken />
-        <button type="submit" class="btn btn-outline-secondary">Sair</button>
-    </form>
-</main>
+<div class="page-head"><div><span class="eyebrow">PLATAFORMA</span><h1>Visão geral</h1><p>Acompanhe as oficinas clientes e seus acessos.</p></div><a class="primary" href="/platform-admin/garages/new"><MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />Nova oficina</a></div>
+@if (_loading) { <div class="state"><MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Medium" /><strong>Carregando painel</strong><span>Buscando os dados mais recentes da plataforma.</span></div> }
+else if (_error is not null) { <div class="state error"><span class="state-icon"><MudIcon Icon="@Icons.Material.Filled.CloudOff" /></span><strong>Não foi possível carregar o painel</strong><span>@_error</span><button @onclick="LoadAsync">Tentar novamente</button></div> }
+else if (_dashboard is not null)
+{
+    <section class="metrics"><article><span class="metric-icon"><MudIcon Icon="@Icons.Material.Filled.Storefront" Size="Size.Small" /></span><div><span>Oficinas cadastradas</span><strong>@_dashboard.TotalGarages</strong></div></article><article><span class="metric-icon positive"><MudIcon Icon="@Icons.Material.Filled.CheckCircleOutline" Size="Size.Small" /></span><div><span>Trials ativos</span><strong>@_dashboard.TrialSubscriptions</strong></div></article><article><span class="metric-icon"><MudIcon Icon="@Icons.Material.Filled.CreditCard" Size="Size.Small" /></span><div><span>Assinaturas ativas</span><strong>@_dashboard.ActiveSubscriptions</strong></div></article><article><span class="metric-icon muted"><MudIcon Icon="@Icons.Material.Filled.PauseCircleOutline" Size="Size.Small" /></span><div><span>Suspensas</span><strong>@_dashboard.SuspendedSubscriptions</strong></div></article></section>
+    <section class="panel"><div class="panel-head"><div><h2>Oficinas recentes</h2><p>Últimos clientes adicionados à plataforma.</p></div><a href="/platform-admin/garages">Ver todas <span>→</span></a></div>
+        @if (_dashboard.RecentGarages.Count == 0) { <div class="empty"><span class="state-icon"><MudIcon Icon="@Icons.Material.Filled.Storefront" /></span><strong>Nenhuma oficina cadastrada</strong><p>Crie a primeira oficina para iniciar o onboarding.</p><a class="empty-action" href="/platform-admin/garages/new">Cadastrar oficina</a></div> }
+        else { <div class="rows">@foreach (var garage in _dashboard.RecentGarages) { <a href="@($"/platform-admin/garages/{garage.Id}")"><span class="garage-mark">@GetInitial(garage.Name)</span><span class="garage-copy"><strong>@garage.Name</strong><small>Cadastrada em @garage.CreatedAt.ToString("dd/MM/yyyy")</small></span><em class="@(garage.Active ? "active" : "inactive")">@(garage.Active ? "Ativa" : "Inativa")</em><MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" /></a> }</div> }
+    </section>
+}
+
+@code {
+    private PlatformDashboardResponse? _dashboard; private bool _loading = true; private string? _error;
+    private static string GetInitial(string name) => string.IsNullOrWhiteSpace(name) ? "O" : char.ToUpperInvariant(name.Trim()[0]).ToString();
+    protected override Task OnInitializedAsync() => LoadAsync();
+    private async Task LoadAsync() { _loading = true; _error = null; try { _dashboard = await Service.GetDashboardAsync(); } catch { _error = "Não foi possível carregar o painel."; } finally { _loading = false; } }
+}

@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Identity;
 using SemBroncaAI.Garage.Api.Services;
 using SemBroncaAI.Garage.Infrastructure.Identity;
 using Shouldly;
+using Microsoft.AspNetCore.Http;
+using SemBroncaAI.Garage.Api.Controllers;
+using SemBroncaAI.Garage.Application.Abstractions.Security;
 
 namespace SemBroncaAI.Garage.Tests.Api;
 
@@ -63,14 +66,99 @@ public sealed class IdentityLoginServiceTests
         var result = await Authenticate(gateway, "owner");
         result.Succeeded.ShouldBeFalse();
         result.IsLockedOut.ShouldBeTrue();
+        gateway.PasswordVerifications.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Locked_user_with_wrong_password_should_fail_generically_to_prevent_enumeration()
+    {
+        var gateway = ValidGateway();
+        gateway.PasswordResult = SignInResult.LockedOut;
+        gateway.PasswordIsValid = false;
+
+        var result = await Authenticate(gateway, "owner");
+
+        result.ShouldBe(IdentityLoginResult.Failed);
+        gateway.PasswordVerifications.ShouldBe(1);
     }
 
     [Fact]
     public async Task Tenant_user_requires_its_existing_garage()
     {
-        var gateway = ValidGateway(); gateway.GarageExists = false;
+        var gateway = ValidGateway(); gateway.GarageActive = null;
         var result = await Authenticate(gateway, "owner");
         result.Succeeded.ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("owner")]
+    [InlineData("owner@test.local")]
+    public async Task Onboarded_owner_from_inactive_garage_should_receive_specific_block(string identifier)
+    {
+        var gateway = ValidGateway(); gateway.GarageActive = false;
+        var result = await Authenticate(gateway, identifier);
+        result.Succeeded.ShouldBeFalse();
+        result.IsGarageInactive.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Inactive_garage_with_wrong_password_should_remain_generic()
+    {
+        var gateway = ValidGateway();
+        gateway.GarageActive = false;
+        gateway.PasswordResult = SignInResult.Failed;
+
+        var result = await Authenticate(gateway, "owner");
+
+        result.ShouldBe(IdentityLoginResult.Failed);
+        gateway.LastGarageId.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Inactive_garage_should_leave_api_with_stable_code_and_safe_message()
+    {
+        var gateway = ValidGateway(); gateway.GarageActive = false;
+        var controller = new AuthController(null!, new IdentityLoginService(gateway))
+        {
+            ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var result = await controller.Login(new LoginRequest("owner", "ValidPassword1"), default);
+
+        var forbidden = result.ShouldBeOfType<Microsoft.AspNetCore.Mvc.ObjectResult>();
+        forbidden.StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        var error = forbidden.Value.ShouldBeOfType<AuthErrorResponse>();
+        error.Code.ShouldBe(AuthenticationErrorCodes.GarageInactive);
+        error.Message.ShouldBe("O acesso desta oficina está temporariamente indisponível.");
+    }
+
+    [Fact]
+    public async Task Missing_user_should_leave_api_without_specific_state_code()
+    {
+        var gateway = ValidGateway(); gateway.User = null;
+        var controller = new AuthController(null!, new IdentityLoginService(gateway))
+        {
+            ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var result = await controller.Login(new LoginRequest("missing", "ValidPassword1"), default);
+
+        var error = result.ShouldBeOfType<Microsoft.AspNetCore.Mvc.UnauthorizedObjectResult>().Value.ShouldBeOfType<AuthErrorResponse>();
+        error.Code.ShouldBeNull();
+        error.Message.ShouldBe("Não foi possível entrar com as credenciais informadas.");
+    }
+
+    [Fact]
+    public async Task Garage_status_should_be_revalidated_for_the_users_current_tenant()
+    {
+        var gateway = ValidGateway();
+        var garageId = gateway.User!.GarageId;
+
+        (await Authenticate(gateway, "owner")).Succeeded.ShouldBeTrue();
+
+        gateway.LastGarageId.ShouldBe(garageId);
+        gateway.GarageActive = false;
+        (await Authenticate(gateway, "owner")).IsGarageInactive.ShouldBeTrue();
     }
 
     [Fact]
@@ -103,10 +191,13 @@ public sealed class IdentityLoginServiceTests
         public ApplicationUser? User { get; set; }
         public SignInResult PasswordResult { get; set; } = SignInResult.Success;
         public IList<string> Roles { get; set; } = [];
-        public bool GarageExists { get; set; } = true;
+        public bool? GarageActive { get; set; } = true;
         public int EmailLookups { get; private set; }
         public int NameLookups { get; private set; }
         public int PasswordChecks { get; private set; }
+        public bool PasswordIsValid { get; set; } = true;
+        public int PasswordVerifications { get; private set; }
+        public Guid? LastGarageId { get; private set; }
 
         public Task<ApplicationUser?> FindByEmailAsync(string identifier)
         {
@@ -126,9 +217,19 @@ public sealed class IdentityLoginServiceTests
             return Task.FromResult(PasswordResult);
         }
 
+        public Task<bool> VerifyPasswordAsync(ApplicationUser user, string password)
+        {
+            PasswordVerifications++;
+            return Task.FromResult(PasswordIsValid);
+        }
+
         public Task<IList<string>> GetRolesAsync(ApplicationUser user) => Task.FromResult(Roles);
         public Task<ClaimsPrincipal> CreatePrincipalAsync(ApplicationUser user) =>
             Task.FromResult(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())], "test")));
-        public Task<bool> GarageExistsAsync(Guid garageId, CancellationToken cancellationToken) => Task.FromResult(GarageExists);
+        public Task<bool?> GetGarageActiveAsync(Guid garageId, CancellationToken cancellationToken)
+        {
+            LastGarageId = garageId;
+            return Task.FromResult(GarageActive);
+        }
     }
 }

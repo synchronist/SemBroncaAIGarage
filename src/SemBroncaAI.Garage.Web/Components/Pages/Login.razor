@@ -1,6 +1,7 @@
 @page "/login"
 @layout AuthLayout
 @using Microsoft.AspNetCore.Components.Authorization
+@using SemBroncaAI.Garage.Web.Services
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 
@@ -26,16 +27,24 @@
                 <span>@ErrorMessage</span>
             </div>
         }
+        @if (Reset)
+        {
+            <div class="login-success" role="status">Senha redefinida. Entre novamente com sua nova senha.</div>
+        }
 
         <form method="post" action="/auth/login" class="login-form" onsubmit="return sbgLoginSubmitting(this)">
             <AntiforgeryToken />
+            <input type="hidden" name="returnUrl" value="@ReturnUrl" />
             <label for="identifier">E-mail ou usuário</label>
             <input id="identifier" name="identifier" type="text" autocomplete="username"
                    required autofocus maxlength="256" />
 
             <label for="password">Senha</label>
-            <input id="password" name="password" type="password" autocomplete="current-password"
-                   required maxlength="256" />
+            <div class="login-password-field">
+                <input id="password" name="password" type="password" autocomplete="current-password" required maxlength="256" />
+                <button type="button" onclick="sbgTogglePassword('password', this)" aria-label="Mostrar senha" title="Mostrar senha"><MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" /></button>
+            </div>
+            <a class="forgot-password-link" href="/forgot-password">Esqueci minha senha</a>
 
             <label class="remember-option">
                 <input type="checkbox" name="rememberMe" value="true" />
@@ -57,16 +66,18 @@
     [SupplyParameterFromQuery]
     public string? Error { get; set; }
 
-    private string ErrorMessage => Error == "limited"
-        ? "Muitas tentativas. Aguarde um minuto e tente novamente."
-        : Error == "unavailable"
-            ? "O acesso está temporariamente indisponível. Tente novamente."
-            : "Não foi possível entrar com as credenciais informadas.";
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromQuery]
+    public bool Reset { get; set; }
+
+    private string ErrorMessage => LoginErrorMessages.Resolve(Error);
 
     protected override async Task OnInitializedAsync()
     {
         var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         if (state.User.Identity?.IsAuthenticated == true)
-            Navigation.NavigateTo("/", forceLoad: true);
+            Navigation.NavigateTo(AuthorizedLandingPage.Resolve(state.User, ReturnUrl), forceLoad: true);
     }
 }

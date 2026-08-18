@@ -9,7 +9,7 @@ public sealed record ServiceOrderListItemModel(
     string CustomerComplaint,
     Guid CustomerId,
     string CustomerName,
-    string CustomerPhone,
+    string? CustomerPhone,
     Guid VehicleId,
     string Plate,
     string Brand,

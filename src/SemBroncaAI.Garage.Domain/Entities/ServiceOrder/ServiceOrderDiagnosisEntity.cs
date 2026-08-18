@@ -32,11 +32,8 @@ public sealed class ServiceOrderDiagnosisEntity : Entity
             serviceOrderId,
             nameof(serviceOrderId));
 
-        Description = Guard.AgainstNullOrWhiteSpace(
-            description,
-            nameof(description));
-
-        InternalNotes = internalNotes?.Trim() ?? string.Empty;
+        Description = Guard.RequiredWithMaximumLength(description, FieldLengthLimits.DiagnosisText, nameof(description));
+        InternalNotes = Guard.OptionalWithMaximumLength(internalNotes, FieldLengthLimits.DiagnosisText, nameof(internalNotes));
 
         ActorId = actorId;
 
@@ -49,11 +46,8 @@ public sealed class ServiceOrderDiagnosisEntity : Entity
         string? internalNotes,
         Guid? actorId = null)
     {
-        Description = Guard.AgainstNullOrWhiteSpace(
-            description,
-            nameof(description));
-
-        InternalNotes = internalNotes?.Trim() ?? string.Empty;
+        Description = Guard.RequiredWithMaximumLength(description, FieldLengthLimits.DiagnosisText, nameof(description));
+        InternalNotes = Guard.OptionalWithMaximumLength(internalNotes, FieldLengthLimits.DiagnosisText, nameof(internalNotes));
 
         ActorId = actorId;
 

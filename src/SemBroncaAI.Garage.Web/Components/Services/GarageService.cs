@@ -13,6 +13,22 @@ public sealed class GarageService(HttpClient httpClient)
         return await response.Content.ReadFromJsonAsync<GarageSettingsModel>(cancellationToken: cancellationToken);
     }
 
+    public async Task<GarageSettingsModel?> GetContextAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.GetAsync("api/garage/context", cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<GarageSettingsModel>(cancellationToken: cancellationToken);
+    }
+
+    public async Task<GarageBrandingModel?> GetBrandingAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await httpClient.GetAsync("api/garage/branding", cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<GarageBrandingModel>(cancellationToken: cancellationToken);
+    }
+
     public async Task<GarageSettingsModel> UpdateAsync(UpdateGarageSettingsRequest request, CancellationToken cancellationToken = default)
     {
         var response = await httpClient.PutAsJsonAsync("api/garage/settings", request, cancellationToken);

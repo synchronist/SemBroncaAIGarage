@@ -1,0 +1,37 @@
+@page "/access-denied"
+@attribute [Authorize]
+@using SemBroncaAI.Garage.Web.Services
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Acesso negado</PageTitle>
+
+<div class="access-denied-page">
+    <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Large" Color="Color.Primary" />
+    <h1>Acesso não permitido</h1>
+    <p>Seu usuário não possui permissão para acessar esta área.</p>
+    <div class="access-denied-actions">
+        <MudButton Href="@_destination" Variant="Variant.Filled" Color="Color.Primary">@_destinationLabel</MudButton>
+        <form method="post" action="/auth/logout">
+            <AntiforgeryToken />
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Outlined">Sair</MudButton>
+        </form>
+    </div>
+</div>
+
+@code {
+    private string _destination = "/access-denied";
+    private string _destinationLabel = "Ir para início";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User;
+        _destination = AuthorizedLandingPage.For(user);
+        _destinationLabel = _destination switch
+        {
+            "/service-orders" => "Ir para Ordens de Serviço",
+            "/platform-admin" => "Ir para área administrativa",
+            "/customers" => "Ir para Clientes",
+            _ => "Ir para início"
+        };
+    }
+}

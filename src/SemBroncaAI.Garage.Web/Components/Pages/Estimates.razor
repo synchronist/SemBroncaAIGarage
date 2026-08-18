@@ -1,5 +1,6 @@
 @page "/estimates"
-@attribute [Authorize(Policy = "TenantUser")]
+@attribute [Authorize(Policy = ApplicationPermissions.ViewEstimateValues)]
+@using SemBroncaAI.Garage.Application.Abstractions.Security
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
 @using SemBroncaAI.Garage.Web.Components.Estimates
@@ -116,7 +117,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        try { var garage = await GarageService.GetAsync(); if (garage is not null) { _garageName = garage.Name; _garagePhone = garage.Phone; } } catch { }
+        try { var garage = await GarageService.GetContextAsync(); if (garage is not null) { _garageName = garage.Name; _garagePhone = garage.Phone; } } catch { }
         await LoadAsync();
     }
     private async Task LoadAsync() { try { _loading = true; _data = await EstimateService.ListAsync(_search, _status, _page, 10); } catch (Exception e) { Snackbar.Add($"Não foi possível carregar os orçamentos: {e.Message}", Severity.Error); } finally { _loading = false; } }

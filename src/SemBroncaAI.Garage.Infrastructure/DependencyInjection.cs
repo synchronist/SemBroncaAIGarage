@@ -41,6 +41,9 @@ using SemBroncaAI.Garage.Infrastructure.Persistence;
 using SemBroncaAI.Garage.Infrastructure.Persistence.Repositories;
 using SemBroncaAI.Garage.Infrastructure.Repositories;
 using SemBroncaAI.Garage.Infrastructure.Services;
+using Microsoft.AspNetCore.DataProtection;
+using SemBroncaAI.Garage.Application.Features.PlatformAdministration;
+using SemBroncaAI.Garage.Application.Features.TeamManagement;
 
 namespace SemBroncaAI.Garage.Infrastructure;
 
@@ -63,9 +66,14 @@ public static class DependencyInjection
             .AddSignInManager()
             .AddEntityFrameworkStores<GarageDbContext>()
             .AddDefaultTokenProviders();
+        services.Configure<DataProtectionTokenProviderOptions>(options =>
+            options.TokenLifespan = TimeSpan.FromHours(2));
         services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, ApplicationUserClaimsPrincipalFactory>();
 
         services.AddScoped<IDevelopmentIdentitySeedStore, IdentityDevelopmentSeedStore>();
+        services.AddScoped<IPlatformGarageAdministration, PlatformGarageAdministration>();
+        services.Configure<SubscriptionOptions>(configuration.GetSection(SubscriptionOptions.SectionName));
+        services.AddScoped<ITeamManagement, TeamManagement>();
 
         services.AddScoped<IUnitOfWork>(sp =>
             sp.GetRequiredService<GarageDbContext>());
@@ -76,6 +84,7 @@ public static class DependencyInjection
         services.AddScoped<IVehicleRepository, VehicleRepository>();
         services.AddScoped<IVehicleQueryRepository, VehicleQueryRepository>();
         services.AddScoped<IServiceOrderRepository, ServiceOrderRepository>();
+        services.AddScoped<IApprovalRequestPersistence, ApprovalRequestPersistence>();
         services.AddScoped<IEstimateQueryRepository, EstimateQueryRepository>();
         services.AddScoped<ILookupRepository, LookupRepository>();
         services.AddScoped<
@@ -101,6 +110,7 @@ public static class DependencyInjection
         services.AddScoped<UpdateVehicleHandler>();
         services.AddScoped<CreateServiceOrderHandler>();
         services.AddScoped<GetServiceOrderByIdHandler>();
+        services.AddScoped<SemBroncaAI.Garage.Application.Features.ServiceOrders.GetTechnicalHistory.GetTechnicalHistoryHandler>();
         services.AddScoped<StartDiagnosisHandler>();
         services.AddScoped<SendForApprovalHandler>();
         services.AddScoped<SendEstimateForApprovalHandler>();

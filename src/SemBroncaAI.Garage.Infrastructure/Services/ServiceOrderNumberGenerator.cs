@@ -25,12 +25,20 @@ public sealed class ServiceOrderNumberGenerator
                 nameof(garageId));
         }
 
-        var lastNumber = await _context.ServiceOrders
-            .Where(x => x.GarageId == garageId)
-            .MaxAsync(
-                x => (int?)x.Number,
-                cancellationToken);
+        var values = await _context.Database
+            .SqlQuery<int>($$"""
+                INSERT INTO "ServiceOrderNumberSequences" ("GarageId", "LastNumber")
+                VALUES (
+                    {{garageId}},
+                    COALESCE((SELECT MAX("Number") FROM "ServiceOrders" WHERE "GarageId" = {{garageId}}), 0) + 1)
+                ON CONFLICT ("GarageId") DO UPDATE
+                SET "LastNumber" = GREATEST(
+                    "ServiceOrderNumberSequences"."LastNumber" + 1,
+                    COALESCE((SELECT MAX("Number") FROM "ServiceOrders" WHERE "GarageId" = {{garageId}}), 0) + 1)
+                RETURNING "LastNumber" AS "Value"
+                """)
+            .ToListAsync(cancellationToken);
 
-        return (lastNumber ?? 0) + 1;
+        return values.Single();
     }
 }

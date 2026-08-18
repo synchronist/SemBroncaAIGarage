@@ -1,5 +1,6 @@
 @page "/settings"
-@attribute [Authorize(Policy = "TenantUser")]
+@attribute [Authorize(Policy = ApplicationPermissions.ManageGarageSettings)]
+@using SemBroncaAI.Garage.Application.Abstractions.Security
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
 @inject GarageService GarageService

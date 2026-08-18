@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.RateLimiting;
 using SemBroncaAI.Garage.Web.Models;
+using SemBroncaAI.Garage.Application.Abstractions.Security;
 
 namespace SemBroncaAI.Garage.Web.Services;
 
 public static class WebAuthenticationEndpoints
 {
     public const string LoginRateLimitPolicy = "web-login";
+    public const string PasswordRecoveryRateLimitPolicy = "web-password-recovery";
 
     public static IEndpointRouteBuilder MapWebAuthentication(this IEndpointRouteBuilder endpoints)
     {
@@ -17,6 +19,10 @@ public static class WebAuthenticationEndpoints
         endpoints.MapPost("/auth/logout", LogoutAsync);
         endpoints.MapGet("/auth/me", MeAsync).RequireAuthorization();
         endpoints.MapGet("/auth/garage-logo", GarageLogoAsync).RequireAuthorization();
+        endpoints.MapPost("/auth/forgot-password", ForgotPasswordAsync)
+            .RequireRateLimiting(PasswordRecoveryRateLimitPolicy);
+        endpoints.MapPost("/auth/reset-password", ResetPasswordAsync)
+            .RequireRateLimiting(PasswordRecoveryRateLimitPolicy);
         return endpoints;
     }
 
@@ -31,6 +37,7 @@ public static class WebAuthenticationEndpoints
         var identifier = form["identifier"].ToString();
         var password = form["password"].ToString();
         var rememberMe = string.Equals(form["rememberMe"], "true", StringComparison.OrdinalIgnoreCase);
+        var returnUrl = form["returnUrl"].ToString();
 
         if (string.IsNullOrWhiteSpace(identifier) || string.IsNullOrEmpty(password))
             return Results.LocalRedirect("/login?error=invalid");
@@ -43,14 +50,11 @@ public static class WebAuthenticationEndpoints
 
         if (!loginResponse.IsSuccessStatusCode)
         {
-            var error = loginResponse.StatusCode == System.Net.HttpStatusCode.TooManyRequests
-                ? "limited"
-                : "invalid";
+            var error = await ResolveLoginErrorAsync(loginResponse, context.RequestAborted);
             return Results.LocalRedirect($"/login?error={error}");
         }
 
-        var token = await loginResponse.Content.ReadFromJsonAsync<ApiTokenResponse>(
-            cancellationToken: context.RequestAborted);
+        var token = await TryReadJsonAsync<ApiTokenResponse>(loginResponse.Content, context.RequestAborted);
         if (token is null || string.IsNullOrWhiteSpace(token.AccessToken))
             return Results.LocalRedirect("/login?error=unavailable");
 
@@ -61,8 +65,7 @@ public static class WebAuthenticationEndpoints
         if (!meResponse.IsSuccessStatusCode)
             return Results.LocalRedirect("/login?error=invalid");
 
-        var user = await meResponse.Content.ReadFromJsonAsync<CurrentUserModel>(
-            cancellationToken: context.RequestAborted);
+        var user = await TryReadJsonAsync<CurrentUserModel>(meResponse.Content, context.RequestAborted);
         if (user is null)
             return Results.LocalRedirect("/login?error=unavailable");
 
@@ -81,16 +84,17 @@ public static class WebAuthenticationEndpoints
         if (user.GarageId is not null)
             claims.Add(new Claim("garage_id", user.GarageId.Value.ToString()));
         claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
+        claims.AddRange(user.EffectivePermissions.Select(permission =>
+            new Claim(ApplicationPermissions.ClaimType, permission)));
 
         var properties = CreateCookieProperties(rememberMe, expiresAt);
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, AuthConstants.CookieScheme));
         await context.SignInAsync(
             AuthConstants.CookieScheme,
-            new ClaimsPrincipal(new ClaimsIdentity(claims, AuthConstants.CookieScheme)),
+            principal,
             properties);
 
-        var destination = user.GarageId is null && user.Roles.Contains("PlatformAdmin")
-            ? "/platform-admin"
-            : "/";
+        var destination = AuthorizedLandingPage.Resolve(principal, returnUrl);
         return Results.LocalRedirect(destination);
     }
 
@@ -120,8 +124,7 @@ public static class WebAuthenticationEndpoints
         if (!response.IsSuccessStatusCode)
             return Results.Unauthorized();
 
-        var user = await response.Content.ReadFromJsonAsync<CurrentUserModel>(
-            cancellationToken: context.RequestAborted);
+        var user = await TryReadJsonAsync<CurrentUserModel>(response.Content, context.RequestAborted);
         return user is null ? Results.Unauthorized() : Results.Json(user);
     }
 
@@ -174,5 +177,90 @@ public static class WebAuthenticationEndpoints
 
         await context.SignOutAsync(AuthConstants.CookieScheme);
         return Results.LocalRedirect("/login");
+    }
+
+    private static async Task<IResult> ForgotPasswordAsync(
+        HttpContext context, IAntiforgery antiforgery, IHttpClientFactory httpClientFactory)
+    {
+        await antiforgery.ValidateRequestAsync(context);
+        var form = await context.Request.ReadFormAsync(context.RequestAborted);
+        var client = httpClientFactory.CreateClient("AuthenticationApi");
+        try
+        {
+            using var response = await client.PostAsJsonAsync("api/auth/password/forgot", new { email = form["email"].ToString() }, context.RequestAborted);
+            return response.IsSuccessStatusCode
+                ? Results.LocalRedirect("/forgot-password?sent=true")
+                : Results.LocalRedirect("/forgot-password?error=unavailable");
+        }
+        catch (HttpRequestException)
+        {
+            return Results.LocalRedirect("/forgot-password?error=unavailable");
+        }
+    }
+
+    private static async Task<IResult> ResetPasswordAsync(
+        HttpContext context, IAntiforgery antiforgery, IHttpClientFactory httpClientFactory)
+    {
+        await antiforgery.ValidateRequestAsync(context);
+        var form = await context.Request.ReadFormAsync(context.RequestAborted);
+        var encodedToken = form["token"].ToString();
+        if (!Guid.TryParse(form["userId"], out var userId))
+            return Results.LocalRedirect("/reset-password?error=invalid");
+
+        var password = form["password"].ToString();
+        var confirmation = form["confirmPassword"].ToString();
+        var resetPage = $"/reset-password?userId={userId:D}&token={Uri.EscapeDataString(encodedToken)}";
+        if (!string.Equals(password, confirmation, StringComparison.Ordinal))
+            return Results.LocalRedirect($"{resetPage}&error=mismatch");
+
+        var client = httpClientFactory.CreateClient("AuthenticationApi");
+        using var response = await client.PostAsJsonAsync("api/auth/password/reset", new
+        {
+            userId,
+            token = encodedToken,
+            password,
+            confirmPassword = confirmation
+        }, context.RequestAborted);
+        if (response.IsSuccessStatusCode) return Results.LocalRedirect("/login?reset=true");
+        var error = await TryReadJsonAsync<PasswordResetErrorModel>(response.Content, context.RequestAborted);
+        var reason = error?.Code is "password" or "same-password" or "mismatch" ? error.Code : "invalid";
+        return reason == "invalid"
+            ? Results.LocalRedirect("/reset-password?error=invalid")
+            : Results.LocalRedirect($"{resetPage}&error={Uri.EscapeDataString(reason)}");
+    }
+
+    public static async Task<T?> TryReadJsonAsync<T>(HttpContent content, CancellationToken cancellationToken = default)
+    {
+        var mediaType = content.Headers.ContentType?.MediaType;
+        if (mediaType is null ||
+            !(mediaType.Equals("application/json", StringComparison.OrdinalIgnoreCase) ||
+              mediaType.EndsWith("+json", StringComparison.OrdinalIgnoreCase)))
+            return default;
+        try
+        {
+            return await content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken);
+        }
+        catch (Exception exception) when (exception is System.Text.Json.JsonException or NotSupportedException)
+        {
+            return default;
+        }
+    }
+
+    public static async Task<string> ResolveLoginErrorAsync(
+        HttpResponseMessage response, CancellationToken cancellationToken = default)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            return "limited";
+        if ((int)response.StatusCode == StatusCodes.Status423Locked)
+            return "locked";
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            return AuthenticationErrorCodes.GarageInactive;
+        if ((int)response.StatusCode >= 500)
+            return "unavailable";
+
+        var error = await TryReadJsonAsync<AuthErrorModel>(response.Content, cancellationToken);
+        return error?.Code == AuthenticationErrorCodes.GarageInactive
+            ? AuthenticationErrorCodes.GarageInactive
+            : "invalid";
     }
 }

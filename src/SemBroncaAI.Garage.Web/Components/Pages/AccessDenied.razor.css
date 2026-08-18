@@ -1,0 +1,30 @@
+.access-denied-page {
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 32px 20px;
+    text-align: center;
+}
+
+.access-denied-page h1,
+.access-denied-page p { margin: 0; }
+
+.access-denied-page p { color: #667085; }
+
+.access-denied-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.access-denied-actions form { margin: 0; }
+
+@media (max-width: 480px) {
+    .access-denied-actions { width: 100%; flex-direction: column; }
+    .access-denied-actions ::deep .mud-button-root,
+    .access-denied-actions form { width: 100%; }
+}

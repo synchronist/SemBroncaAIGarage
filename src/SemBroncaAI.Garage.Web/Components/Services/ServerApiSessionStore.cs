@@ -14,7 +14,11 @@ public sealed class ServerApiSessionStore : IServerApiSessionStore
 {
     private readonly ConcurrentDictionary<string, ApiSession> _sessions = new();
 
-    public void Set(string sessionId, ApiSession session) => _sessions[sessionId] = session;
+    public void Set(string sessionId, ApiSession session)
+    {
+        RemoveExpiredSessions(DateTimeOffset.UtcNow);
+        _sessions[sessionId] = session;
+    }
 
     public bool TryGet(string sessionId, out ApiSession? session)
     {
@@ -30,4 +34,13 @@ public sealed class ServerApiSessionStore : IServerApiSessionStore
     }
 
     public void Remove(string sessionId) => _sessions.TryRemove(sessionId, out _);
+
+    private void RemoveExpiredSessions(DateTimeOffset now)
+    {
+        foreach (var entry in _sessions)
+        {
+            if (entry.Value.ExpiresAt <= now)
+                _sessions.TryRemove(entry.Key, out _);
+        }
+    }
 }

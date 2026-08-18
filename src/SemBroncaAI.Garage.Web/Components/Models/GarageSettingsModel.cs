@@ -26,3 +26,6 @@ public sealed record UpdateGarageSettingsRequest(
     string Name, string Document, string Phone, string Email,
     string? PostalCode, string? Street, string? Number, string? Complement,
     string? Neighborhood, string? City, string? State, string? PrimaryColor);
+
+public sealed record GarageBrandingModel(
+    string Name, string? City, string? State, string? LogoStorageKey, string? PrimaryColor);

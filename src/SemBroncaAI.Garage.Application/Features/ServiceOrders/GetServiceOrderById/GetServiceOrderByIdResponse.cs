@@ -1,6 +1,7 @@
 ﻿using SemBroncaAI.Garage.Domain.Entities.ServiceOrder;
 
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.Approval;
+using System.Text.Json.Serialization;
 
 namespace SemBroncaAI.Garage.Application.Features.ServiceOrders.GetServiceOrderById;
 
@@ -15,9 +16,9 @@ public sealed record ServiceOrderHistoryResponse(
 public sealed record ServiceOrderCustomerResponse(
     Guid Id,
     string Name,
-    string Document,
-    string Phone,
-    string Email);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Document,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Phone,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Email);
 
 public sealed record ServiceOrderVehicleResponse(
     Guid Id,
@@ -45,7 +46,19 @@ public sealed record GetServiceOrderByIdResponse(
     ApprovalSummaryResponse? Approval,
     IReadOnlyCollection<ApprovalHistoryResponse> ApprovalHistory,
     IReadOnlyCollection<ServiceOrderHistoryResponse> History,
+    IReadOnlyCollection<ServiceOrderTechnicalHistoryResponse> TechnicalHistory,
     DateTimeOffset? ArchivedAt);
+
+public sealed record ServiceOrderTechnicalHistoryResponse(
+    Guid Id,
+    int Number,
+    ServiceOrderStatus Status,
+    string CustomerComplaint,
+    int? Mileage,
+    DateTimeOffset CreatedAt,
+    string? Diagnosis,
+    string? InternalNotes,
+    IReadOnlyCollection<string> WorkItems);
 
 public sealed record ApprovalHistoryResponse(
     EstimateApprovalStatus Status,

@@ -77,12 +77,12 @@ public sealed class VehicleEntity : Entity
 
     private void SetDetails(string plate, string brand, string model, string version, int year, string color, string fuel, int mileage)
     {
-        Plate = NormalizePlate(plate);
-        Brand = Guard.AgainstNullOrWhiteSpace(brand, nameof(brand));
-        Model = Guard.AgainstNullOrWhiteSpace(model, nameof(model));
-        Version = version?.Trim() ?? string.Empty;
-        Color = color?.Trim() ?? string.Empty;
-        Fuel = fuel?.Trim() ?? string.Empty;
+        Plate = Guard.AgainstMaximumLength(NormalizePlate(plate), FieldLengthLimits.VehiclePlate, nameof(plate));
+        Brand = Guard.RequiredWithMaximumLength(brand, FieldLengthLimits.VehicleBrand, nameof(brand));
+        Model = Guard.RequiredWithMaximumLength(model, FieldLengthLimits.VehicleModel, nameof(model));
+        Version = Guard.OptionalWithMaximumLength(version, FieldLengthLimits.VehicleVersion, nameof(version));
+        Color = Guard.OptionalWithMaximumLength(color, FieldLengthLimits.VehicleColor, nameof(color));
+        Fuel = Guard.OptionalWithMaximumLength(fuel, FieldLengthLimits.VehicleFuel, nameof(fuel));
         if (year < 1900 || year > DateTime.UtcNow.Year + 1) throw new ArgumentOutOfRangeException(nameof(year), "O ano do veículo é inválido.");
         if (mileage < 0) throw new ArgumentOutOfRangeException(nameof(mileage), "A quilometragem não pode ser negativa.");
         Year = year;

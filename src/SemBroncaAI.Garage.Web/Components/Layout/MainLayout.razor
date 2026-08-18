@@ -1,6 +1,7 @@
 ﻿@inherits LayoutComponentBase
 
 @using SemBroncaAI.Garage.Web.Services
+@using SemBroncaAI.Garage.Application.Abstractions.Security
 @inject GarageService GarageService
 @inject IConfiguration Configuration
 
@@ -33,6 +34,7 @@
 
         <nav class="sbg-menu" @onclick="CloseMobileMenu">
 
+            <AuthorizeView Policy="@ApplicationPermissions.CreateServiceOrder">
             <NavLink href="/"
                      Match="NavLinkMatch.All"
                      class="sbg-menu-item">
@@ -40,7 +42,9 @@
                          Size="Size.Small" />
                 <span>Receber veículo</span>
             </NavLink>
+            </AuthorizeView>
 
+            <AuthorizeView Policy="@ApplicationPermissions.ViewServiceOrders">
             <NavLink href="/service-orders"
                      Match="NavLinkMatch.Prefix"
                      class="sbg-menu-item">
@@ -48,7 +52,9 @@
                          Size="Size.Small" />
                 <span>Ordens de serviço</span>
             </NavLink>
+            </AuthorizeView>
 
+            <AuthorizeView Policy="@ApplicationPermissions.ViewEstimateValues">
             <NavLink href="/estimates"
                      Match="NavLinkMatch.Prefix"
                      class="sbg-menu-item">
@@ -56,7 +62,9 @@
                          Size="Size.Small" />
                 <span>Orçamentos</span>
             </NavLink>
+            </AuthorizeView>
 
+            <AuthorizeView Policy="@ApplicationPermissions.ViewCustomersVehicles">
             <NavLink href="/customers"
                      Match="NavLinkMatch.Prefix"
                      class="sbg-menu-item">
@@ -72,7 +80,9 @@
                          Size="Size.Small" />
                 <span>Veículos</span>
             </NavLink>
+            </AuthorizeView>
 
+            <AuthorizeView Policy="@ApplicationPermissions.ManageGarageSettings">
             <NavLink href="/settings"
                      Match="NavLinkMatch.Prefix"
                      class="sbg-menu-item">
@@ -80,6 +90,14 @@
                          Size="Size.Small" />
                 <span>Configurações</span>
             </NavLink>
+            </AuthorizeView>
+
+            <AuthorizeView Policy="@ApplicationPermissions.ManageTeam">
+            <NavLink href="/team" Match="NavLinkMatch.Prefix" class="sbg-menu-item">
+                <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" />
+                <span>Equipe</span>
+            </NavLink>
+            </AuthorizeView>
 
         </nav>
 
@@ -164,7 +182,7 @@
     {
         try
         {
-            var garage = await GarageService.GetAsync();
+            var garage = await GarageService.GetBrandingAsync();
             if (garage is null) return;
             _garageName = string.IsNullOrWhiteSpace(garage.Name) ? "Oficina" : garage.Name;
             _garageLocation = !string.IsNullOrWhiteSpace(garage.City) && !string.IsNullOrWhiteSpace(garage.State)

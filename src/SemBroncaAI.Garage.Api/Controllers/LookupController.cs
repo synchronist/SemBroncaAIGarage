@@ -7,7 +7,7 @@ namespace SemBroncaAI.Garage.Api.Controllers;
 
 [ApiController]
 [Route("api/lookup")]
-[Authorize(Policy = "TenantUser")]
+[Authorize(Policy = ApplicationPermissions.CreateServiceOrder)]
 public sealed class LookupController(ICurrentGarage currentGarage) : ControllerBase
 {
     [HttpGet]

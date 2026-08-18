@@ -27,6 +27,8 @@ public sealed class ServiceOrderEntity : Entity
 
     public DateTimeOffset? ArchivedAt { get; private set; }
 
+    public long Version { get; private set; }
+
     public GarageEntity Garage { get; private set; } = default!;
 
     public VehicleEntity Vehicle { get; private set; } = default!;
@@ -60,9 +62,8 @@ public sealed class ServiceOrderEntity : Entity
             number,
             nameof(number));
 
-        CustomerComplaint = Guard.AgainstNullOrWhiteSpace(
-            customerComplaint,
-            nameof(customerComplaint));
+        CustomerComplaint = Guard.RequiredWithMaximumLength(
+            customerComplaint, FieldLengthLimits.CustomerComplaint, nameof(customerComplaint));
 
         if (mileage < 0)
         {
@@ -73,6 +74,7 @@ public sealed class ServiceOrderEntity : Entity
 
         Status = ServiceOrderStatus.Received;
         CreatedAt = DateTimeOffset.UtcNow;
+        Version = 1;
 
         AddHistory(
             previousStatus: null,

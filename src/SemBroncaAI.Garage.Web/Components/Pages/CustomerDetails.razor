@@ -1,5 +1,6 @@
 @page "/customers/{Id:guid}"
-@attribute [Authorize(Policy = "TenantUser")]
+@attribute [Authorize(Policy = ApplicationPermissions.ViewCustomersVehicles)]
+@using SemBroncaAI.Garage.Application.Abstractions.Security
 @using SemBroncaAI.Garage.Web.Components.Customers
 @using SemBroncaAI.Garage.Web.Components.Vehicles
 @using SemBroncaAI.Garage.Web.Models
@@ -25,7 +26,7 @@ else
     <div class="customer-details-page">
         <header class="details-header">
             <div class="details-title"><button class="back-button" @onclick="Back"><MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" /></button><div><span>Cliente</span><h1>@_customer.Name</h1><small>Cadastrado em @_customer.CreatedAt.ToString("dd/MM/yyyy")</small></div></div>
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" OnClick="OpenEditDialogAsync">Editar cliente</MudButton>
+            <AuthorizeView Policy="@ApplicationPermissions.ManageCustomersVehicles"><MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" OnClick="OpenEditDialogAsync">Editar cliente</MudButton></AuthorizeView>
         </header>
 
         <section class="customer-info-card">
@@ -39,7 +40,7 @@ else
             <div class="section-heading"><div><h2>Veículos vinculados</h2><p>@_customer.Vehicles.Count veículo(s) cadastrado(s)</p></div></div>
             @if (_customer.Vehicles.Count == 0)
             {
-                <div class="vehicles-empty"><MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Size="Size.Large" /><span>Nenhum veículo vinculado a este cliente.</span><MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddVehicleAsync">Adicionar veículo</MudButton></div>
+                <div class="vehicles-empty"><MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Size="Size.Large" /><span>Nenhum veículo vinculado a este cliente.</span><AuthorizeView Policy="@ApplicationPermissions.ManageCustomersVehicles"><MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddVehicleAsync">Adicionar veículo</MudButton></AuthorizeView></div>
             }
             else
             {
@@ -49,7 +50,7 @@ else
                         <article class="vehicle-card">
                             <div class="vehicle-title"><strong>@vehicle.Plate</strong><span>@vehicle.Brand @vehicle.Model</span></div>
                             <div class="vehicle-data"><span><small>Versão</small>@vehicle.Version</span><span><small>Ano</small>@vehicle.Year</span><span><small>Cor</small>@vehicle.Color</span><span><small>Quilometragem</small>@vehicle.Mileage.ToString("N0") km</span></div>
-                            <div class="vehicle-actions"><MudButton Variant="Variant.Text" OnClick="@(() => OpenVehicle(vehicle.Id))">Abrir veículo</MudButton><MudButton Variant="Variant.Outlined" OnClick="@(() => ReceiveVehicle(vehicle.Id))">Receber veículo</MudButton></div>
+                            <div class="vehicle-actions"><MudButton Variant="Variant.Text" OnClick="@(() => OpenVehicle(vehicle.Id))">Abrir veículo</MudButton><AuthorizeView Policy="@ApplicationPermissions.CreateServiceOrder"><MudButton Variant="Variant.Outlined" OnClick="@(() => ReceiveVehicle(vehicle.Id))">Receber veículo</MudButton></AuthorizeView></div>
                         </article>
                     }
                 </div>

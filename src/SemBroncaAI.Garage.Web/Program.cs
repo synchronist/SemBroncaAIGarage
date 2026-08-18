@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Authentication;
 using MudBlazor.Services;
 using SemBroncaAI.Garage.Web.Components;
 using SemBroncaAI.Garage.Web.Services;
+using SemBroncaAI.Garage.Application.Abstractions.Security;
 
 var builder = WebApplication.CreateBuilder(args);
+WebDeploymentConfiguration.Configure(builder);
 
 builder.Services
     .AddRazorComponents()
@@ -58,10 +60,21 @@ builder.Services.AddAuthentication(options =>
         };
     });
 builder.Services.AddAuthorization(options =>
+{
+    foreach (var permission in ApplicationPermissions.All)
+        options.AddPolicy(permission, policy => policy
+            .RequireAuthenticatedUser()
+            .RequireClaim("garage_id")
+            .RequireClaim(ApplicationPermissions.ClaimType, permission));
     options.AddPolicy("TenantUser", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("garage_id")
-        .RequireAssertion(context => !context.User.IsInRole("PlatformAdmin"))));
+        .RequireAssertion(context => !context.User.IsInRole("PlatformAdmin")));
+    options.AddPolicy(PlatformAuthorization.Policy, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireRole("PlatformAdmin")
+        .RequireAssertion(context => !context.User.HasClaim(claim => claim.Type == "garage_id")));
+});
 builder.Services.AddSingleton<IServerApiSessionStore, ServerApiSessionStore>();
 
 var apiBaseUrl = builder.Configuration["Api:BaseUrl"]
@@ -81,6 +94,15 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
+    options.AddPolicy(WebAuthenticationEndpoints.PasswordRecoveryRateLimitPolicy, context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0
+            }));
 });
 
 builder.Services.AddScoped<AuthenticatedApiHttpClient>();
@@ -90,8 +112,11 @@ builder.Services.AddScoped<CustomerService>(CreateAuthenticatedService<CustomerS
 builder.Services.AddScoped<VehicleService>(CreateAuthenticatedService<VehicleService>);
 builder.Services.AddScoped<GarageService>(CreateAuthenticatedService<GarageService>);
 builder.Services.AddScoped<EstimateService>(CreateAuthenticatedService<EstimateService>);
+builder.Services.AddScoped<PlatformGarageService>(CreateAuthenticatedService<PlatformGarageService>);
+builder.Services.AddScoped<TeamService>(CreateAuthenticatedService<TeamService>);
 builder.Services.AddHttpClient<PublicApprovalService>(client =>
     client.BaseAddress = new Uri(apiBaseUrl));
+builder.Services.AddHttpClient<TeamInvitationService>(client => client.BaseAddress = new Uri(apiBaseUrl));
 builder.Services.AddScoped<WhatsAppShareBuilder>();
 
 var app = builder.Build();
@@ -102,6 +127,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseRateLimiter();
 app.UseAuthentication();

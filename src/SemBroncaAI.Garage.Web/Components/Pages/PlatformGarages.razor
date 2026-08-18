@@ -1,0 +1,25 @@
+@page "/platform-admin/garages"
+@layout PlatformAdminLayout
+@attribute [Authorize(Policy = PlatformAuthorization.Policy)]
+@using SemBroncaAI.Garage.Application.Abstractions.Security
+@using SemBroncaAI.Garage.Application.Features.PlatformAdministration
+@inject PlatformGarageService Service
+
+<PageTitle>Oficinas | SemBroncaAI</PageTitle>
+<div class="page-head"><div><span class="eyebrow">CLIENTES</span><h1>Oficinas</h1><p>Consulte e gerencie as oficinas cadastradas na plataforma.</p></div><a class="primary" href="/platform-admin/garages/new"><MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />Nova oficina</a></div>
+<section class="filters"><label class="search"><MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" /><input @bind="_search" placeholder="Buscar por nome ou documento" @onkeydown="OnSearchKeyDown" /></label><label class="filter-select"><span>Status</span><select @bind="_activeFilter"><option value="all">Todas</option><option value="active">Ativas</option><option value="inactive">Inativas</option></select></label><button @onclick="ApplyFilters">Buscar</button></section>
+@if (_loading) { <div class="state"><MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Medium" /><strong>Carregando oficinas</strong><span>Aguarde enquanto organizamos os resultados.</span></div> }
+else if (_error is not null) { <div class="state"><span class="state-icon"><MudIcon Icon="@Icons.Material.Filled.CloudOff" /></span><strong>Não foi possível carregar as oficinas</strong><span>@_error</span><button @onclick="LoadAsync">Tentar novamente</button></div> }
+else if (_result is null || _result.Items.Count == 0) { <div class="state"><span class="state-icon"><MudIcon Icon="@Icons.Material.Filled.Storefront" /></span><strong>Nenhuma oficina encontrada</strong><span>Ajuste a busca ou os filtros para tentar novamente.</span></div> }
+else { <div class="result-summary"><strong>@_result.TotalItems</strong><span>@(_result.TotalItems == 1 ? "oficina encontrada" : "oficinas encontradas")</span></div><section class="table-wrap"><table><thead><tr><th>Oficina</th><th>Contato</th><th>Owner principal</th><th>Usuários</th><th>Cadastro</th><th>Status</th><th></th></tr></thead><tbody>@foreach (var item in _result.Items) { <tr><td><strong>@item.Name</strong><small>@item.Document</small></td><td><span>@item.Email</span><small>@item.Phone</small></td><td><span>@(item.OwnerName ?? "Não identificado")</span><small>@item.OwnerEmail</small></td><td><span class="user-count"><MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" />@item.UserCount</span></td><td>@item.CreatedAt.ToString("dd/MM/yyyy")</td><td><span class="badge @(item.Active ? "active" : "inactive")">@(item.Active ? "Ativa" : "Inativa")</span></td><td><a class="open-action" aria-label="Abrir @item.Name" href="@($"/platform-admin/garages/{item.Id}")"><MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" /></a></td></tr> }</tbody></table></section>
+    <section class="mobile-list">@foreach(var item in _result.Items){<a class="garage-card" href="@($"/platform-admin/garages/{item.Id}")"><div class="card-head"><span class="garage-mark">@GetInitial(item.Name)</span><span class="garage-name"><strong>@item.Name</strong><small>@item.Document</small></span><span class="badge @(item.Active ? "active" : "inactive")">@(item.Active ? "Ativa" : "Inativa")</span></div><div class="card-grid"><span><small>Contato</small>@item.Email</span><span><small>Owner</small>@(item.OwnerName ?? "Não identificado")</span><span><small>Usuários</small>@item.UserCount</span><span><small>Cadastro</small>@item.CreatedAt.ToString("dd/MM/yyyy")</span></div><div class="card-action">Ver detalhes <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" /></div></a>}</section>
+    <div class="pager"><button disabled="@(_page <= 1)" @onclick="Previous">Anterior</button><span>Página @_result.Page de @Math.Max(1,_result.TotalPages)</span><button disabled="@(_page >= _result.TotalPages)" @onclick="Next">Próxima</button></div> }
+
+@code {
+    private PlatformGarageListResponse? _result; private string? _search; private string _activeFilter="all"; private int _page=1; private const int PageSize=20; private bool _loading=true; private string? _error;
+    private static string GetInitial(string name)=>string.IsNullOrWhiteSpace(name)?"O":char.ToUpperInvariant(name.Trim()[0]).ToString();
+    protected override Task OnInitializedAsync()=>LoadAsync();
+    private async Task LoadAsync(){_loading=true;_error=null;try{bool? active=_activeFilter switch{"active"=>true,"inactive"=>false,_=>null};_result=await Service.ListAsync(_search,active,_page,PageSize);}catch{_error="Não foi possível carregar as oficinas.";}finally{_loading=false;}}
+    private async Task ApplyFilters(){_page=1;await LoadAsync();} private async Task Previous(){_page--;await LoadAsync();} private async Task Next(){_page++;await LoadAsync();}
+    private async Task OnSearchKeyDown(KeyboardEventArgs args){if(args.Key=="Enter")await ApplyFilters();}
+}

@@ -23,7 +23,7 @@ public sealed class ServiceOrderEstimateItemEntity : Entity
         decimal unitPrice)
     {
         EstimateId = Guard.AgainstEmpty(estimateId, nameof(estimateId));
-        Description = Guard.AgainstNullOrWhiteSpace(description, nameof(description));
+        Description = Guard.RequiredWithMaximumLength(description, FieldLengthLimits.EstimateItemDescription, nameof(description));
 
         if (!Enum.IsDefined(type))
         {

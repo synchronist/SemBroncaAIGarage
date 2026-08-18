@@ -4,6 +4,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using SemBroncaAI.Garage.Web.Models;
+using SemBroncaAI.Garage.Application.Abstractions.Security;
 
 namespace SemBroncaAI.Garage.Web.Services;
 
@@ -33,6 +34,16 @@ public sealed class ApiBearerBridgeHandler(
         var user = await response.Content.ReadFromJsonAsync<CurrentUserModel>(cancellationToken: Context.RequestAborted);
         if (user is null) return AuthenticateResult.Fail("Usuário inválido.");
 
+        var claims = ApiBearerBridgeClaims.Create(user, token);
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, SchemeName));
+        return AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName));
+    }
+}
+
+public static class ApiBearerBridgeClaims
+{
+    public static IReadOnlyCollection<Claim> Create(CurrentUserModel user, string token)
+    {
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
@@ -41,7 +52,8 @@ public sealed class ApiBearerBridgeHandler(
         };
         if (user.GarageId is not null) claims.Add(new Claim("garage_id", user.GarageId.Value.ToString()));
         claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, SchemeName));
-        return AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName));
+        claims.AddRange(user.EffectivePermissions.Select(permission =>
+            new Claim(ApplicationPermissions.ClaimType, permission)));
+        return claims;
     }
 }

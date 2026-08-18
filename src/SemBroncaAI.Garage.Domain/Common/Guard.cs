@@ -44,4 +44,20 @@ public static class Guard
 
         return value.Trim();
     }
+
+    public static string AgainstMaximumLength(string value, int maximumLength, string parameterName)
+    {
+        if (value.Length > maximumLength)
+            throw new ArgumentException($"O campo deve possuir no máximo {maximumLength} caracteres.", parameterName);
+        return value;
+    }
+
+    public static string RequiredWithMaximumLength(string? value, int maximumLength, string parameterName) =>
+        AgainstMaximumLength(AgainstNullOrWhiteSpace(value, parameterName), maximumLength, parameterName);
+
+    public static string OptionalWithMaximumLength(string? value, int maximumLength, string parameterName)
+    {
+        var normalized = value?.Trim() ?? string.Empty;
+        return AgainstMaximumLength(normalized, maximumLength, parameterName);
+    }
 }

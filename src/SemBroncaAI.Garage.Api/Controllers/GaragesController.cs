@@ -16,6 +16,7 @@ namespace SemBroncaAI.Garage.Api.Controllers;
 public sealed class GaragesController(ICurrentGarage currentGarage) : ControllerBase
 {
     [HttpGet("settings")]
+    [Authorize(Policy = ApplicationPermissions.ManageGarageSettings)]
     public async Task<IActionResult> GetSettings(
         [FromServices] GetGarageSettingsHandler handler,
         CancellationToken cancellationToken)
@@ -33,7 +34,25 @@ public sealed class GaragesController(ICurrentGarage currentGarage) : Controller
         return Ok(garage);
     }
 
+    [HttpGet("context")]
+    [Authorize(Policy = ApplicationPermissions.ViewEstimateValues)]
+    public async Task<IActionResult> GetContext(
+        [FromServices] GetGarageSettingsHandler handler, CancellationToken cancellationToken)
+    {
+        var garage = await handler.HandleContextAsync(currentGarage.RequireGarageId(), cancellationToken);
+        return garage is null ? NotFound(new { message = "Oficina não encontrada." }) : Ok(garage);
+    }
+
+    [HttpGet("branding")]
+    public async Task<IActionResult> GetBranding(
+        [FromServices] GetGarageSettingsHandler handler, CancellationToken cancellationToken)
+    {
+        var garage = await handler.HandleBrandingAsync(currentGarage.RequireGarageId(), cancellationToken);
+        return garage is null ? NotFound(new { message = "Oficina não encontrada." }) : Ok(garage);
+    }
+
     [HttpPut("settings")]
+    [Authorize(Policy = ApplicationPermissions.ManageGarageSettings)]
     public async Task<IActionResult> Update(
         [FromBody] UpdateGarageSettingsCommand command,
         [FromServices] UpdateGarageSettingsHandler handler,
@@ -54,6 +73,7 @@ public sealed class GaragesController(ICurrentGarage currentGarage) : Controller
     }
 
     [HttpPost("logo")]
+    [Authorize(Policy = ApplicationPermissions.ManageGarageSettings)]
     [RequestSizeLimit(UploadGarageLogoHandler.MaximumBytes + 64 * 1024)]
     public async Task<IActionResult> UploadLogo(IFormFile file,
         [FromServices] UploadGarageLogoHandler handler, CancellationToken cancellationToken)

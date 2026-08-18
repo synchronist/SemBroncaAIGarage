@@ -1,6 +1,7 @@
 @page "/service-orders/{Id:guid}/print"
 @layout PrintLayout
-@attribute [Authorize(Policy = "TenantUser")]
+@attribute [Authorize(Policy = ApplicationPermissions.ViewEstimateValues)]
+@using SemBroncaAI.Garage.Application.Abstractions.Security
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
 @using SemBroncaAI.Garage.Web.Components.Documents
@@ -68,7 +69,7 @@ else
         {
             var order = await ServiceOrderService.GetByIdAsync(Id);
             if (order is null) return;
-            var garage = await GarageService.GetAsync();
+            var garage = await GarageService.GetContextAsync();
             if (garage is null) return;
             _document = ServiceOrderPrintBuilder.Build(order, garage, GarageService.GetLogoUrl(garage.LogoStorageKey));
         }

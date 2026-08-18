@@ -57,10 +57,10 @@ public sealed class CustomerEntity : Entity
         string phone,
         string email)
     {
-        Name = Guard.AgainstNullOrWhiteSpace(name, nameof(name));
-        Document = Guard.AgainstNullOrWhiteSpace(document, nameof(document));
-        Phone = Guard.AgainstNullOrWhiteSpace(phone, nameof(phone));
-        Email = Guard.AgainstNullOrWhiteSpace(email, nameof(email));
+        Name = Guard.RequiredWithMaximumLength(name, FieldLengthLimits.PersonName, nameof(name));
+        Document = Guard.RequiredWithMaximumLength(document, FieldLengthLimits.Document, nameof(document));
+        Phone = Guard.RequiredWithMaximumLength(phone, FieldLengthLimits.Phone, nameof(phone));
+        Email = Guard.RequiredWithMaximumLength(email, FieldLengthLimits.Email, nameof(email));
 
         if (!Email.Contains('@') || Email.StartsWith('@') || Email.EndsWith('@'))
         {

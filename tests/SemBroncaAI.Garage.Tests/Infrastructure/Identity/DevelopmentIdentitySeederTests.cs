@@ -6,7 +6,7 @@ namespace SemBroncaAI.Garage.Tests.Infrastructure.Identity;
 public sealed class DevelopmentIdentitySeederTests
 {
     [Fact]
-    public async Task Seed_should_be_idempotent_and_associate_owner_with_configured_garage()
+    public async Task Seed_should_be_idempotent_and_create_all_development_profiles_in_same_garage()
     {
         var options = ValidOptions();
         var store = new SeedStore(options.GarageId);
@@ -15,12 +15,16 @@ public sealed class DevelopmentIdentitySeederTests
         await seeder.SeedAsync(options);
         await seeder.SeedAsync(options);
 
-        store.User.ShouldNotBeNull();
-        store.User.GarageId.ShouldBe(options.GarageId);
-        store.User.Active.ShouldBeTrue();
-        store.User.EmailConfirmed.ShouldBeTrue();
-        store.CreatedUsers.ShouldBe(1);
-        store.OwnerRoleAssignments.ShouldBe(1);
+        store.Users.Count.ShouldBe(4);
+        store.Users[options.PlatformAdminEmail].GarageId.ShouldBeNull();
+        store.Users.Where(entry => entry.Key != options.PlatformAdminEmail).Select(entry => entry.Value)
+            .ShouldAllBe(user => user.GarageId == options.GarageId);
+        store.Users.Values.ShouldAllBe(user => user.Active && user.EmailConfirmed);
+        store.CreatedUsers.ShouldBe(4);
+        store.RoleAssignments.ShouldBe(4);
+        store.AssignedRoles.ShouldBe(
+            [ApplicationRoles.Owner, ApplicationRoles.Receptionist, ApplicationRoles.Mechanic, ApplicationRoles.PlatformAdmin],
+            ignoreOrder: true);
         store.Roles.ShouldBe(ApplicationRoles.All, ignoreOrder: true);
     }
 
@@ -35,16 +39,27 @@ public sealed class DevelopmentIdentitySeederTests
 
         exception.Message.ShouldContain("não existe");
         store.CreatedUsers.ShouldBe(0);
-        store.CreatedGarages.ShouldBe(0);
     }
 
-    [Fact]
-    public async Task Seed_should_fail_clearly_without_password()
+    [Theory]
+    [InlineData("Owner")]
+    [InlineData("Receptionist")]
+    [InlineData("Mechanic")]
+    [InlineData("PlatformAdmin")]
+    public async Task Seed_should_fail_clearly_without_each_password(string profile)
     {
-        var options = ValidOptions(); options.OwnerPassword = string.Empty;
+        var options = ValidOptions();
+        switch (profile)
+        {
+            case "Owner": options.OwnerPassword = string.Empty; break;
+            case "Receptionist": options.ReceptionistPassword = string.Empty; break;
+            case "Mechanic": options.MechanicPassword = string.Empty; break;
+            case "PlatformAdmin": options.PlatformAdminPassword = string.Empty; break;
+        }
+
         var exception = await Should.ThrowAsync<InvalidOperationException>(() =>
             new DevelopmentIdentitySeeder(new SeedStore(options.GarageId)).SeedAsync(options));
-        exception.Message.ShouldContain("IdentitySeed:OwnerPassword");
+        exception.Message.ShouldContain($"IdentitySeed:{profile}Password");
     }
 
     private static DevelopmentIdentitySeedOptions ValidOptions() => new()
@@ -54,31 +69,47 @@ public sealed class DevelopmentIdentitySeederTests
         OwnerName = "Owner Development",
         OwnerEmail = "owner@test.local",
         OwnerUserName = "owner",
-        OwnerPassword = "Development123"
+        OwnerPassword = "Development123",
+        ReceptionistPassword = "Development123",
+        MechanicPassword = "Development123",
+        PlatformAdminPassword = "Development123"
     };
 
     private sealed class SeedStore(Guid? existingGarageId) : IDevelopmentIdentitySeedStore
     {
         public HashSet<string> Roles { get; } = [];
-        public ApplicationUser? User { get; private set; }
+        public Dictionary<string, ApplicationUser> Users { get; } = [];
+        public HashSet<string> AssignedRoles { get; } = [];
         public int CreatedUsers { get; private set; }
-        public int OwnerRoleAssignments { get; private set; }
-        public int CreatedGarages => 0;
+        public int RoleAssignments { get; private set; }
 
         public Task<bool> GarageExistsAsync(Guid garageId, CancellationToken cancellationToken) =>
             Task.FromResult(existingGarageId == garageId);
-        public Task EnsureRoleAsync(string role, CancellationToken cancellationToken) { Roles.Add(role); return Task.CompletedTask; }
-        public Task<ApplicationUser?> FindUserAsync(string email, string userName, CancellationToken cancellationToken) => Task.FromResult(User);
-        public Task<ApplicationUser> CreateOwnerAsync(DevelopmentIdentitySeedOptions options, CancellationToken cancellationToken)
+
+        public Task EnsureRoleAsync(string role, CancellationToken cancellationToken)
+        {
+            Roles.Add(role);
+            return Task.CompletedTask;
+        }
+
+        public Task<ApplicationUser?> FindUserAsync(string email, string userName, CancellationToken cancellationToken) =>
+            Task.FromResult(Users.GetValueOrDefault(email));
+
+        public Task<ApplicationUser> CreateUserAsync(
+            DevelopmentSeedUser seedUser, Guid? garageId, CancellationToken cancellationToken)
         {
             CreatedUsers++;
-            User = ApplicationUser.CreateGarageUser(options.OwnerName, options.OwnerEmail, options.OwnerUserName, options.GarageId);
-            User.EmailConfirmed = true;
-            return Task.FromResult(User);
+            var user = garageId is null
+                ? ApplicationUser.CreatePlatformAdmin(seedUser.Name, seedUser.Email, seedUser.UserName)
+                : ApplicationUser.CreateGarageUser(seedUser.Name, seedUser.Email, seedUser.UserName, garageId.Value);
+            user.EmailConfirmed = true;
+            Users[seedUser.Email] = user;
+            return Task.FromResult(user);
         }
-        public Task EnsureOwnerRoleAsync(ApplicationUser user, CancellationToken cancellationToken)
+
+        public Task EnsureRoleAsync(ApplicationUser user, string role, CancellationToken cancellationToken)
         {
-            if (OwnerRoleAssignments == 0) OwnerRoleAssignments++;
+            if (AssignedRoles.Add(role)) RoleAssignments++;
             return Task.CompletedTask;
         }
     }

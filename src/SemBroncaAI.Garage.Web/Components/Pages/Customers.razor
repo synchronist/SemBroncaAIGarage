@@ -1,5 +1,6 @@
 @page "/customers"
-@attribute [Authorize(Policy = "TenantUser")]
+@attribute [Authorize(Policy = ApplicationPermissions.ViewCustomersVehicles)]
+@using SemBroncaAI.Garage.Application.Abstractions.Security
 @using SemBroncaAI.Garage.Web.Components.Customers
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
@@ -14,7 +15,9 @@
 <div class="customers-page">
     <header class="customers-header">
         <div><h1>Clientes</h1><p>Consulte os clientes e veículos vinculados à oficina.</p></div>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="OpenCreateDialogAsync">Novo cliente</MudButton>
+        <AuthorizeView Policy="@ApplicationPermissions.ManageCustomersVehicles">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="OpenCreateDialogAsync">Novo cliente</MudButton>
+        </AuthorizeView>
     </header>
 
     <section class="customers-toolbar">
@@ -29,7 +32,7 @@
     }
     else if (_data is null || _data.Items.Count == 0)
     {
-        <div class="customers-state"><MudIcon Icon="@Icons.Material.Filled.PeopleOutline" Size="Size.Large" /><h2>Nenhum cliente encontrado</h2><p>Cadastre um cliente ou ajuste sua busca.</p></div>
+        <div class="customers-state"><MudIcon Icon="@Icons.Material.Filled.PeopleOutline" Size="Size.Large" /><h2>Nenhum cliente encontrado</h2><p>Ajuste sua busca ou consulte a equipe administrativa.</p></div>
     }
     else
     {

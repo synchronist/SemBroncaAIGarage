@@ -11,7 +11,7 @@ public sealed record ListServiceOrdersItem(
     string CustomerComplaint,
     Guid CustomerId,
     string CustomerName,
-    string CustomerPhone,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string? CustomerPhone,
     Guid VehicleId,
     string Plate,
     string Brand,

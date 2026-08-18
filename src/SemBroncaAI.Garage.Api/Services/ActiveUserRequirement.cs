@@ -38,7 +38,7 @@ public sealed class ActiveUserAuthorizationHandler(
         }
 
         if (user.GarageId is not null && await dbContext.Garages.AsNoTracking()
-            .AnyAsync(garage => garage.Id == user.GarageId.Value))
+            .AnyAsync(garage => garage.Id == user.GarageId.Value && garage.Active))
         {
             context.Succeed(requirement);
         }

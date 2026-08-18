@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SemBroncaAI.Garage.Domain.Entities.Vehicle;
+using SemBroncaAI.Garage.Domain.Common;
 
 namespace SemBroncaAI.Garage.Infrastructure.Persistence.Configurations;
 
@@ -13,25 +14,25 @@ public sealed class VehicleConfiguration : IEntityTypeConfiguration<VehicleEntit
         builder.HasKey(v => v.Id);
 
         builder.Property(v => v.Plate)
-            .HasMaxLength(10)
+            .HasMaxLength(FieldLengthLimits.VehiclePlate)
             .IsRequired();
 
         builder.Property(v => v.Brand)
-            .HasMaxLength(100)
+            .HasMaxLength(FieldLengthLimits.VehicleBrand)
             .IsRequired();
 
         builder.Property(v => v.Model)
-            .HasMaxLength(100)
+            .HasMaxLength(FieldLengthLimits.VehicleModel)
             .IsRequired();
 
         builder.Property(v => v.Version)
-            .HasMaxLength(100);
+            .HasMaxLength(FieldLengthLimits.VehicleVersion);
 
         builder.Property(v => v.Color)
-            .HasMaxLength(50);
+            .HasMaxLength(FieldLengthLimits.VehicleColor);
 
         builder.Property(v => v.Fuel)
-            .HasMaxLength(30);
+            .HasMaxLength(FieldLengthLimits.VehicleFuel);
 
         builder.Property(v => v.Year)
             .IsRequired();

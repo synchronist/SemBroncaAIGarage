@@ -271,6 +271,57 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                     b.ToTable("Garages", (string)null);
                 });
 
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.Garage.GarageSubscriptionEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CurrentPeriodEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CurrentPeriodStart")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GarageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Plan")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("SuspendedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("TrialEndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GarageId")
+                        .IsUnique();
+
+                    b.ToTable("GarageSubscriptions", (string)null);
+                });
+
             modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.ServiceOrder.ServiceOrderDiagnosisEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -337,11 +388,19 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                     b.Property<Guid>("VehicleId")
                         .HasColumnType("uuid");
 
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
                     b.HasKey("Id");
 
                     b.HasIndex("VehicleId");
 
                     b.HasIndex("GarageId", "ArchivedAt");
+
+                    b.HasIndex("GarageId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ServiceOrders_GarageId_Number");
 
                     b.ToTable("ServiceOrders", (string)null);
                 });
@@ -397,10 +456,13 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ServiceOrderId");
-
                     b.HasIndex("TokenHash")
                         .IsUnique();
+
+                    b.HasIndex("ServiceOrderId", "EstimateUpdatedAt")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Approval_ActivePendingVersion")
+                        .HasFilter("\"Status\" = 1 AND \"InvalidatedAt\" IS NULL");
 
                     b.ToTable("ServiceOrderEstimateApprovals", (string)null);
                 });
@@ -488,6 +550,50 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                     b.HasIndex("ServiceOrderId");
 
                     b.ToTable("ServiceOrderHistory", (string)null);
+                });
+
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.TeamInvitationEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GarageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("InvitedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvitedByUserId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("GarageId", "UserId");
+
+                    b.ToTable("TeamInvitations", (string)null);
                 });
 
             modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.Vehicle.VehicleEntity", b =>
@@ -634,6 +740,19 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("SemBroncaAI.Garage.Infrastructure.Persistence.ServiceOrderNumberSequence", b =>
+                {
+                    b.Property<Guid>("GarageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("LastNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("GarageId");
+
+                    b.ToTable("ServiceOrderNumberSequences", (string)null);
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
@@ -694,6 +813,15 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Garage");
+                });
+
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.Garage.GarageSubscriptionEntity", b =>
+                {
+                    b.HasOne("SemBroncaAI.Garage.Domain.Entities.Garage.GarageEntity", null)
+                        .WithOne()
+                        .HasForeignKey("SemBroncaAI.Garage.Domain.Entities.Garage.GarageSubscriptionEntity", "GarageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.ServiceOrder.ServiceOrderDiagnosisEntity", b =>
@@ -764,6 +892,21 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                     b.Navigation("ServiceOrder");
                 });
 
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.TeamInvitationEntity", b =>
+                {
+                    b.HasOne("SemBroncaAI.Garage.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("InvitedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SemBroncaAI.Garage.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.Vehicle.VehicleEntity", b =>
                 {
                     b.HasOne("SemBroncaAI.Garage.Domain.Entities.Customer.CustomerEntity", "Customer")
@@ -791,6 +934,15 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Garage");
+                });
+
+            modelBuilder.Entity("SemBroncaAI.Garage.Infrastructure.Persistence.ServiceOrderNumberSequence", b =>
+                {
+                    b.HasOne("SemBroncaAI.Garage.Domain.Entities.Garage.GarageEntity", null)
+                        .WithOne()
+                        .HasForeignKey("SemBroncaAI.Garage.Infrastructure.Persistence.ServiceOrderNumberSequence", "GarageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.Customer.CustomerEntity", b =>

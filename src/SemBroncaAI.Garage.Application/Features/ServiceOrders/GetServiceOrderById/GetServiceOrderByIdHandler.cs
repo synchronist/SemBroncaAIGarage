@@ -136,6 +136,7 @@ public sealed class GetServiceOrderByIdHandler
             approvalResponse,
             approvalHistory,
             history,
+            [],
             serviceOrder.ArchivedAt);
     }
 }

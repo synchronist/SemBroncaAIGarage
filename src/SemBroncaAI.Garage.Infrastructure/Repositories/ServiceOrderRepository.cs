@@ -73,6 +73,41 @@ public sealed class ServiceOrderRepository : IServiceOrderRepository
             .FirstOrDefaultAsync(x => x.Id == id && x.GarageId == garageId, cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<ServiceOrderEntity>> ListVehicleHistoryAsync(
+        Guid garageId,
+        Guid vehicleId,
+        Guid excludeServiceOrderId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.ServiceOrders
+            .AsNoTracking()
+            .Where(x => x.GarageId == garageId &&
+                        x.VehicleId == vehicleId &&
+                        x.Id != excludeServiceOrderId)
+            .Include(x => x.Diagnosis)
+            .Include(x => x.Estimate!)
+                .ThenInclude(x => x.Items)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    public async Task<ServiceOrderTechnicalHistoryPage> ListVehicleTechnicalHistoryAsync(
+        Guid garageId, Guid vehicleId, Guid excludeServiceOrderId,
+        int offset, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var query = _context.ServiceOrders.AsNoTracking()
+            .Where(x => x.GarageId == garageId && x.VehicleId == vehicleId &&
+                        x.Id != excludeServiceOrderId);
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Number)
+            .Skip(offset).Take(pageSize)
+            .Include(x => x.Diagnosis)
+            .Include(x => x.Estimate!).ThenInclude(x => x.Items)
+            .ToArrayAsync(cancellationToken);
+        return new(totalCount, items);
+    }
+
     public async Task<ServiceOrderEntity?> GetByApprovalTokenHashAsync(string tokenHash,
         CancellationToken cancellationToken = default)
     {

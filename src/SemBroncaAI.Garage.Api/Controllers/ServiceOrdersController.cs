@@ -13,6 +13,7 @@ using SemBroncaAI.Garage.Application.Features.ServiceOrders.StartDiagnosis;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.StartService;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.WaitForParts;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.ArchiveServiceOrder;
+using SemBroncaAI.Garage.Application.Features.ServiceOrders.GetTechnicalHistory;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.RestoreServiceOrder;
 using SemBroncaAI.Garage.Api.Services;
 
@@ -26,12 +27,14 @@ namespace SemBroncaAI.Garage.Api.Controllers;
 [ApiController]
 [Route("api/service-orders")]
 [Authorize(Policy = "TenantUser")]
+[ServiceFilter(typeof(ServiceOrderConcurrencyExceptionFilter))]
 public sealed class ServiceOrdersController(
     ICurrentGarage currentGarage,
     ICurrentUser currentUser,
     IServiceOrderRepository repository) : ControllerBase
 {
     [HttpPost]
+    [Authorize(Policy = ApplicationPermissions.CreateServiceOrder)]
     public async Task<IActionResult> Create(
         [FromBody] CreateServiceOrderRequest request,
         [FromServices] CreateServiceOrderHandler handler,
@@ -47,13 +50,14 @@ public sealed class ServiceOrdersController(
                 new { id = response.Id },
                 response);
         }
-        catch (InvalidOperationException exception)
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException)
         {
             return BadRequest(new { message = exception.Message });
         }
     }
 
     [HttpGet]
+    [Authorize(Policy = ApplicationPermissions.ViewServiceOrders)]
     public async Task<IActionResult> List(
     [FromQuery] string? search,
     [FromQuery] ServiceOrderStatus? status,
@@ -63,6 +67,8 @@ public sealed class ServiceOrdersController(
     [FromServices] ListServiceOrdersHandler handler,
     CancellationToken cancellationToken)
     {
+        try
+        {
         var query =
             new ListServiceOrdersQuery(
                 currentGarage.RequireGarageId(),
@@ -77,10 +83,20 @@ public sealed class ServiceOrdersController(
                 query,
                 cancellationToken);
 
+        response = ServiceOrderResponseAuthorization.Filter(
+            response,
+            User.HasClaim(ApplicationPermissions.ClaimType, ApplicationPermissions.ViewCustomersVehicles));
+
         return Ok(response);
+        }
+        catch (ArgumentOutOfRangeException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = ApplicationPermissions.ViewServiceOrders)]
     public async Task<IActionResult> GetById(
         Guid id,
         [FromServices] GetServiceOrderByIdHandler handler,
@@ -90,12 +106,20 @@ public sealed class ServiceOrdersController(
             return NotFound(new { message = "Ordem de serviço não encontrada." });
         var response = await handler.HandleAsync(id, cancellationToken);
 
+        if (response is not null)
+            response = ServiceOrderResponseAuthorization.Filter(
+                response,
+                User.HasClaim(ApplicationPermissions.ClaimType, ApplicationPermissions.ViewEstimateValues),
+                User.HasClaim(ApplicationPermissions.ClaimType, ApplicationPermissions.ManageDiagnosis),
+                User.HasClaim(ApplicationPermissions.ClaimType, ApplicationPermissions.ViewCustomersVehicles));
+
         return response is null
             ? NotFound(new { message = "Ordem de serviço não encontrada." })
             : Ok(response);
     }
 
     [HttpPut("{id:guid}/diagnosis")]
+    [Authorize(Policy = ApplicationPermissions.ManageDiagnosis)]
     public async Task<IActionResult> SaveDiagnosis(
     Guid id,
     [FromBody] SaveDiagnosisCommand command,
@@ -125,6 +149,7 @@ public sealed class ServiceOrdersController(
     }
 
     [HttpPut("{id:guid}/estimate")]
+    [Authorize(Policy = ApplicationPermissions.ManageEstimates)]
     public async Task<IActionResult> SaveEstimate(
         Guid id,
         [FromBody] SaveEstimateCommand command,
@@ -143,7 +168,30 @@ public sealed class ServiceOrdersController(
         }
     }
 
+    [HttpGet("{id:guid}/technical-history")]
+    [Authorize(Policy = ApplicationPermissions.ManageDiagnosis)]
+    public async Task<IActionResult> GetTechnicalHistory(
+        Guid id, [FromQuery] int offset, [FromQuery] int pageSize,
+        [FromServices] GetTechnicalHistoryHandler handler,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await handler.HandleAsync(
+                id, currentGarage.RequireGarageId(), offset, pageSize, cancellationToken));
+        }
+        catch (ArgumentOutOfRangeException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException)
+        {
+            return NotFound(new { message = exception.Message });
+        }
+    }
+
     [HttpPost("{id:guid}/archive")]
+    [Authorize(Policy = ApplicationPermissions.ArchiveServiceOrder)]
     public async Task<IActionResult> Archive(Guid id,
         [FromServices] ArchiveServiceOrderHandler handler, CancellationToken cancellationToken)
     {
@@ -152,6 +200,7 @@ public sealed class ServiceOrdersController(
     }
 
     [HttpPost("{id:guid}/restore")]
+    [Authorize(Policy = ApplicationPermissions.ArchiveServiceOrder)]
     public async Task<IActionResult> Restore(Guid id,
         [FromServices] RestoreServiceOrderHandler handler, CancellationToken cancellationToken)
     {
@@ -160,6 +209,7 @@ public sealed class ServiceOrdersController(
     }
 
     [HttpGet("{id:guid}/documents/{documentType}/pdf")]
+    [Authorize(Policy = ApplicationPermissions.ViewEstimateValues)]
     public async Task<IActionResult> DownloadPdf(Guid id, string documentType,
         [FromServices] GetServiceOrderByIdHandler handler, [FromServices] IDocumentPdfGenerator generator,
         CancellationToken cancellationToken)
@@ -187,6 +237,7 @@ public sealed class ServiceOrdersController(
     }
 
     [HttpPost("{id:guid}/start-diagnosis")]
+    [Authorize(Policy = ApplicationPermissions.ManageDiagnosis)]
     public Task<IActionResult> StartDiagnosis(
         Guid id,
         [FromServices] StartDiagnosisHandler handler,
@@ -195,6 +246,7 @@ public sealed class ServiceOrdersController(
             TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
 
     [HttpPost("{id:guid}/send-for-approval")]
+    [Authorize(Policy = ApplicationPermissions.SendEstimateForApproval)]
     public Task<IActionResult> SendForApproval(
         Guid id,
         [FromServices] SendForApprovalHandler handler,
@@ -203,6 +255,7 @@ public sealed class ServiceOrdersController(
             TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
 
     [HttpPost("{id:guid}/start-service")]
+    [Authorize(Policy = ApplicationPermissions.StartService)]
     public Task<IActionResult> StartService(
         Guid id,
         [FromServices] StartServiceHandler handler,
@@ -211,12 +264,14 @@ public sealed class ServiceOrdersController(
             TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
 
     [HttpPost("{id:guid}/revise-estimate")]
+    [Authorize(Policy = ApplicationPermissions.ManageEstimates)]
     public Task<IActionResult> ReviseEstimate(Guid id, [FromServices] ReviseEstimateHandler handler,
         CancellationToken cancellationToken) => ExecuteTransition(() =>
             TenantTransition(id, cancellationToken, async () =>
             { await handler.HandleAsync(id, currentUser.UserId, cancellationToken); return new { status = "Diagnosis" }; }));
 
     [HttpPost("{id:guid}/wait-for-parts")]
+    [Authorize(Policy = ApplicationPermissions.ChangeServiceExecutionStatus)]
     public Task<IActionResult> WaitForParts(
         Guid id,
         [FromServices] WaitForPartsHandler handler,
@@ -225,6 +280,7 @@ public sealed class ServiceOrdersController(
             TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
 
     [HttpPost("{id:guid}/resume-service")]
+    [Authorize(Policy = ApplicationPermissions.ChangeServiceExecutionStatus)]
     public Task<IActionResult> ResumeService(
         Guid id,
         [FromServices] ResumeServiceHandler handler,
@@ -233,6 +289,7 @@ public sealed class ServiceOrdersController(
             TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
 
     [HttpPost("{id:guid}/finish")]
+    [Authorize(Policy = ApplicationPermissions.FinishService)]
     public Task<IActionResult> Finish(
         Guid id,
         [FromServices] FinishServiceHandler handler,
@@ -241,6 +298,7 @@ public sealed class ServiceOrdersController(
             TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
 
     [HttpPost("{id:guid}/deliver")]
+    [Authorize(Policy = ApplicationPermissions.DeliverServiceOrder)]
     public Task<IActionResult> Deliver(
         Guid id,
         [FromServices] DeliverServiceOrderHandler handler,
@@ -249,6 +307,7 @@ public sealed class ServiceOrdersController(
             TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
 
     [HttpPost("{id:guid}/cancel")]
+    [Authorize(Policy = ApplicationPermissions.CancelServiceOrder)]
     public Task<IActionResult> Cancel(
         Guid id,
         [FromServices] CancelServiceOrderHandler handler,

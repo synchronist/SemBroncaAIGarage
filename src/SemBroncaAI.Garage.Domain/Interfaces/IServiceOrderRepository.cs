@@ -22,6 +22,18 @@ public interface IServiceOrderRepository
         int number,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<ServiceOrderEntity>> ListVehicleHistoryAsync(
+        Guid garageId,
+        Guid vehicleId,
+        Guid excludeServiceOrderId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyCollection<ServiceOrderEntity>>([]);
+
+    Task<ServiceOrderTechnicalHistoryPage> ListVehicleTechnicalHistoryAsync(
+        Guid garageId, Guid vehicleId, Guid excludeServiceOrderId,
+        int offset, int pageSize, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new ServiceOrderTechnicalHistoryPage(0, []));
+
     Task AddAsync(
         ServiceOrderEntity serviceOrder,
         CancellationToken cancellationToken = default);
@@ -32,3 +44,7 @@ public interface IServiceOrderRepository
     void RemoveEstimateItems(
         IEnumerable<ServiceOrderEstimateItemEntity> items);
 }
+
+public sealed record ServiceOrderTechnicalHistoryPage(
+    int TotalCount,
+    IReadOnlyCollection<ServiceOrderEntity> Items);

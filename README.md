@@ -94,6 +94,9 @@ O seed de Identity roda somente no ambiente `Development`, usa a Garage indicada
 
 ```powershell
 dotnet user-secrets set "IdentitySeed:OwnerPassword" "sua-senha-local" --project src/SemBroncaAI.Garage.Api
+dotnet user-secrets set "IdentitySeed:ReceptionistPassword" "sua-senha-local" --project src/SemBroncaAI.Garage.Api
+dotnet user-secrets set "IdentitySeed:MechanicPassword" "sua-senha-local" --project src/SemBroncaAI.Garage.Api
+dotnet user-secrets set "IdentitySeed:PlatformAdminPassword" "sua-senha-local" --project src/SemBroncaAI.Garage.Api
 ```
 
 Alternativamente, defina a variável `IdentitySeed__OwnerPassword`. Sem senha, com Garage inexistente ou com usuário associado a outra Garage, a inicialização em Development falha com mensagem explícita. A senha deve ter ao menos 10 caracteres, letras maiúsculas e minúsculas e um dígito; símbolo não é obrigatório. O lockout está preparado para 15 minutos após 5 tentativas inválidas.
@@ -107,6 +110,28 @@ Sessões marcadas com **Lembrar meu acesso** usam cookie persistente; as demais 
 O cofre de credenciais do BFF usa memória local nesta fase incremental. Reiniciar o Web invalida as sessões existentes, e múltiplas réplicas exigirão um store distribuído protegido antes de produção. Não registre cookies, cabeçalhos `Authorization`, senhas nem corpos do login em access logs/APM. O logout remove a credencial server-side e o cookie. Antiforgery protege login/logout baseados em cookie; a chamada Web→API usa bearer e não depende de cookie do navegador.
 
 O endpoint autenticado da API é `GET /api/auth/me`. Para validar a cadeia completa no navegador, `GET /auth/me` no Web usa o cookie e consulta esse endpoint da API server-side; o bearer nunca chega ao browser. Os endpoints `/api/public/approvals/{token}` e `/approval/{token}` continuam anônimos.
+
+## Recuperação de senha
+
+A recuperação usa os token providers oficiais do ASP.NET Core Identity. O token de redefinição expira em duas horas; uma redefinição bem-sucedida atualiza o security stamp e invalida o reuso do link e credenciais anteriores na API. Em Development, o link completo é escrito exclusivamente no log da API para teste local. Em Production, mantenha `PasswordRecovery:Enabled=false` até implementar e registrar um provider transacional: a solicitação pública continua neutra, não consulta o usuário e não gera nem registra token. A inicialização rejeita `Enabled=true` enquanto o sender de Production estiver indisponível.
+
+## Configuração de Production
+
+Os arquivos base não contêm connection string nem URLs locais como fallback de Production. Forneça configurações por variáveis de ambiente, secret store ou arquivo não versionado. API e Web falham na inicialização quando faltar configuração crítica:
+
+- API: `ConnectionStrings__DefaultConnection`, `Web__BaseUrl`, `DataProtection__KeysPath` e `ReverseProxy__KnownProxies__0`;
+- Web: `Api__BaseUrl`, `DataProtection__KeysPath` e `ReverseProxy__KnownProxies__0`;
+- `IdentitySeed__Enabled` e `PasswordRecovery__Enabled` devem permanecer `false` em Production nesta fase.
+
+`DataProtection__KeysPath` deve apontar para storage persistente, compartilhado por todas as réplicas da mesma aplicação e protegido em repouso. API e Web usam nomes estáveis e distintos (`SBGarage.Api` e `SBGarage.Web`). Sem persistência, links protegidos da API e cookies do Web podem ser invalidados após redeploy.
+
+Configure somente os IPs reais dos proxies diretamente confiáveis em `ReverseProxy__KnownProxies__N`. A aplicação processa um salto de `X-Forwarded-For`/`X-Forwarded-Proto`, antes de HTTPS, autenticação e rate limiting. Não aceite esses headers diretamente da internet.
+
+O storage atual de logos é filesystem local em `BrandAssets:RootPath`; somente a chave fica no PostgreSQL. Em host efêmero, monte esse diretório em volume persistente ou a logo será perdida no redeploy.
+
+O cofre de sessões do BFF ainda é memória por processo. Restart encerra sessões; logout remove a entrada e entradas expiradas são removidas quando consultadas ou quando uma nova sessão é criada. Isso é aceito para o primeiro piloto em uma única VPS. Múltiplas réplicas exigem afinidade como medida temporária e, antes de escalar com confiabilidade, um store distribuído protegido. Persistir Data Protection não distribui o bearer guardado no BFF.
+
+O bearer da API possui validade máxima de sete dias e não é revogado no logout nesta fase. Ele fica somente no cofre server-side do Web, não no navegador; após logout a referência da sessão é removida. Revogação real será necessária se tokens passarem a clientes externos, houver suspeita de extração do processo, exigência de encerramento imediato em todas as réplicas ou sessões distribuídas.
 
 ## Isolamento de tenant
 

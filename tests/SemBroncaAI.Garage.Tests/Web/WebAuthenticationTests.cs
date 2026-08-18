@@ -6,6 +6,11 @@ using SemBroncaAI.Garage.Web.Models;
 using SemBroncaAI.Garage.Web.Services;
 using System.Security.Claims;
 using Shouldly;
+using SemBroncaAI.Garage.Application.Abstractions.Security;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Net;
+using SemBroncaAI.Garage.Application.Features.PlatformAdministration;
 
 namespace SemBroncaAI.Garage.Tests.Web;
 
@@ -50,12 +55,25 @@ public sealed class WebAuthenticationTests
     }
 
     [Fact]
+    public void Adding_a_session_should_sweep_other_expired_sessions()
+    {
+        var store = new ServerApiSessionStore();
+        var user = new CurrentUserModel(Guid.NewGuid(), "User", null, "user", Guid.NewGuid(), []);
+        store.Set("expired", new ApiSession("expired-token", DateTimeOffset.UtcNow.AddMinutes(-1), user));
+
+        store.Set("current", new ApiSession("current-token", DateTimeOffset.UtcNow.AddMinutes(5), user));
+
+        store.TryGet("expired", out _).ShouldBeFalse();
+        store.TryGet("current", out _).ShouldBeTrue();
+    }
+
+    [Fact]
     public void Me_contract_should_be_protected_and_expose_only_safe_fields()
     {
         typeof(AuthController).GetMethod(nameof(AuthController.Me))!
             .GetCustomAttribute<AuthorizeAttribute>()!.Policy.ShouldBe("ActiveUser");
         typeof(CurrentUserResponse).GetProperties().Select(property => property.Name)
-            .ShouldBe(["UserId", "Name", "Email", "Username", "GarageId", "Roles"], ignoreOrder: true);
+            .ShouldBe(["UserId", "Name", "Email", "Username", "GarageId", "Roles", "Permissions"], ignoreOrder: true);
         typeof(CurrentUserResponse).GetProperties().Select(property => property.Name)
             .ShouldNotContain(name => name.Contains("Password") || name.Contains("Stamp") || name.Contains("Token"));
     }
@@ -98,5 +116,129 @@ public sealed class WebAuthenticationTests
         WebAuthenticationEndpoints.ResolveApiAccessToken(
             new ClaimsPrincipal(new ClaimsIdentity()),
             new ServerApiSessionStore()).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Json_reader_should_preserve_known_json_and_ignore_html_or_invalid_json()
+    {
+        using var valid = Content("{\"code\":\"same-password\"}", "application/json");
+        (await WebAuthenticationEndpoints.TryReadJsonAsync<PasswordResetErrorModel>(valid))!.Code.ShouldBe("same-password");
+
+        using var html = Content("<html>proxy failure</html>", "text/html");
+        (await WebAuthenticationEndpoints.TryReadJsonAsync<PasswordResetErrorModel>(html)).ShouldBeNull();
+
+        using var invalid = Content("not-json", "application/json");
+        (await WebAuthenticationEndpoints.TryReadJsonAsync<PasswordResetErrorModel>(invalid)).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Inactive_garage_code_should_reach_the_login_message()
+    {
+        using var response = new HttpResponseMessage(HttpStatusCode.Forbidden)
+        {
+            Content = Content("{\"message\":\"safe\",\"code\":\"garage-inactive\"}", "application/json")
+        };
+
+        var error = await WebAuthenticationEndpoints.ResolveLoginErrorAsync(response);
+
+        error.ShouldBe(AuthenticationErrorCodes.GarageInactive);
+        LoginErrorMessages.Resolve(error)
+            .ShouldBe("O acesso desta oficina está temporariamente indisponível.");
+    }
+
+    [Fact]
+    public async Task Inactive_garage_status_should_survive_even_when_an_intermediary_removes_the_body()
+    {
+        using var response = new HttpResponseMessage(HttpStatusCode.Forbidden);
+
+        var error = await WebAuthenticationEndpoints.ResolveLoginErrorAsync(response);
+
+        error.ShouldBe(AuthenticationErrorCodes.GarageInactive);
+        LoginErrorMessages.Resolve(error)
+            .ShouldBe("O acesso desta oficina está temporariamente indisponível.");
+    }
+
+    [Fact]
+    public async Task Generic_unauthorized_response_should_not_gain_specific_account_information()
+    {
+        using var response = new HttpResponseMessage(HttpStatusCode.Unauthorized)
+        {
+            Content = Content("{\"message\":\"invalid\"}", "application/json")
+        };
+
+        var error = await WebAuthenticationEndpoints.ResolveLoginErrorAsync(response);
+
+        error.ShouldBe("invalid");
+        LoginErrorMessages.Resolve(error)
+            .ShouldBe("Não foi possível entrar com as credenciais informadas.");
+    }
+
+    [Theory]
+    [InlineData(423, "locked")]
+    [InlineData(429, "limited")]
+    [InlineData(500, "unavailable")]
+    public async Task Existing_login_failure_states_should_remain_distinct(int statusCode, string expected)
+    {
+        using var response = new HttpResponseMessage((HttpStatusCode)statusCode);
+        (await WebAuthenticationEndpoints.ResolveLoginErrorAsync(response)).ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData("Owner", ApplicationPermissions.CreateServiceOrder, "/")]
+    [InlineData("Receptionist", ApplicationPermissions.CreateServiceOrder, "/")]
+    [InlineData("Mechanic", ApplicationPermissions.ViewServiceOrders, "/service-orders")]
+    [InlineData("PlatformAdmin", null, "/platform-admin")]
+    public void Landing_page_should_be_accessible_for_each_profile(string role, string? permission, string expected)
+    {
+        var claims = new List<Claim> { new(ClaimTypes.Role, role) };
+        if (permission is not null) claims.Add(new Claim(ApplicationPermissions.ClaimType, permission));
+        var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+
+        AuthorizedLandingPage.For(user).ShouldBe(expected);
+    }
+
+    [Fact]
+    public void Mechanic_return_url_should_only_be_preserved_when_authorized()
+    {
+        var user = Principal("Mechanic", ApplicationPermissions.ViewServiceOrders);
+
+        AuthorizedLandingPage.Resolve(user, "/service-orders/00000000-0000-0000-0000-000000000001")
+            .ShouldBe("/service-orders/00000000-0000-0000-0000-000000000001");
+        AuthorizedLandingPage.Resolve(user, "/settings").ShouldBe("/service-orders");
+        AuthorizedLandingPage.Resolve(user, "https://evil.example").ShouldBe("/service-orders");
+    }
+
+    [Fact]
+    public async Task Platform_onboarding_client_should_preserve_api_errors_by_field()
+    {
+        using var client = new HttpClient(new StaticResponseHandler(new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = Content("{\"message\":\"Revise os campos destacados abaixo.\",\"errors\":{\"ownerEmail\":[\"Informe um e-mail válido.\"]}}", "application/json")
+        })) { BaseAddress = new Uri("http://localhost/") };
+        var service = new PlatformGarageService(client);
+
+        var exception = await Should.ThrowAsync<PlatformGarageFormValidationException>(() => service.CreateAsync(
+            new CreatePlatformGarageCommand("Garage", "123", "15999999999", "garage@test.local", "Owner", "invalid", "owner", "ValidPass1", "ValidPass1")));
+
+        exception.Errors["ownerEmail"].ShouldBe(["Informe um e-mail válido."]);
+        exception.Message.ShouldBe("Revise os campos destacados abaixo.");
+    }
+
+    private static ClaimsPrincipal Principal(string role, params string[] permissions) =>
+        new(new ClaimsIdentity(
+            [new Claim(ClaimTypes.Role, role), .. permissions.Select(permission => new Claim(ApplicationPermissions.ClaimType, permission))],
+            "test"));
+
+    private static StringContent Content(string value, string mediaType)
+    {
+        var content = new StringContent(value, Encoding.UTF8);
+        content.Headers.ContentType = new MediaTypeHeaderValue(mediaType);
+        return content;
+    }
+
+    private sealed class StaticResponseHandler(HttpResponseMessage response) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(response);
     }
 }

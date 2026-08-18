@@ -11,10 +11,15 @@ namespace SemBroncaAI.Garage.Api.Controllers;
 public sealed class VehiclesController(ICurrentGarage currentGarage) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] string? search, [FromQuery] int page, [FromQuery] int pageSize, [FromServices] ListVehiclesHandler handler, CancellationToken cancellationToken) =>
-        Ok(await handler.HandleAsync(new ListVehiclesQuery(currentGarage.RequireGarageId(), search, page, pageSize), cancellationToken));
+    [Authorize(Policy = ApplicationPermissions.ViewCustomersVehicles)]
+    public async Task<IActionResult> List([FromQuery] string? search, [FromQuery] int page, [FromQuery] int pageSize, [FromServices] ListVehiclesHandler handler, CancellationToken cancellationToken)
+    {
+        try { return Ok(await handler.HandleAsync(new ListVehiclesQuery(currentGarage.RequireGarageId(), search, page, pageSize), cancellationToken)); }
+        catch (ArgumentOutOfRangeException exception) { return BadRequest(new { message = exception.Message }); }
+    }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = ApplicationPermissions.ViewCustomersVehicles)]
     public async Task<IActionResult> GetById(Guid id, [FromServices] GetVehicleByIdHandler handler, CancellationToken cancellationToken)
     {
         var response = await handler.HandleAsync(id, currentGarage.RequireGarageId(), cancellationToken);
@@ -22,10 +27,12 @@ public sealed class VehiclesController(ICurrentGarage currentGarage) : Controlle
     }
 
     [HttpPost]
+    [Authorize(Policy = ApplicationPermissions.ManageCustomersVehicles)]
     public Task<IActionResult> Create([FromBody] SaveVehicleRequest request, [FromServices] CreateVehicleHandler handler, CancellationToken cancellationToken) =>
         Execute(async () => { var command = request.ToCreate(currentGarage.RequireGarageId()); var response = await handler.HandleAsync(command, cancellationToken); return CreatedAtAction(nameof(GetById), new { id = response.Id }, response); });
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = ApplicationPermissions.ManageCustomersVehicles)]
     public Task<IActionResult> Update(Guid id, [FromBody] SaveVehicleRequest request, [FromServices] UpdateVehicleHandler handler, CancellationToken cancellationToken) =>
         Execute(async () => Ok(await handler.HandleAsync(id, request.ToUpdate(currentGarage.RequireGarageId()), cancellationToken)));
 

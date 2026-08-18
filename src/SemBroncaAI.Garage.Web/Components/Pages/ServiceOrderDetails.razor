@@ -1,6 +1,7 @@
 ﻿@page "/service-orders/{Id:guid}"
 
-@attribute [Authorize(Policy = "TenantUser")]
+@attribute [Authorize(Policy = ApplicationPermissions.ViewServiceOrders)]
+@using SemBroncaAI.Garage.Application.Abstractions.Security
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
 
@@ -10,6 +11,7 @@
 @inject IConfiguration Configuration
 @inject IJSRuntime JS
 @inject IDialogService DialogService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Ordem de serviço</PageTitle>
 
@@ -78,25 +80,24 @@ else
                 @GetStatusLabel(_serviceOrder.Status)
             </span>
 
-            <MudButton Variant="Variant.Outlined"
-                       StartIcon="@Icons.Material.Filled.Print"
-                       OnClick="OpenPrintView">
-                Imprimir OS
-            </MudButton>
-            <MudButton Variant="Variant.Outlined" Disabled="_isDownloadingPdf" StartIcon="@Icons.Material.Filled.Download" OnClick="@(() => DownloadPdfAsync(false))">
-                @(_isDownloadingPdf ? "Gerando PDF..." : "Baixar OS em PDF")
-            </MudButton>
-
-            @if (_serviceOrder.Estimate is not null)
+            @if (HasPermission(ApplicationPermissions.ViewEstimateValues))
             {
-                <MudButton Variant="Variant.Outlined"
-                           StartIcon="@Icons.Material.Filled.RequestQuote"
-                           OnClick="OpenEstimatePrintView">
-                    Imprimir orçamento
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" OnClick="OpenPrintView">
+                    Imprimir OS
                 </MudButton>
-                <MudButton Variant="Variant.Outlined" Disabled="_isDownloadingPdf" StartIcon="@Icons.Material.Filled.Download" OnClick="@(() => DownloadPdfAsync(true))">
-                    @(_isDownloadingPdf ? "Gerando PDF..." : "Baixar orçamento em PDF")
+                <MudButton Variant="Variant.Outlined" Disabled="_isDownloadingPdf" StartIcon="@Icons.Material.Filled.Download" OnClick="@(() => DownloadPdfAsync(false))">
+                    @(_isDownloadingPdf ? "Gerando PDF..." : "Baixar OS em PDF")
                 </MudButton>
+
+                @if (_serviceOrder.Estimate is not null)
+                {
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.RequestQuote" OnClick="OpenEstimatePrintView">
+                        Imprimir orçamento
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" Disabled="_isDownloadingPdf" StartIcon="@Icons.Material.Filled.Download" OnClick="@(() => DownloadPdfAsync(true))">
+                        @(_isDownloadingPdf ? "Gerando PDF..." : "Baixar orçamento em PDF")
+                    </MudButton>
+                }
             }
 
         </header>
@@ -167,24 +168,36 @@ else
                     @_serviceOrder.Customer.Name
                 </strong>
 
+                @if (HasCustomerContactDetails)
+                {
                 <div class="customer-details">
 
+                    @if (!string.IsNullOrWhiteSpace(_serviceOrder.Customer.Phone))
+                    {
                     <span>
                         <small>Telefone</small>
-                        @FormatPhone(_serviceOrder.Customer.Phone)
+                        @FormatPhone(_serviceOrder.Customer.Phone!)
                     </span>
+                    }
 
+                    @if (!string.IsNullOrWhiteSpace(_serviceOrder.Customer.Document))
+                    {
                     <span>
                         <small>Documento</small>
                         @_serviceOrder.Customer.Document
                     </span>
+                    }
 
+                    @if (!string.IsNullOrWhiteSpace(_serviceOrder.Customer.Email))
+                    {
                     <span>
                         <small>E-mail</small>
                         @_serviceOrder.Customer.Email
                     </span>
+                    }
 
                 </div>
+                }
 
             </article>
 
@@ -233,7 +246,7 @@ else
 
                 </div>
 
-                @if (_serviceOrder.Status == "Diagnosis")
+                @if (_serviceOrder.Status == "Diagnosis" && HasPermission(ApplicationPermissions.ManageDiagnosis))
                 {
                     <div class="diagnosis-form">
 
@@ -344,7 +357,7 @@ else
                     }
                 </div>
 
-                @if (_serviceOrder.Status == "Diagnosis")
+                @if (_serviceOrder.Status == "Diagnosis" && HasPermission(ApplicationPermissions.ManageEstimates))
                 {
                     <div class="estimate-editor">
                         <div class="estimate-table-header">
@@ -448,6 +461,57 @@ else
             </section>
         }
 
+        @if (_technicalHistoryTotal > 0)
+        {
+            <section class="content-card technical-history-card">
+                <div class="section-heading">
+                    <div class="section-title">
+                        <MudIcon Icon="@Icons.Material.Filled.CarRepair" Size="Size.Small" />
+                        <span>Histórico técnico do veículo</span>
+                    </div>
+                    <span class="history-count">@_technicalHistoryTotal atendimentos anteriores</span>
+                </div>
+
+                <div class="technical-history-list">
+                    @foreach (var previousOrder in _technicalHistory)
+                    {
+                        <article>
+                            <header>
+                                <strong>OS #@previousOrder.Number.ToString("D4")</strong>
+                                <span>@previousOrder.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                                <span>@(previousOrder.Mileage.HasValue ? $"{previousOrder.Mileage.Value:N0} km" : "Quilometragem não registrada")</span>
+                            </header>
+                            <p><b>Relato:</b> @previousOrder.CustomerComplaint</p>
+                            @if (!string.IsNullOrWhiteSpace(previousOrder.Diagnosis))
+                            {
+                                <p><b>Diagnóstico:</b> @previousOrder.Diagnosis</p>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(previousOrder.InternalNotes))
+                            {
+                                <p><b>Observações técnicas:</b> @previousOrder.InternalNotes</p>
+                            }
+                            @if (previousOrder.WorkItems.Count > 0)
+                            {
+                                <p><b>Itens registrados:</b> @string.Join(", ", previousOrder.WorkItems)</p>
+                            }
+                        </article>
+                    }
+                </div>
+                <div class="technical-history-actions">
+                    @if (_technicalHistory.Count < _technicalHistoryTotal)
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="_isLoadingTechnicalHistory" OnClick="LoadMoreTechnicalHistoryAsync">
+                            @(_isLoadingTechnicalHistory ? "Carregando..." : "Ver mais 5")
+                        </MudButton>
+                    }
+                    @if (_technicalHistory.Count > 2)
+                    {
+                        <MudButton Variant="Variant.Text" Disabled="_isLoadingTechnicalHistory" OnClick="CollapseTechnicalHistory">Recolher histórico</MudButton>
+                    }
+                </div>
+            </section>
+        }
+
         <section class="content-card">
 
             <div class="section-heading">
@@ -530,12 +594,12 @@ else
                     @if (!string.IsNullOrWhiteSpace(_serviceOrder.Approval.CustomerComment)) { <p><b>Motivo:</b> @_serviceOrder.Approval.CustomerComment</p> }
                 </div>
                 <div class="action-buttons">
-                    @if (_serviceOrder.Approval.Token is not null)
+                    @if (_serviceOrder.Approval.Token is not null && HasPermission(ApplicationPermissions.SendEstimateForApproval))
                     {
                         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="CopyApprovalLinkAsync">Copiar link</MudButton>
                         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.OpenInNew" OnClick="OpenApprovalPage">Abrir página do cliente</MudButton>
                     }
-                    @if (_serviceOrder.Approval.Status == "Rejected" || ApprovalExpired)
+                    @if ((_serviceOrder.Approval.Status == "Rejected" || ApprovalExpired) && HasPermission(ApplicationPermissions.ManageEstimates))
                     {
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ReviseEstimateAsync">Revisar orçamento</MudButton>
                     }
@@ -586,7 +650,7 @@ else
                     </MudButton>
                 }
 
-                @if (_serviceOrder.Status == "InProgress")
+                @if (_serviceOrder.Status == "InProgress" && HasPermission(ApplicationPermissions.ChangeServiceExecutionStatus))
                 {
                     <MudButton Variant="Variant.Outlined"
                                Color="Color.Warning"
@@ -622,7 +686,8 @@ else
 
         </section>
 
-        @if (_serviceOrder.ArchivedAt is not null || _serviceOrder.Status is "Delivered" or "Cancelled")
+        @if (HasPermission(ApplicationPermissions.ArchiveServiceOrder) &&
+             (_serviceOrder.ArchivedAt is not null || _serviceOrder.Status is "Delivered" or "Cancelled"))
         {
             <section class="archive-card">
                 <div><span class="action-caption">Organização</span><strong>@(_serviceOrder.ArchivedAt is null ? "Retirar esta OS da operação diária" : "Esta OS está arquivada")</strong>
@@ -657,26 +722,44 @@ else
     private bool _isSavingEstimate;
     private bool _isDownloadingPdf;
 
+    private readonly List<ServiceOrderTechnicalHistoryModel> _technicalHistory = [];
+    private int _technicalHistoryTotal;
+    private bool _isLoadingTechnicalHistory;
+
     private readonly List<EstimateItemEditModel> _estimateItems = [];
 
     private string _diagnosisDescription = string.Empty;
 
     private string _diagnosisInternalNotes = string.Empty;
+    private System.Security.Claims.ClaimsPrincipal _user = new();
+
+    private bool HasCustomerContactDetails =>
+        _serviceOrder?.Customer is { } customer &&
+        (!string.IsNullOrWhiteSpace(customer.Document) ||
+         !string.IsNullOrWhiteSpace(customer.Phone) ||
+         !string.IsNullOrWhiteSpace(customer.Email));
+
+    private bool HasPermission(string permission) =>
+        _user.HasClaim(ApplicationPermissions.ClaimType, permission);
 
     private bool HasPrimaryAction =>
-        _serviceOrder?.Status is
-            "Received" or
-            "Diagnosis" or
-            "WaitingApproval" or
-            "InProgress" or
-            "WaitingParts" or
-            "Finished";
+        _serviceOrder?.Status switch
+        {
+            "Received" => HasPermission(ApplicationPermissions.ManageDiagnosis),
+            "Diagnosis" => HasPermission(ApplicationPermissions.SendEstimateForApproval),
+            "WaitingApproval" => HasPermission(ApplicationPermissions.StartService),
+            "InProgress" => HasPermission(ApplicationPermissions.FinishService),
+            "WaitingParts" => HasPermission(ApplicationPermissions.ChangeServiceExecutionStatus),
+            "Finished" => HasPermission(ApplicationPermissions.DeliverServiceOrder),
+            _ => false
+        };
 
     private bool CanCancel =>
         _serviceOrder?.Status is not
             null and not
             "Delivered" and not
-            "Cancelled";
+            "Cancelled" &&
+        HasPermission(ApplicationPermissions.CancelServiceOrder);
 
     private bool IsPrimaryActionDisabled =>
         _isTransitioning ||
@@ -701,6 +784,7 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
+        _user = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User;
         await LoadAsync();
     }
 
@@ -712,6 +796,11 @@ else
 
             _serviceOrder =
                 await ServiceOrderService.GetByIdAsync(Id);
+
+            _technicalHistory.Clear();
+            _technicalHistoryTotal = 0;
+            if (_serviceOrder is not null && HasPermission(ApplicationPermissions.ManageDiagnosis))
+                await LoadMoreTechnicalHistoryAsync();
 
             if (_serviceOrder?.Diagnosis is not null)
             {
@@ -755,6 +844,34 @@ else
         {
             _isLoading = false;
         }
+    }
+
+    private async Task LoadMoreTechnicalHistoryAsync()
+    {
+        if (_isLoadingTechnicalHistory || _serviceOrder is null) return;
+        try
+        {
+            _isLoadingTechnicalHistory = true;
+            var batchSize = _technicalHistory.Count == 0 ? 2 : 5;
+            var result = await ServiceOrderService.GetTechnicalHistoryAsync(Id, _technicalHistory.Count, batchSize);
+            var existingIds = _technicalHistory.Select(item => item.Id).ToHashSet();
+            _technicalHistory.AddRange(result.Items.Where(item => existingIds.Add(item.Id)));
+            _technicalHistoryTotal = result.TotalCount;
+        }
+        catch (Exception exception)
+        {
+            Snackbar.Add($"Não foi possível carregar o histórico técnico: {exception.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoadingTechnicalHistory = false;
+        }
+    }
+
+    private void CollapseTechnicalHistory()
+    {
+        if (_technicalHistory.Count > 2)
+            _technicalHistory.RemoveRange(2, _technicalHistory.Count - 2);
     }
 
     private decimal EstimateServicesSubtotal =>
@@ -994,29 +1111,64 @@ else
     {
         return _serviceOrder?.Status switch
         {
-            "Received" =>
+            "Received" when HasPermission(ApplicationPermissions.ManageDiagnosis) =>
                 "O veículo está aguardando o início do diagnóstico.",
 
-            "Diagnosis" when _serviceOrder.Diagnosis is null =>
+            "Received" =>
+                "Aguardando o Mecânico ou Proprietário iniciar o diagnóstico.",
+
+            "Diagnosis" when _serviceOrder.Diagnosis is null && HasPermission(ApplicationPermissions.ManageDiagnosis) =>
                 "Registre e salve o diagnóstico para continuar.",
 
-            "Diagnosis" when _serviceOrder.Estimate is null =>
+            "Diagnosis" when _serviceOrder.Diagnosis is null =>
+                "Aguardando o Mecânico ou Proprietário registrar o diagnóstico.",
+
+            "Diagnosis" when _serviceOrder.Estimate is null && HasPermission(ApplicationPermissions.ManageEstimates) =>
                 "Monte e salve um orçamento válido para continuar.",
 
-            "Diagnosis" =>
+            "Diagnosis" when _serviceOrder.Estimate is null =>
+                "Diagnóstico concluído. Aguardando a equipe administrativa preparar ou enviar o orçamento.",
+
+            "Diagnosis" when HasPermission(ApplicationPermissions.SendEstimateForApproval) =>
                 "Diagnóstico e orçamento registrados. A OS pode ser enviada para aprovação.",
+
+            "Diagnosis" =>
+                "Orçamento preparado. Aguardando a equipe administrativa enviar para aprovação.",
+
+            "WaitingApproval" when _serviceOrder.Approval?.Status == "Approved" &&
+                                   HasPermission(ApplicationPermissions.StartService) =>
+                "Orçamento aprovado. O serviço pode ser iniciado.",
+
+            "WaitingApproval" when _serviceOrder.Approval?.Status == "Approved" =>
+                "Orçamento aprovado. Aguardando o Mecânico ou Proprietário iniciar o serviço.",
+
+            "WaitingApproval" when (_serviceOrder.Approval?.Status == "Rejected" || ApprovalExpired) &&
+                                   HasPermission(ApplicationPermissions.ManageEstimates) =>
+                "O orçamento precisa ser revisado antes de um novo envio ao cliente.",
+
+            "WaitingApproval" when _serviceOrder.Approval?.Status == "Rejected" || ApprovalExpired =>
+                "Aguardando a equipe administrativa revisar o orçamento.",
 
             "WaitingApproval" =>
                 "Aguardando autorização do cliente.",
 
-            "InProgress" =>
+            "InProgress" when HasPermission(ApplicationPermissions.FinishService) =>
                 "O serviço está sendo executado.",
 
-            "WaitingParts" =>
+            "InProgress" =>
+                "Serviço em execução pela equipe técnica.",
+
+            "WaitingParts" when HasPermission(ApplicationPermissions.ChangeServiceExecutionStatus) =>
                 "A ordem está aguardando peças.",
 
-            "Finished" =>
+            "WaitingParts" =>
+                "Aguardando peças e a retomada pela equipe técnica.",
+
+            "Finished" when HasPermission(ApplicationPermissions.DeliverServiceOrder) =>
                 "O veículo está pronto para entrega.",
+
+            "Finished" =>
+                "Serviço finalizado. Aguardando a equipe administrativa entregar o veículo.",
 
             "Delivered" =>
                 "Veículo entregue. Ordem concluída.",

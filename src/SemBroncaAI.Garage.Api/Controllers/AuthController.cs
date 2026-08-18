@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using SemBroncaAI.Garage.Api.Services;
 using SemBroncaAI.Garage.Infrastructure.Identity;
+using SemBroncaAI.Garage.Application.Abstractions.Security;
 
 namespace SemBroncaAI.Garage.Api.Controllers;
 
@@ -30,7 +31,16 @@ public sealed class AuthController(
             request.Password,
             cancellationToken);
         if (!result.Succeeded)
+        {
+            if (result.IsLockedOut)
+                return StatusCode(StatusCodes.Status423Locked, new AuthErrorResponse(
+                    "Acesso temporariamente bloqueado por excesso de tentativas. Tente novamente mais tarde."));
+            if (result.IsGarageInactive)
+                return StatusCode(StatusCodes.Status403Forbidden, new AuthErrorResponse(
+                    "O acesso desta oficina está temporariamente indisponível.",
+                    AuthenticationErrorCodes.GarageInactive));
             return Unauthorized(new AuthErrorResponse(InvalidCredentialsMessage));
+        }
 
         await HttpContext.SignInAsync(
             IdentityConstants.BearerScheme,
@@ -49,22 +59,25 @@ public sealed class AuthController(
             return Unauthorized();
 
         var roles = await userManager.GetRolesAsync(user);
+        var permissions = User.FindAll(ApplicationPermissions.ClaimType).Select(claim => claim.Value).ToArray();
         return Ok(new CurrentUserResponse(
             user.Id,
             user.Name,
             user.Email,
             user.UserName,
             user.GarageId,
-            roles.ToArray()));
+            roles.ToArray(),
+            permissions));
     }
 }
 
 public sealed record LoginRequest(string Identifier, string Password);
-public sealed record AuthErrorResponse(string Message);
+public sealed record AuthErrorResponse(string Message, string? Code = null);
 public sealed record CurrentUserResponse(
     Guid UserId,
     string Name,
     string? Email,
     string? Username,
     Guid? GarageId,
-    IReadOnlyCollection<string> Roles);
+    IReadOnlyCollection<string> Roles,
+    IReadOnlyCollection<string> Permissions);

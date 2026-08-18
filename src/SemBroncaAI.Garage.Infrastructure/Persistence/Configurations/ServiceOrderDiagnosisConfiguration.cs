@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SemBroncaAI.Garage.Domain.Entities.ServiceOrder;
+using SemBroncaAI.Garage.Domain.Common;
 
 namespace SemBroncaAI.Garage.Infrastructure.Persistence.Configurations;
 
@@ -18,11 +19,11 @@ public sealed class ServiceOrderDiagnosisConfiguration
             .ValueGeneratedNever();
 
         builder.Property(x => x.Description)
-            .HasMaxLength(4000)
+            .HasMaxLength(FieldLengthLimits.DiagnosisText)
             .IsRequired();
 
         builder.Property(x => x.InternalNotes)
-            .HasMaxLength(4000)
+            .HasMaxLength(FieldLengthLimits.DiagnosisText)
             .IsRequired();
 
         builder.Property(x => x.CreatedAt)

@@ -14,16 +14,24 @@ namespace SemBroncaAI.Garage.Api.Controllers;
 public sealed class CustomersModuleController(ICurrentGarage currentGarage) : ControllerBase
 {
     [HttpGet]
+    [Authorize(Policy = ApplicationPermissions.ViewCustomersVehicles)]
     public async Task<IActionResult> List(
         [FromQuery] string? search,
         [FromQuery] int page, [FromQuery] int pageSize,
         [FromServices] ListCustomersHandler handler, CancellationToken cancellationToken)
     {
-        var response = await handler.HandleAsync(new ListCustomersQuery(currentGarage.RequireGarageId(), search, page, pageSize), cancellationToken);
-        return Ok(response);
+        try
+        {
+            return Ok(await handler.HandleAsync(new ListCustomersQuery(currentGarage.RequireGarageId(), search, page, pageSize), cancellationToken));
+        }
+        catch (ArgumentOutOfRangeException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = ApplicationPermissions.ViewCustomersVehicles)]
     public async Task<IActionResult> GetById(
         Guid id,
         [FromServices] GetCustomerByIdHandler handler, CancellationToken cancellationToken)
@@ -33,6 +41,7 @@ public sealed class CustomersModuleController(ICurrentGarage currentGarage) : Co
     }
 
     [HttpPost]
+    [Authorize(Policy = ApplicationPermissions.ManageCustomersVehicles)]
     public async Task<IActionResult> Create(
         [FromBody] SaveCustomerRequest request,
         [FromServices] CreateCustomerHandler handler, CancellationToken cancellationToken)
@@ -50,6 +59,7 @@ public sealed class CustomersModuleController(ICurrentGarage currentGarage) : Co
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = ApplicationPermissions.ManageCustomersVehicles)]
     public async Task<IActionResult> Update(
         Guid id, [FromBody] SaveCustomerRequest request,
         [FromServices] UpdateCustomerHandler handler, CancellationToken cancellationToken)

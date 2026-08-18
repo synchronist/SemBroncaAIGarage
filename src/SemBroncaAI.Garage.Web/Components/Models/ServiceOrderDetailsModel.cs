@@ -11,9 +11,9 @@ public sealed record ServiceOrderHistoryItem(
 public sealed record ServiceOrderCustomerModel(
     Guid Id,
     string Name,
-    string Document,
-    string Phone,
-    string Email);
+    string? Document,
+    string? Phone,
+    string? Email);
 
 public sealed record ServiceOrderVehicleModel(
     Guid Id,
@@ -41,7 +41,23 @@ public sealed record ServiceOrderDetailsModel(
     ServiceOrderEstimateModel? Estimate,
     ServiceOrderApprovalModel? Approval = null,
     IReadOnlyCollection<ServiceOrderApprovalHistoryModel>? ApprovalHistory = null,
-    DateTimeOffset? ArchivedAt = null);
+    DateTimeOffset? ArchivedAt = null,
+    IReadOnlyCollection<ServiceOrderTechnicalHistoryModel>? TechnicalHistory = null);
+
+public sealed record ServiceOrderTechnicalHistoryModel(
+    Guid Id,
+    int Number,
+    string Status,
+    string CustomerComplaint,
+    int? Mileage,
+    DateTimeOffset CreatedAt,
+    string? Diagnosis,
+    string? InternalNotes,
+    IReadOnlyCollection<string> WorkItems);
+
+public sealed record ServiceOrderTechnicalHistoryPageModel(
+    int Offset, int PageSize, int TotalCount,
+    IReadOnlyCollection<ServiceOrderTechnicalHistoryModel> Items);
 
 public sealed record ServiceOrderApprovalModel(string Status, DateTimeOffset CreatedAt,
     DateTimeOffset ExpiresAt, DateTimeOffset? RespondedAt, string? CustomerName,

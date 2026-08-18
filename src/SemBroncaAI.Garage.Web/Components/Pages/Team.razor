@@ -1,0 +1,10 @@
+@page "/team"
+@attribute [Authorize(Policy = ApplicationPermissions.ManageTeam)]
+@using SemBroncaAI.Garage.Application.Abstractions.Security
+@using SemBroncaAI.Garage.Application.Features.TeamManagement
+@inject TeamService Service
+<PageTitle>Equipe | SBGarage</PageTitle>
+<div class="team-head"><div><span>EQUIPE</span><h1>Equipe da oficina</h1><p>Gerencie acessos e perfis da sua oficina.</p></div><a href="/team/new">Adicionar membro</a></div>
+<div class="team-search"><input @bind="_search" placeholder="Buscar por nome, e-mail ou usuário" /><button @onclick="LoadAsync">Buscar</button></div>
+@if(_loading){<div class="state">Carregando equipe...</div>}else if(_error is not null){<div class="state error">@_error</div>}else if(_items.Length==0){<div class="state">Nenhum membro encontrado.</div>}else{<div class="team-list">@foreach(var item in _items){<a href="@($"/team/{item.Id}")"><span class="avatar">@item.Name.Trim()[0]</span><span class="copy"><strong>@item.Name</strong><small>@item.Email · @item.UserName</small></span><em class="role">@Role(item.Role)</em><em class="status @(item.Active?"active":"inactive")">@(item.Active?"Ativo":"Inativo")</em><MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" /></a>}</div>}
+@code{private TeamMemberItem[] _items=[];private string? _search,_error;private bool _loading=true;protected override Task OnInitializedAsync()=>LoadAsync();private async Task LoadAsync(){_loading=true;_error=null;try{_items=await Service.ListAsync(_search)??[];}catch{_error="Não foi possível carregar a equipe.";}finally{_loading=false;}}private static string Role(string role)=>role=="Owner"?"Proprietário":role=="Mechanic"?"Mecânico":"Recepção";}
