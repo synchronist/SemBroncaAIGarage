@@ -14,9 +14,13 @@ public interface ITeamManagement
     Task<TeamOperationResult> InviteAsync(InviteTeamMemberCommand command, CancellationToken cancellationToken = default);
     Task<TeamOperationResult> UpdateAsync(Guid id, UpdateTeamMemberCommand command, CancellationToken cancellationToken = default);
     Task<TeamOperationResult> AcceptAsync(AcceptTeamInvitationCommand command, CancellationToken cancellationToken = default);
+    Task<bool> CanAcceptAsync(Guid invitationId, string token, CancellationToken cancellationToken = default);
+    Task<TeamOperationResult> ResendInvitationAsync(Guid userId, CancellationToken cancellationToken = default);
 }
+
+public sealed record TeamInvitationEmail(string Email, string GarageName, string Role, string InvitationLink, DateTime ExpiresAt);
 
 public interface ITeamInvitationSender
 {
-    Task SendAsync(string email, string invitationLink, CancellationToken cancellationToken);
+    Task SendAsync(TeamInvitationEmail invitation, CancellationToken cancellationToken);
 }

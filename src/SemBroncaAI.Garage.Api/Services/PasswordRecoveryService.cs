@@ -2,6 +2,9 @@ using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using SemBroncaAI.Garage.Infrastructure.Identity;
+using SemBroncaAI.Garage.Application.Abstractions.Email;
+using System.Net;
+using Microsoft.EntityFrameworkCore;
 
 namespace SemBroncaAI.Garage.Api.Services;
 
@@ -10,20 +13,24 @@ public interface IPasswordResetEmailSender
     Task SendAsync(string email, string resetLink, CancellationToken cancellationToken);
 }
 
-public sealed class DevelopmentPasswordResetEmailSender(
-    ILogger<DevelopmentPasswordResetEmailSender> logger) : IPasswordResetEmailSender
+public sealed class PasswordResetEmailSender(ITransactionalEmailSender sender) : IPasswordResetEmailSender
 {
     public Task SendAsync(string email, string resetLink, CancellationToken cancellationToken)
     {
-        logger.LogWarning("DEVELOPMENT ONLY - password reset link for {Email}: {ResetLink}", email, resetLink);
-        return Task.CompletedTask;
+        var link = WebUtility.HtmlEncode(resetLink);
+        var html = $"""
+            <div style="font-family:Arial,sans-serif;max-width:600px;color:#1f2937">
+              <h1 style="color:#ea580c">SemBroncaAI Garage</h1><h2>Redefinição de senha</h2>
+              <p>Recebemos uma solicitação para redefinir sua senha.</p>
+              <p><a href="{link}" style="display:inline-block;padding:12px 18px;background:#ea580c;color:white;text-decoration:none;border-radius:8px">Redefinir senha</a></p>
+              <p>O link expira em duas horas. Se você não fez esta solicitação, ignore esta mensagem.</p>
+              <p>Alternativa: <a href="{link}">{link}</a></p>
+            </div>
+            """;
+        var text = $"SemBroncaAI Garage\n\nRedefinição de senha\n{resetLink}\nO link expira em duas horas. Se não solicitou, ignore esta mensagem.";
+        return sender.SendAsync(new("password-reset", email, "Redefinição de senha — SemBroncaAI Garage",
+            html, text, resetLink), cancellationToken);
     }
-}
-
-public sealed class UnavailablePasswordResetEmailSender : IPasswordResetEmailSender
-{
-    public Task SendAsync(string email, string resetLink, CancellationToken cancellationToken) =>
-        throw new InvalidOperationException("O envio de recuperação de senha não está configurado.");
 }
 
 public interface IPasswordRecoveryGateway
@@ -35,9 +42,11 @@ public interface IPasswordRecoveryGateway
     Task<bool> VerifyTokenAsync(ApplicationUser user, string token);
     Task<IdentityResult> ResetAsync(ApplicationUser user, string token, string password);
     Task UpdateSecurityStampAsync(ApplicationUser user);
+    Task<bool> IsGarageEligibleAsync(ApplicationUser user, CancellationToken cancellationToken);
 }
 
-public sealed class IdentityPasswordRecoveryGateway(UserManager<ApplicationUser> userManager) : IPasswordRecoveryGateway
+public sealed class IdentityPasswordRecoveryGateway(UserManager<ApplicationUser> userManager,
+    SemBroncaAI.Garage.Infrastructure.Persistence.GarageDbContext context) : IPasswordRecoveryGateway
 {
     public Task<ApplicationUser?> FindByEmailAsync(string email) => userManager.FindByEmailAsync(email);
     public Task<ApplicationUser?> FindByIdAsync(Guid userId) => userManager.FindByIdAsync(userId.ToString());
@@ -48,26 +57,38 @@ public sealed class IdentityPasswordRecoveryGateway(UserManager<ApplicationUser>
     public Task<IdentityResult> ResetAsync(ApplicationUser user, string token, string password) =>
         userManager.ResetPasswordAsync(user, token, password);
     public Task UpdateSecurityStampAsync(ApplicationUser user) => userManager.UpdateSecurityStampAsync(user);
+    public Task<bool> IsGarageEligibleAsync(ApplicationUser user, CancellationToken cancellationToken) =>
+        user.GarageId is null
+            ? Task.FromResult(true)
+            : context.Garages.AsNoTracking().AnyAsync(x => x.Id == user.GarageId && x.Active, cancellationToken);
 }
 
 public sealed class PasswordRecoveryService(
     IPasswordRecoveryGateway gateway,
     IPasswordResetEmailSender emailSender,
-    IConfiguration configuration)
+    IConfiguration configuration,
+    ILogger<PasswordRecoveryService> logger)
 {
     public async Task RequestAsync(string? email, CancellationToken cancellationToken)
     {
         if (!configuration.GetValue("PasswordRecovery:Enabled", false)) return;
         if (string.IsNullOrWhiteSpace(email)) return;
         var user = await gateway.FindByEmailAsync(email.Trim());
-        if (user is null || !user.Active || !user.EmailConfirmed) return;
+        if (user is null || !user.Active || !user.EmailConfirmed || !await gateway.IsGarageEligibleAsync(user, cancellationToken)) return;
 
         var token = await gateway.GenerateTokenAsync(user);
         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-        var baseUrl = configuration["Web:BaseUrl"]
-            ?? throw new InvalidOperationException("Configure Web:BaseUrl para recuperação de senha.");
+        var baseUrl = configuration["App:PublicBaseUrl"]
+            ?? throw new InvalidOperationException("Configure App:PublicBaseUrl para recuperação de senha.");
         var link = $"{baseUrl.TrimEnd('/')}/reset-password?userId={user.Id:D}&token={Uri.EscapeDataString(encodedToken)}";
-        await emailSender.SendAsync(user.Email!, link, cancellationToken);
+        try
+        {
+            await emailSender.SendAsync(user.Email!, link, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogError(exception, "Password reset email delivery failed");
+        }
     }
 
     public async Task<PasswordResetResult> ResetAsync(

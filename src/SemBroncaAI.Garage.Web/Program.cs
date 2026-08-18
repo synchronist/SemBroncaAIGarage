@@ -5,6 +5,7 @@ using MudBlazor.Services;
 using SemBroncaAI.Garage.Web.Components;
 using SemBroncaAI.Garage.Web.Services;
 using SemBroncaAI.Garage.Application.Abstractions.Security;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 WebDeploymentConfiguration.Configure(builder);
@@ -14,6 +15,9 @@ builder.Services
     .AddInteractiveServerComponents();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddMudServices();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<CorrelationIdHandler>();
+builder.Services.AddHealthChecks().AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
 
 builder.Services.AddAuthentication(options =>
     {
@@ -80,7 +84,9 @@ builder.Services.AddSingleton<IServerApiSessionStore, ServerApiSessionStore>();
 var apiBaseUrl = builder.Configuration["Api:BaseUrl"]
     ?? throw new InvalidOperationException("A URL da API não foi configurada.");
 builder.Services.AddHttpClient("AuthenticationApi", client =>
-    client.BaseAddress = new Uri(apiBaseUrl));
+    client.BaseAddress = new Uri(apiBaseUrl)).AddHttpMessageHandler<CorrelationIdHandler>();
+builder.Services.AddHttpClient<PlatformHealthService>(client =>
+    client.BaseAddress = new Uri(apiBaseUrl)).AddHttpMessageHandler<CorrelationIdHandler>();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -131,14 +137,23 @@ app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseRateLimiter();
 app.UseAuthentication();
+app.UseMiddleware<WebOperationalMiddleware>();
 app.UseAuthorization();
 app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 app.MapWebAuthentication();
+app.MapHealthChecks("/health/live", new() { ResponseWriter = MinimalHealthResponse }).AllowAnonymous();
+app.MapHealthChecks("/health/ready", new() { ResponseWriter = MinimalHealthResponse }).AllowAnonymous();
 
 app.Run();
+
+static Task MinimalHealthResponse(HttpContext context, Microsoft.Extensions.Diagnostics.HealthChecks.HealthReport report)
+{
+    context.Response.ContentType = "application/json";
+    return context.Response.WriteAsJsonAsync(new { status = report.Status.ToString() });
+}
 
 TClient CreateAuthenticatedService<TClient>(IServiceProvider serviceProvider) where TClient : class =>
     ActivatorUtilities.CreateInstance<TClient>(

@@ -7,6 +7,9 @@ using SemBroncaAI.Garage.Api.Controllers;
 using SemBroncaAI.Garage.Api.Services;
 using SemBroncaAI.Garage.Infrastructure.Identity;
 using Shouldly;
+using Microsoft.Extensions.Logging.Abstractions;
+using SemBroncaAI.Garage.Application.Abstractions.Email;
+using SemBroncaAI.Garage.Application.Features.TeamManagement;
 
 namespace SemBroncaAI.Garage.Tests.Api;
 
@@ -42,12 +45,28 @@ public sealed class PasswordRecoveryTests
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(
             new Dictionary<string, string?> { ["PasswordRecovery:Enabled"] = "false" }).Build();
 
-        await new PasswordRecoveryService(gateway, sender, configuration)
+        await new PasswordRecoveryService(gateway, sender, configuration, NullLogger<PasswordRecoveryService>.Instance)
             .RequestAsync("known@test.local", default);
 
         gateway.EmailLookups.ShouldBe(0);
         gateway.GeneratedTokens.ShouldBe(0);
         sender.Links.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Inactive_garage_and_delivery_failure_should_not_change_public_behavior()
+    {
+        var ineligible = ValidGateway();
+        ineligible.GarageEligible = false;
+        var sender = new Sender();
+        await CreateService(ineligible, sender).RequestAsync("user@test.local", default);
+        sender.Links.ShouldBeEmpty();
+        ineligible.GeneratedTokens.ShouldBe(0);
+
+        var failing = ValidGateway();
+        await Should.NotThrowAsync(() => CreateService(failing, new Sender { ThrowOnSend = true })
+            .RequestAsync("user@test.local", default));
+        failing.GeneratedTokens.ShouldBe(1);
     }
 
     [Fact]
@@ -112,13 +131,27 @@ public sealed class PasswordRecoveryTests
                 .PolicyName.ShouldBe(AuthenticationRateLimiting.PasswordRecoveryPolicy);
     }
 
+    [Fact]
+    public async Task Transactional_templates_should_include_html_text_and_encoded_links()
+    {
+        var transport = new Transport();
+        await new PasswordResetEmailSender(transport).SendAsync("user@test.local", "https://garage/reset?a=1&b=2", default);
+        await new TeamInvitationEmailSender(transport).SendAsync(new("member@test.local", "Oficina <QA>",
+            "Mechanic", "https://garage/invite?a=1&b=2", DateTime.UtcNow.AddHours(24)), default);
+
+        transport.Messages.Count.ShouldBe(2);
+        transport.Messages.ShouldAllBe(message => !string.IsNullOrWhiteSpace(message.HtmlBody) && !string.IsNullOrWhiteSpace(message.TextBody));
+        transport.Messages[1].HtmlBody.ShouldContain("Oficina &lt;QA&gt;");
+        transport.Messages[1].HtmlBody.ShouldContain("a=1&amp;b=2");
+    }
+
     private static PasswordRecoveryService CreateService(Gateway gateway, Sender sender) => new(
         gateway, sender, new ConfigurationBuilder().AddInMemoryCollection(
             new Dictionary<string, string?>
             {
                 ["PasswordRecovery:Enabled"] = "true",
-                ["Web:BaseUrl"] = "http://localhost:5123/"
-            }).Build());
+                ["App:PublicBaseUrl"] = "http://localhost:5123/"
+            }).Build(), NullLogger<PasswordRecoveryService>.Instance);
 
     private static Gateway ValidGateway()
     {
@@ -133,7 +166,12 @@ public sealed class PasswordRecoveryTests
     private sealed class Sender : IPasswordResetEmailSender
     {
         public List<string> Links { get; } = [];
-        public Task SendAsync(string email, string resetLink, CancellationToken cancellationToken) { Links.Add(resetLink); return Task.CompletedTask; }
+        public bool ThrowOnSend { get; init; }
+        public Task SendAsync(string email, string resetLink, CancellationToken cancellationToken)
+        {
+            if (ThrowOnSend) throw new InvalidOperationException("SMTP unavailable");
+            Links.Add(resetLink); return Task.CompletedTask;
+        }
     }
 
     private sealed class Gateway : IPasswordRecoveryGateway
@@ -144,6 +182,7 @@ public sealed class PasswordRecoveryTests
         public int ResetAttempts { get; private set; }
         public int EmailLookups { get; private set; }
         public string CurrentPassword { get; set; } = "CurrentPassword123";
+        public bool GarageEligible { get; set; } = true;
         private bool _used;
         public Task<ApplicationUser?> FindByEmailAsync(string email)
         {
@@ -162,5 +201,13 @@ public sealed class PasswordRecoveryTests
             _used = true; CurrentPassword = password; return Task.FromResult(IdentityResult.Success);
         }
         public Task UpdateSecurityStampAsync(ApplicationUser user) { StampUpdates++; return Task.CompletedTask; }
+        public Task<bool> IsGarageEligibleAsync(ApplicationUser user, CancellationToken cancellationToken) => Task.FromResult(GarageEligible);
+    }
+
+    private sealed class Transport : ITransactionalEmailSender
+    {
+        public List<TransactionalEmailMessage> Messages { get; } = [];
+        public Task SendAsync(TransactionalEmailMessage message, CancellationToken cancellationToken = default)
+        { Messages.Add(message); return Task.CompletedTask; }
     }
 }

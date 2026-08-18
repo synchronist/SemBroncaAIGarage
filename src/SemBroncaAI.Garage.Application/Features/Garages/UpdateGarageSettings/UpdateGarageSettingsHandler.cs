@@ -4,7 +4,7 @@ using SemBroncaAI.Garage.Domain.Interfaces;
 
 namespace SemBroncaAI.Garage.Application.Features.Garages.UpdateGarageSettings;
 
-public sealed class UpdateGarageSettingsHandler(IGarageRepository repository, IUnitOfWork unitOfWork)
+public sealed class UpdateGarageSettingsHandler(IGarageRepository repository, IUnitOfWork unitOfWork, IAuditWriter auditWriter)
 {
     public async Task<GetGarageSettingsResponse> HandleAsync(Guid garageId, UpdateGarageSettingsCommand command, CancellationToken cancellationToken = default)
     {
@@ -17,6 +17,8 @@ public sealed class UpdateGarageSettingsHandler(IGarageRepository repository, IU
         garage.UpdateSettings(command.Name, document, command.Phone, command.Email, command.PostalCode,
             command.Street, command.Number, command.Complement, command.Neighborhood, command.City, command.State);
         garage.UpdateBranding(garage.LogoStorageKey, command.PrimaryColor);
+        auditWriter.Add(garageId, AuditActions.GarageSettingsChanged, "Garage", garageId.ToString("D"),
+            "Configurações cadastrais da oficina atualizadas.");
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return new(garage.Id, garage.Name, garage.Document, garage.Phone, garage.Email, garage.PostalCode,
             garage.Street, garage.Number, garage.Complement, garage.Neighborhood, garage.City, garage.State,

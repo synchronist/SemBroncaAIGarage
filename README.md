@@ -1,5 +1,7 @@
 # SemBroncaAI Garage
 
+> A política de retenção das entradas de auditoria administrativa será definida antes da produção comercial definitiva. Nesta fase não há limpeza automática.
+
 Você conserta carros. Nós cuidamos da burocracia.
 
 ## Sobre o produto
@@ -113,13 +115,17 @@ O endpoint autenticado da API é `GET /api/auth/me`. Para validar a cadeia compl
 
 ## Recuperação de senha
 
-A recuperação usa os token providers oficiais do ASP.NET Core Identity. O token de redefinição expira em duas horas; uma redefinição bem-sucedida atualiza o security stamp e invalida o reuso do link e credenciais anteriores na API. Em Development, o link completo é escrito exclusivamente no log da API para teste local. Em Production, mantenha `PasswordRecovery:Enabled=false` até implementar e registrar um provider transacional: a solicitação pública continua neutra, não consulta o usuário e não gera nem registra token. A inicialização rejeita `Enabled=true` enquanto o sender de Production estiver indisponível.
+A recuperação usa os token providers oficiais do ASP.NET Core Identity. O token expira em duas horas; uma redefinição bem-sucedida atualiza o security stamp. Em Development sem SMTP, o link é escrito somente no log. Em Production, configure o transporte SMTP e `PasswordRecovery:Enabled=true`; falhas de entrega preservam a resposta pública neutra.
+
+## E-mail transacional
+
+Convites e recuperação usam um transporte SMTP genérico, com HTML e texto puro. Configure por secret ou variável de ambiente: `Email__Provider=Smtp`, `Email__Host`, `Email__Port`, `Email__Username`, `Email__Password`, `Email__FromAddress`, `Email__FromName`, `Email__UseSsl` e `Email__TimeoutSeconds`. Configure também `App__PublicBaseUrl` com a origem HTTPS pública usada nos links. Nenhuma credencial deve ser versionada.
 
 ## Configuração de Production
 
 Os arquivos base não contêm connection string nem URLs locais como fallback de Production. Forneça configurações por variáveis de ambiente, secret store ou arquivo não versionado. API e Web falham na inicialização quando faltar configuração crítica:
 
-- API: `ConnectionStrings__DefaultConnection`, `Web__BaseUrl`, `DataProtection__KeysPath` e `ReverseProxy__KnownProxies__0`;
+- API: `ConnectionStrings__DefaultConnection`, `Web__BaseUrl`, `App__PublicBaseUrl`, configurações `Email__*`, `DataProtection__KeysPath` e `ReverseProxy__KnownProxies__0`;
 - Web: `Api__BaseUrl`, `DataProtection__KeysPath` e `ReverseProxy__KnownProxies__0`;
 - `IdentitySeed__Enabled` e `PasswordRecovery__Enabled` devem permanecer `false` em Production nesta fase.
 

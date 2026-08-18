@@ -1,0 +1,12 @@
+@using SemBroncaAI.Garage.Application.Features.PlatformAdministration
+
+<section class="audit-card">
+    <header><span class="section-icon"><MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" /></span><div><h2>Atividade administrativa recente</h2><p>Últimas ações sensíveis relacionadas a esta oficina.</p></div></header>
+    @if (Items.Count == 0) { <p class="audit-empty">Nenhuma atividade administrativa registrada.</p> }
+    else { <div class="audit-list">@foreach (var item in Items) { <article><span class="audit-marker"><MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" /></span><div class="audit-event"><strong>@AuditLabel(item.Action)</strong>@if (!string.IsNullOrWhiteSpace(item.Summary)) { <p>@item.Summary</p> }<small>@item.OccurredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") <span>·</span> @item.ActorContext</small></div></article> }</div> }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyCollection<PlatformAuditItem> Items { get; set; } = [];
+    private static string AuditLabel(string action) => action switch { "garage.created" => "Oficina criada", "garage.activated" => "Oficina ativada", "garage.deactivated" => "Oficina desativada", "subscription.changed" => "Assinatura alterada", "member.invited" => "Membro convidado", "member.invitation-resent" => "Convite reenviado", "member.activated" => "Membro ativado", "member.deactivated" => "Membro desativado", "member.role-changed" => "Perfil de membro alterado", "garage.settings-changed" => "Configurações alteradas", _ => "Atividade administrativa" };
+}

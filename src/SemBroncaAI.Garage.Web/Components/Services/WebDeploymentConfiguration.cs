@@ -10,6 +10,11 @@ public static class WebDeploymentConfiguration
     public static void Configure(WebApplicationBuilder builder)
     {
         ValidateProduction(builder.Configuration, builder.Environment);
+        if (builder.Environment.IsProduction())
+        {
+            builder.Logging.ClearProviders();
+            builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
+        }
         var dataProtection = builder.Services.AddDataProtection().SetApplicationName(DataProtectionApplicationName);
         if (builder.Environment.IsProduction())
         {

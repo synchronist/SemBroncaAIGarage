@@ -3,5 +3,45 @@
 @using SemBroncaAI.Garage.Application.Features.TeamManagement
 @inject TeamInvitationService Service
 <PageTitle>Aceitar convite | SBGarage</PageTitle>
-<main><h1>Defina sua senha</h1><p>Conclua seu acesso à equipe da oficina.</p>@if(_activated){<div class="message">Acesso ativado. Você já pode entrar.</div><a class="login-cta" href="/login">Ir para o login</a>}else{<form @onsubmit="Accept" @onsubmit:preventDefault><label>Senha<input type="@(_showPassword?"text":"password")" @bind="_password" /></label><label>Confirmar senha<input type="@(_showPassword?"text":"password")" @bind="_confirmation" /></label><label class="show-password"><input type="checkbox" @bind="_showPassword" /> Mostrar senha</label><small>Mínimo de 10 caracteres, com maiúscula, minúscula, número e quatro caracteres distintos.</small>@if(_message is not null){<div class="message">@_message</div>}<button type="submit" disabled="@_saving">@(_saving?"Salvando...":"Ativar acesso")</button></form>}</main>
-@code{[SupplyParameterFromQuery]public Guid Id{get;set;}[SupplyParameterFromQuery]public string? Token{get;set;}private string _password="",_confirmation="";private bool _saving,_showPassword,_activated;private string? _message;private async Task Accept(){if(_saving)return;_saving=true;try{var r=await Service.AcceptAsync(new(Id,Token??"",_password,_confirmation));_activated=r.Succeeded;_message=r.Succeeded?null:r.Code switch{"expired"=>"Este convite expirou.","used"=>"Este convite já foi utilizado.","mismatch"=>"As senhas não coincidem.","password"=>r.Errors?.SelectMany(x=>x.Value).FirstOrDefault()??"A senha não atende aos requisitos.",_=>"Este convite é inválido."};}finally{_saving=false;}}}
+<main class="invitation-page">
+    <section class="invitation-brand" aria-label="SemBroncaAI Garage"><span><MudIcon Icon="@Icons.Material.Filled.Build" /></span><div><strong>SemBroncaAI Garage</strong><small>Gestão para oficinas</small></div></section>
+    <section class="invitation-card">
+        @if (_loading) { <span class="state-icon"><MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Medium" /></span><h1>Validando convite</h1><p>Aguarde um instante.</p> }
+        else if (!_canAccept && !_activated) { <span class="state-icon invalid"><MudIcon Icon="@Icons.Material.Filled.LinkOff" Size="Size.Large" /></span><h1>Este convite não é mais válido.</h1><p>Solicite um novo convite ao responsável pela oficina.</p><a class="login-cta" href="/login">Ir para o login</a> }
+        else if (_activated) { <span class="state-icon success"><MudIcon Icon="@Icons.Material.Filled.CheckCircleOutline" Size="Size.Large" /></span><h1>Acesso ativado</h1><p>Você já pode entrar com sua nova senha.</p><a class="login-cta" href="/login">Ir para o login</a> }
+        else { <header><p class="eyebrow">CONVITE DA EQUIPE</p><h1>Defina sua senha</h1><p>Conclua seu acesso à equipe da oficina.</p></header><form @onsubmit="Accept" @onsubmit:preventDefault><label>Senha<input type="@(_showPassword?"text":"password")" @bind="_password" /></label><label>Confirmar senha<input type="@(_showPassword?"text":"password")" @bind="_confirmation" /></label><label class="show-password"><input type="checkbox" @bind="_showPassword" /> Mostrar senha</label><small>Mínimo de 10 caracteres, com maiúscula, minúscula, número e quatro caracteres distintos.</small>@if(_message is not null){<div class="message">@_message</div>}<button type="submit" disabled="@_saving">@(_saving?"Salvando...":"Ativar acesso")</button></form> }
+    </section>
+    <p class="invitation-footer">Acesso restrito à equipe autorizada da oficina.</p>
+</main>
+@code {
+    [SupplyParameterFromQuery] public Guid Id { get; set; }
+    [SupplyParameterFromQuery] public string? Token { get; set; }
+    private string _password = "", _confirmation = "";
+    private bool _loading = true, _canAccept, _saving, _showPassword, _activated;
+    private string? _message;
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        try { _canAccept = await Service.CanAcceptAsync(Id, Token ?? ""); }
+        catch { _canAccept = false; }
+        finally { _loading = false; }
+    }
+    private async Task Accept()
+    {
+        if (_saving) return;
+        _saving = true;
+        try
+        {
+            var result = await Service.AcceptAsync(new(Id, Token ?? "", _password, _confirmation));
+            _activated = result.Succeeded;
+            if (!result.Succeeded && result.Code is not ("mismatch" or "password")) _canAccept = false;
+            _message = result.Succeeded ? null : result.Code switch
+            {
+                "mismatch" => "As senhas não coincidem.",
+                "password" => result.Errors?.SelectMany(x => x.Value).FirstOrDefault() ?? "A senha não atende aos requisitos.",
+                _ => null
+            };
+        }
+        finally { _saving = false; }
+    }
+}

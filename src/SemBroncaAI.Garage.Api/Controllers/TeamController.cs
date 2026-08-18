@@ -14,7 +14,9 @@ public sealed class TeamController(ITeamManagement team) : ControllerBase
     [HttpGet("{id:guid}")] public async Task<ActionResult<TeamMemberDetails>> Get(Guid id, CancellationToken token) => await team.GetAsync(id, token) is { } member ? Ok(member) : NotFound();
     [HttpPost("invite")] public async Task<IActionResult> Invite([FromBody] InviteTeamMemberCommand command, CancellationToken token) => Result(await team.InviteAsync(command, token), Created("/team", new { message = "Convite enviado." }));
     [HttpPut("{id:guid}")] public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTeamMemberCommand command, CancellationToken token) => Result(await team.UpdateAsync(id, command, token), NoContent());
-    private IActionResult Result(TeamOperationResult result, IActionResult success) => result.Succeeded ? success : result.Code switch { "not-found" => NotFound(), "self-protected" or "protected" => Conflict(new { code = result.Code, message = "O proprietário principal não pode ser alterado." }), "conflict" => Conflict(result), _ => BadRequest(result) };
+    [HttpPost("{id:guid}/resend-invitation")] public async Task<IActionResult> ResendInvitation(Guid id, CancellationToken token) =>
+        Result(await team.ResendInvitationAsync(id, token), Ok(new { message = "Convite reenviado." }));
+    private IActionResult Result(TeamOperationResult result, IActionResult success) => result.Succeeded ? success : result.Code switch { "not-found" => NotFound(), "self-protected" or "protected" or "already-active" => Conflict(new { code = result.Code, message = "Esta operação não está disponível para o usuário." }), "conflict" => Conflict(result), _ => BadRequest(result) };
 }
 
 [ApiController]
@@ -22,6 +24,10 @@ public sealed class TeamController(ITeamManagement team) : ControllerBase
 [AllowAnonymous]
 public sealed class TeamInvitationsController(ITeamManagement team) : ControllerBase
 {
+    [HttpGet("validate")]
+    public async Task<IActionResult> Validate([FromQuery] Guid id, [FromQuery] string token, CancellationToken cancellationToken) =>
+        await team.CanAcceptAsync(id, token, cancellationToken) ? NoContent() : NotFound();
+
     [HttpPost("accept")]
     public async Task<IActionResult> Accept([FromBody] AcceptTeamInvitationCommand command, CancellationToken token)
     {

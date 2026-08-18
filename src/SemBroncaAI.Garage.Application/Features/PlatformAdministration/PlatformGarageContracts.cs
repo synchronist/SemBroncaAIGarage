@@ -59,7 +59,10 @@ public sealed record PlatformGarageDetailsResponse(
     string? OwnerName,
     string? OwnerEmail,
     string? OwnerUserName,
-    PlatformSubscriptionResponse Subscription);
+    PlatformSubscriptionResponse Subscription,
+    IReadOnlyCollection<PlatformAuditItem> RecentActivity);
+
+public sealed record PlatformAuditItem(DateTime OccurredAt, string Action, string ActorContext, string? Summary);
 
 public sealed record UpdateGarageSubscriptionCommand(
     SubscriptionStatus Status,

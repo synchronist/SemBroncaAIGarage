@@ -6,13 +6,15 @@ using SemBroncaAI.Garage.Application.Features.PlatformAdministration;
 using SemBroncaAI.Garage.Domain.Entities.Garage;
 using SemBroncaAI.Garage.Infrastructure.Identity;
 using SemBroncaAI.Garage.Infrastructure.Persistence;
+using SemBroncaAI.Garage.Application.Abstractions.Persistence;
 
 namespace SemBroncaAI.Garage.Infrastructure.Services;
 
 public sealed class PlatformGarageAdministration(
     GarageDbContext context,
     UserManager<ApplicationUser> userManager,
-    IOptions<SubscriptionOptions> subscriptionOptions) : IPlatformGarageAdministration
+    IOptions<SubscriptionOptions> subscriptionOptions,
+    IAuditWriter auditWriter) : IPlatformGarageAdministration
 {
     public async Task<PlatformDashboardResponse> GetDashboardAsync(CancellationToken cancellationToken = default)
     {
@@ -90,9 +92,17 @@ public sealed class PlatformGarageAdministration(
                  where user.GarageId == garage.Id && userRole.RoleId == ownerRoleId orderby user.Id select user.UserName).FirstOrDefault(),
                 context.GarageSubscriptions.Where(x => x.GarageId == garage.Id).Select(x => new PlatformSubscriptionResponse(
                     x.Status, x.Plan, x.StartedAt, x.TrialEndsAt, x.CurrentPeriodStart, x.CurrentPeriodEnd,
-                    x.SuspendedAt, x.CancelledAt, x.Status == SubscriptionStatus.Trial && x.TrialEndsAt < DateTime.UtcNow)).Single()))
+                    x.SuspendedAt, x.CancelledAt, x.Status == SubscriptionStatus.Trial && x.TrialEndsAt < DateTime.UtcNow)).Single(),
+                Array.Empty<PlatformAuditItem>()))
             .SingleOrDefaultAsync(cancellationToken);
-        return garage;
+        if (garage is null) return null;
+        var recentActivity = await context.AuditEntries.AsNoTracking()
+            .Where(x => x.GarageId == id)
+            .OrderByDescending(x => x.OccurredAt).ThenByDescending(x => x.Id)
+            .Take(10)
+            .Select(x => new PlatformAuditItem(x.OccurredAt, x.Action, x.ActorContext, x.Summary))
+            .ToArrayAsync(cancellationToken);
+        return garage with { RecentActivity = recentActivity };
     }
 
     public async Task<CreatePlatformGarageResponse> CreateAsync(
@@ -124,6 +134,9 @@ public sealed class PlatformGarageAdministration(
             if (!(await userManager.AddToRoleAsync(owner, ApplicationRoles.Owner)).Succeeded)
                 throw new InvalidOperationException("Não foi possível concluir o cadastro da oficina.");
 
+            auditWriter.Add(garage.Id, AuditActions.GarageCreated, "Garage", garage.Id.ToString("D"),
+                "Oficina criada com assinatura inicial.");
+            await context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return new(garage.Id, garage.Name, garage.Active);
         }
@@ -152,6 +165,8 @@ public sealed class PlatformGarageAdministration(
             garage.Deactivate();
             subscription.ChangeStatus(SubscriptionStatus.Suspended, now);
         }
+        auditWriter.Add(id, active ? AuditActions.GarageActivated : AuditActions.GarageDeactivated,
+            "Garage", id.ToString("D"), active ? "Oficina ativada." : "Oficina desativada.");
         await context.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -171,6 +186,8 @@ public sealed class PlatformGarageAdministration(
                 { ["status"] = ["Esta alteração não é permitida para a situação atual."] });
 
         var now = DateTime.UtcNow;
+        var previousPlan = subscription.Plan;
+        var previousStatus = subscription.Status;
         subscription.ChangePlan(command.Plan, now);
         subscription.ChangeStatus(command.Status, now);
 
@@ -178,6 +195,8 @@ public sealed class PlatformGarageAdministration(
         if (requiredActive == true) garage.Activate();
         else if (requiredActive == false) garage.Deactivate();
         // PastDue returns no required state and remains operational without overriding an administrative block.
+        auditWriter.Add(id, AuditActions.SubscriptionChanged, "GarageSubscription", subscription.Id.ToString("D"),
+            $"Plano {previousPlan} → {command.Plan}; status {previousStatus} → {command.Status}.");
         await context.SaveChangesAsync(cancellationToken);
         return ToResponse(subscription, now);
     }

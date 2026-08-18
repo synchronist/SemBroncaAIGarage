@@ -21,17 +21,19 @@ public sealed class GarageSettingsHandlerTests
     public async Task Update_Should_Respect_Requested_Id_And_Exclude_It_From_Document_Check()
     {
         var garage = Create(); var repository = new Repository(garage); var unitOfWork = new UnitOfWork();
-        var handler = new UpdateGarageSettingsHandler(repository, unitOfWork);
+        var audit = new AuditWriter();
+        var handler = new UpdateGarageSettingsHandler(repository, unitOfWork, audit);
         var response = await handler.HandleAsync(garage.Id, new("Oficina Nova", garage.Document, "1188", "novo@oficina.com", null, "Rua A", "10", null, "Centro", "Boituva", "SP", "#F97316"));
 
         repository.RequestedId.ShouldBe(garage.Id); repository.ExcludedId.ShouldBe(garage.Id);
         response.Name.ShouldBe("Oficina Nova"); response.City.ShouldBe("Boituva"); unitOfWork.SaveCount.ShouldBe(1);
+        audit.Actions.ShouldBe([AuditActions.GarageSettingsChanged]);
     }
 
     [Fact]
     public async Task Update_Should_Not_Change_Another_Garage()
     {
-        var garage = Create(); var handler = new UpdateGarageSettingsHandler(new Repository(garage), new UnitOfWork());
+        var garage = Create(); var handler = new UpdateGarageSettingsHandler(new Repository(garage), new UnitOfWork(), new AuditWriter());
         await Should.ThrowAsync<InvalidOperationException>(() => handler.HandleAsync(Guid.CreateVersion7(),
             new("Outra", "999", "1188", "a@b.com", null, null, null, null, null, null, null, null)));
         garage.Name.ShouldBe("Oficina");
@@ -52,5 +54,10 @@ public sealed class GarageSettingsHandlerTests
     {
         public int SaveCount { get; private set; }
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) { SaveCount++; return Task.FromResult(1); }
+    }
+    private sealed class AuditWriter : IAuditWriter
+    {
+        public List<string> Actions { get; } = [];
+        public void Add(Guid? garageId, string action, string entityType, string entityId, string? summary = null) => Actions.Add(action);
     }
 }

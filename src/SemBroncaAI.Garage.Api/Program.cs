@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using SemBroncaAI.Garage.Application.Features.TeamManagement;
+using SemBroncaAI.Garage.Application.Abstractions.Email;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,16 +56,14 @@ builder.Services.AddScoped<IdentityLoginService>();
 builder.Services.AddScoped<IPasswordRecoveryGateway, IdentityPasswordRecoveryGateway>();
 builder.Services.AddScoped<PasswordRecoveryService>();
 builder.Services.AddScoped<ServiceOrderConcurrencyExceptionFilter>();
-if (builder.Environment.IsDevelopment())
-{
-    builder.Services.AddScoped<IPasswordResetEmailSender, DevelopmentPasswordResetEmailSender>();
-    builder.Services.AddScoped<ITeamInvitationSender, DevelopmentTeamInvitationSender>();
-}
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
+var smtpConfigured = string.Equals(builder.Configuration["Email:Provider"], "Smtp", StringComparison.OrdinalIgnoreCase);
+if (builder.Environment.IsDevelopment() && !smtpConfigured)
+    builder.Services.AddScoped<ITransactionalEmailSender, DevelopmentTransactionalEmailSender>();
 else
-{
-    builder.Services.AddScoped<IPasswordResetEmailSender, UnavailablePasswordResetEmailSender>();
-    builder.Services.AddScoped<ITeamInvitationSender, UnavailableTeamInvitationSender>();
-}
+    builder.Services.AddScoped<ITransactionalEmailSender, SmtpTransactionalEmailSender>();
+builder.Services.AddScoped<IPasswordResetEmailSender, PasswordResetEmailSender>();
+builder.Services.AddScoped<ITeamInvitationSender, TeamInvitationEmailSender>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<HttpContextCurrentUser>();
 builder.Services.AddScoped<SemBroncaAI.Garage.Application.Abstractions.Security.ICurrentUser>(sp => sp.GetRequiredService<HttpContextCurrentUser>());
@@ -85,6 +85,9 @@ builder.Services
     });
 
 builder.Services.AddOpenApi();
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), tags: ["live"])
+    .AddCheck<PostgreSqlReadinessCheck>("postgresql", tags: ["ready"]);
 
 var app = builder.Build();
 if (!app.Environment.IsDevelopment())
@@ -92,13 +95,14 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler(exceptionApp => exceptionApp.Run(async context =>
     {
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-        await context.Response.WriteAsJsonAsync(new { message = ApiDeploymentConfiguration.UnexpectedErrorMessage });
+        await context.Response.WriteAsJsonAsync(new { message = ApiDeploymentConfiguration.UnexpectedErrorMessage, correlationId = context.TraceIdentifier });
     }));
     app.UseHsts();
 }
 app.UseForwardedHeaders();
 app.UseRateLimiter();
 app.UseAuthentication();
+app.UseMiddleware<ApiOperationalMiddleware>();
 app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
@@ -107,5 +111,15 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapControllers();
+app.MapHealthChecks("/health/live", new() { Predicate = check => check.Tags.Contains("live"), ResponseWriter = MinimalHealthResponse })
+    .AllowAnonymous();
+app.MapHealthChecks("/health/ready", new() { Predicate = check => check.Tags.Contains("ready"), ResponseWriter = MinimalHealthResponse })
+    .AllowAnonymous();
 
 app.Run();
+
+static Task MinimalHealthResponse(HttpContext context, Microsoft.Extensions.Diagnostics.HealthChecks.HealthReport report)
+{
+    context.Response.ContentType = "application/json";
+    return context.Response.WriteAsJsonAsync(new { status = report.Status.ToString() });
+}

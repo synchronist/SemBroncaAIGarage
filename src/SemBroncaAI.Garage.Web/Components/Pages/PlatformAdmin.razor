@@ -18,6 +18,7 @@ else if (_dashboard is not null)
         else { <div class="rows">@foreach (var garage in _dashboard.RecentGarages) { <a href="@($"/platform-admin/garages/{garage.Id}")"><span class="garage-mark">@GetInitial(garage.Name)</span><span class="garage-copy"><strong>@garage.Name</strong><small>Cadastrada em @garage.CreatedAt.ToString("dd/MM/yyyy")</small></span><em class="@(garage.Active ? "active" : "inactive")">@(garage.Active ? "Ativa" : "Inativa")</em><MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" /></a> }</div> }
     </section>
 }
+<PlatformHealth />
 
 @code {
     private PlatformDashboardResponse? _dashboard; private bool _loading = true; private string? _error;

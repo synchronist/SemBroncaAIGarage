@@ -1,0 +1,17 @@
+@inject PlatformHealthService HealthService
+
+<section class="health-panel" aria-labelledby="platform-health-title">
+    <div class="health-head"><div><h2 id="platform-health-title">Saúde da plataforma</h2><p>Disponibilidade atual dos componentes essenciais.</p></div><button @onclick="CheckAsync" disabled="@_checking"><MudIcon Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" />@(_checking ? "Verificando..." : "Verificar novamente")</button></div>
+    @if (_checking && _health is null) { <div class="health-loading"><MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Small" /><span>Verificando componentes...</span></div> }
+    else if (_health is not null) { <div class="health-grid"><article><span class="health-icon @StateClass(_health.Web)"><MudIcon Icon="@StateIcon(_health.Web)" Size="Size.Small" /></span><div><small>Web</small><strong>@StateLabel(_health.Web)</strong></div></article><article><span class="health-icon @StateClass(_health.Api)"><MudIcon Icon="@StateIcon(_health.Api)" Size="Size.Small" /></span><div><small>API</small><strong>@StateLabel(_health.Api)</strong></div></article><article><span class="health-icon @StateClass(_health.Database)"><MudIcon Icon="@StateIcon(_health.Database)" Size="Size.Small" /></span><div><small>Banco de dados</small><strong>@StateLabel(_health.Database)</strong></div></article></div><p class="health-checked">Última verificação: @_health.CheckedAt.ToString("dd/MM/yyyy HH:mm")</p> }
+</section>
+
+@code {
+    private PlatformHealthSnapshot? _health;
+    private bool _checking;
+    protected override Task OnInitializedAsync() => CheckAsync();
+    private async Task CheckAsync() { if (_checking) return; _checking = true; try { _health = await HealthService.CheckAsync(); } finally { _checking = false; } }
+    private static string StateLabel(PlatformComponentState state) => state switch { PlatformComponentState.Operational => "Operacional", PlatformComponentState.Available => "Disponível", PlatformComponentState.Unavailable => "Indisponível", _ => "Não foi possível verificar" };
+    private static string StateClass(PlatformComponentState state) => state is PlatformComponentState.Operational or PlatformComponentState.Available ? "healthy" : state == PlatformComponentState.Unavailable ? "unavailable" : "unknown";
+    private static string StateIcon(PlatformComponentState state) => state is PlatformComponentState.Operational or PlatformComponentState.Available ? Icons.Material.Filled.CheckCircle : state == PlatformComponentState.Unavailable ? Icons.Material.Filled.Cancel : Icons.Material.Filled.HelpOutline;
+}

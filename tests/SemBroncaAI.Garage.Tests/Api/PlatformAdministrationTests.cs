@@ -21,6 +21,54 @@ namespace SemBroncaAI.Garage.Tests.Api;
 public sealed class PlatformAdministrationTests
 {
     [Fact]
+    public async Task Platform_health_should_report_all_components_when_live_and_ready_are_healthy()
+    {
+        var service = HealthService(HttpStatusCode.OK, HttpStatusCode.OK);
+
+        var result = await service.CheckAsync();
+
+        result.Web.ShouldBe(PlatformComponentState.Operational);
+        result.Api.ShouldBe(PlatformComponentState.Operational);
+        result.Database.ShouldBe(PlatformComponentState.Available);
+    }
+
+    [Fact]
+    public async Task Platform_health_should_distinguish_database_failure_from_api_failure()
+    {
+        var databaseFailure = await HealthService(HttpStatusCode.OK, HttpStatusCode.ServiceUnavailable).CheckAsync();
+        var apiFailure = await HealthService(HttpStatusCode.ServiceUnavailable).CheckAsync();
+
+        databaseFailure.Api.ShouldBe(PlatformComponentState.Operational);
+        databaseFailure.Database.ShouldBe(PlatformComponentState.Unavailable);
+        apiFailure.Api.ShouldBe(PlatformComponentState.Unavailable);
+        apiFailure.Database.ShouldBe(PlatformComponentState.Unknown);
+    }
+
+    [Fact]
+    public async Task Platform_health_timeout_should_return_safe_state_instead_of_throwing()
+    {
+        var client = new HttpClient(new HealthHandler([], throwTimeout: true)) { BaseAddress = new Uri("http://internal-api/") };
+
+        var result = await new PlatformHealthService(client).CheckAsync();
+
+        result.Api.ShouldBe(PlatformComponentState.Unavailable);
+        result.Database.ShouldBe(PlatformComponentState.Unknown);
+    }
+
+    [Fact]
+    public void Platform_health_visualization_should_remain_inside_platform_admin_boundary()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+        var dashboard = File.ReadAllText(Path.Combine(root, "src", "SemBroncaAI.Garage.Web", "Components", "Pages", "PlatformAdmin.razor"));
+        var health = File.ReadAllText(Path.Combine(root, "src", "SemBroncaAI.Garage.Web", "Components", "PlatformHealth.razor"));
+
+        dashboard.ShouldContain("Authorize(Policy = PlatformAuthorization.Policy)");
+        dashboard.ShouldContain("<PlatformHealth />");
+        health.ShouldNotContain("BaseAddress");
+        health.ShouldNotContain("localhost");
+    }
+
+    [Fact]
     public void Administrative_boundary_should_require_only_platform_admin_role()
     {
         var authorization = typeof(PlatformGaragesController).GetCustomAttribute<AuthorizeAttribute>();
@@ -28,6 +76,19 @@ public sealed class PlatformAdministrationTests
         authorization.Policy.ShouldBe(PlatformAuthorization.Policy);
         authorization.Roles.ShouldBeNull();
         typeof(PlatformGaragesController).GetCustomAttribute<AllowAnonymousAttribute>().ShouldBeNull();
+    }
+
+    private static PlatformHealthService HealthService(params HttpStatusCode[] statuses) =>
+        new(new HttpClient(new HealthHandler(statuses)) { BaseAddress = new Uri("http://internal-api/") });
+
+    private sealed class HealthHandler(IEnumerable<HttpStatusCode> statuses, bool throwTimeout = false) : HttpMessageHandler
+    {
+        private readonly Queue<HttpStatusCode> _statuses = new(statuses);
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (throwTimeout) throw new TaskCanceledException("timeout");
+            return Task.FromResult(new HttpResponseMessage(_statuses.Dequeue()));
+        }
     }
 
     [Fact]
@@ -177,7 +238,7 @@ public sealed class PlatformAdministrationTests
         var list = new PlatformGarageListResponse(1, 20, 2, 1, [active, suspended]);
         var details = new PlatformGarageDetailsResponse(active.Id, active.Name, active.Document, active.Email,
             active.Phone, active.Active, now, 1, active.OwnerName, active.OwnerEmail, "owner",
-            new(SubscriptionStatus.Active, SubscriptionPlan.Standard, now, null, null, null, null, null, false));
+            new(SubscriptionStatus.Active, SubscriptionPlan.Standard, now, null, null, null, null, null, false), []);
         var handler = new JsonResponseHandler(list, details);
         var service = new PlatformGarageService(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
 

@@ -15,7 +15,7 @@ public sealed class DeploymentConfigurationTests
         {
             ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Username=postgres;Password=postgres",
             ["IdentitySeed:Enabled"] = "true",
-            ["Web:BaseUrl"] = "http://localhost:5123"
+            ["App:PublicBaseUrl"] = "http://localhost:5123"
         });
 
         Should.Throw<InvalidOperationException>(() =>
@@ -62,11 +62,20 @@ public sealed class DeploymentConfigurationTests
     }
 
     [Fact]
-    public void Production_api_should_reject_password_recovery_until_email_provider_exists()
+    public void Production_api_should_allow_password_recovery_with_valid_email_provider()
     {
         var values = SafeApiValues();
         values["PasswordRecovery:Enabled"] = "true";
 
+        Should.NotThrow(() =>
+            ApiDeploymentConfiguration.ValidateProduction(Configuration(values), Environment("Production")));
+    }
+
+    [Fact]
+    public void Production_api_should_reject_incomplete_smtp_configuration()
+    {
+        var values = SafeApiValues();
+        values["Email:Password"] = null;
         Should.Throw<InvalidOperationException>(() =>
             ApiDeploymentConfiguration.ValidateProduction(Configuration(values), Environment("Production")));
     }
@@ -86,7 +95,15 @@ public sealed class DeploymentConfigurationTests
         ["ConnectionStrings:DefaultConnection"] = "Host=db.internal;Username=app;Password=strong-secret",
         ["IdentitySeed:Enabled"] = "false",
         ["PasswordRecovery:Enabled"] = "false",
-        ["Web:BaseUrl"] = "https://garage.example",
+        ["App:PublicBaseUrl"] = "https://garage.example",
+        ["Web:BaseUrl"] = "https://web.internal",
+        ["Email:Provider"] = "Smtp",
+        ["Email:Host"] = "smtp.example",
+        ["Email:Port"] = "587",
+        ["Email:Username"] = "mailer",
+        ["Email:Password"] = "secret",
+        ["Email:FromAddress"] = "no-reply@example.com",
+        ["Email:TimeoutSeconds"] = "15",
         ["DataProtection:KeysPath"] = "/persistent/keys",
         ["ReverseProxy:KnownProxies:0"] = "10.0.0.10"
     };

@@ -41,7 +41,8 @@ public sealed class AuthenticatedApiHttpClient : IDisposable
     public AuthenticatedApiHttpClient(
         AuthenticationStateProvider authenticationStateProvider,
         IServerApiSessionStore sessionStore,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHttpContextAccessor httpContextAccessor)
     {
         var baseUrl = configuration["Api:BaseUrl"]
             ?? throw new InvalidOperationException("A URL da API não foi configurada.");
@@ -49,7 +50,10 @@ public sealed class AuthenticatedApiHttpClient : IDisposable
             authenticationStateProvider,
             sessionStore)
         {
-            InnerHandler = new HttpClientHandler()
+            InnerHandler = new CorrelationIdHandler(httpContextAccessor)
+            {
+                InnerHandler = new HttpClientHandler()
+            }
         };
         Client = new HttpClient(authenticationHandler)
         {

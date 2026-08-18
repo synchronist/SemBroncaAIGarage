@@ -11,6 +11,7 @@ public sealed class TeamInvitationConfiguration : IEntityTypeConfiguration<TeamI
         builder.ToTable("TeamInvitations"); builder.HasKey(x => x.Id);
         builder.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
         builder.Property(x => x.UsedAt).IsConcurrencyToken();
+        builder.Property(x => x.DeliveryStatus).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.HasIndex(x => x.TokenHash).IsUnique(); builder.HasIndex(x => new { x.GarageId, x.UserId });
         builder.HasOne<Identity.ApplicationUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Identity.ApplicationUser>().WithMany().HasForeignKey(x => x.InvitedByUserId).OnDelete(DeleteBehavior.Restrict);

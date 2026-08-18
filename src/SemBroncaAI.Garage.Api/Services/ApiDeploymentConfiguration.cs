@@ -12,6 +12,11 @@ public static class ApiDeploymentConfiguration
     public static void Configure(WebApplicationBuilder builder)
     {
         ValidateProduction(builder.Configuration, builder.Environment);
+        if (builder.Environment.IsProduction())
+        {
+            builder.Logging.ClearProviders();
+            builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
+        }
         var dataProtection = builder.Services.AddDataProtection().SetApplicationName(DataProtectionApplicationName);
         if (builder.Environment.IsProduction())
         {
@@ -39,14 +44,29 @@ public static class ApiDeploymentConfiguration
             throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection de forma segura em Production.");
         if (configuration.GetValue<bool>("IdentitySeed:Enabled"))
             throw new InvalidOperationException("IdentitySeed não pode ser habilitado em Production.");
-        if (configuration.GetValue<bool>("PasswordRecovery:Enabled"))
-            throw new InvalidOperationException("PasswordRecovery não pode ser habilitado em Production sem provider de e-mail.");
+        var publicBaseUrl = configuration["App:PublicBaseUrl"];
+        if (!Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var publicUri) || publicUri.Scheme != Uri.UriSchemeHttps || publicUri.IsLoopback)
+            throw new InvalidOperationException("Configure App:PublicBaseUrl com uma URL HTTPS pública em Production.");
+        ValidateEmail(configuration);
         var webBaseUrl = configuration["Web:BaseUrl"];
         if (string.IsNullOrWhiteSpace(webBaseUrl) || webBaseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Configure Web:BaseUrl de Production.");
+            throw new InvalidOperationException("Configure Web:BaseUrl de Production para geração de documentos.");
         if (string.IsNullOrWhiteSpace(configuration["DataProtection:KeysPath"]))
             throw new InvalidOperationException("Configure DataProtection:KeysPath em Production.");
         if (!configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>()?.Any() ?? true)
             throw new InvalidOperationException("Configure ReverseProxy:KnownProxies em Production.");
+    }
+
+    private static void ValidateEmail(IConfiguration configuration)
+    {
+        if (!string.Equals(configuration["Email:Provider"], "Smtp", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Configure Email:Provider como Smtp em Production.");
+        if (string.IsNullOrWhiteSpace(configuration["Email:Host"]) ||
+            configuration.GetValue<int>("Email:Port") is < 1 or > 65535 ||
+            string.IsNullOrWhiteSpace(configuration["Email:Username"]) ||
+            string.IsNullOrWhiteSpace(configuration["Email:Password"]) ||
+            !System.Net.Mail.MailAddress.TryCreate(configuration["Email:FromAddress"], out _) ||
+            configuration.GetValue<int>("Email:TimeoutSeconds") is < 1 or > 120)
+            throw new InvalidOperationException("Configure o transporte SMTP de Production de forma completa e válida.");
     }
 }

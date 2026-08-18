@@ -26,7 +26,8 @@ else {
         <div class="subscription-summary"><div><span>Plano</span><strong>Standard</strong></div><div><span>Status</span><strong><em class="subscription-badge @SubscriptionClass(_garage.Subscription.Status)">@SubscriptionLabel(_garage.Subscription.Status)</em></strong></div><div><span>Data de início</span><strong>@_garage.Subscription.StartedAt.ToString("dd/MM/yyyy")</strong></div>@if(_garage.Subscription.TrialEndsAt is { } trialEnd){<div><span>Trial</span><strong>@TrialDescription(_garage.Subscription,trialEnd)</strong></div>}@if(_garage.Subscription.CurrentPeriodStart is { } periodStart){<div><span>Período atual</span><strong>@periodStart.ToString("dd/MM/yyyy") — @(_garage.Subscription.CurrentPeriodEnd?.ToString("dd/MM/yyyy") ?? "—")</strong></div>}</div>
         <div class="subscription-management"><div class="management-head"><strong>Gerenciar assinatura</strong><span>Escolha uma alteração válida para a situação atual.</span></div><div class="subscription-change"><select value="@(_selectedStatus?.ToString()??string.Empty)" @onchange="SelectStatus" disabled="@_saving"><option value="">Alterar situação</option>@foreach(var target in SubscriptionTransitions.AllowedTargets(_garage.Subscription.Status)){<option value="@target">@ActionLabel(_garage.Subscription.Status,target)</option>}</select><button class="primary" disabled="@(_saving||_selectedStatus is null)" @onclick="ConfirmSelectedAsync">@(_saving?"Salvando...":"Confirmar alteração")</button></div>
         @if(_confirmingSubscription){<div class="confirm"><p>@ConfirmationMessage()</p><div class="confirm-actions"><button @onclick="CancelSubscription">Voltar</button><button class="danger" disabled="@_saving" @onclick="SaveSubscriptionAsync">@(_saving?"Salvando...":"Confirmar")</button></div></div>}</div>
-    </section></div>
+    </section>
+    <PlatformAuditActivity Items="_garage.RecentActivity" /></div>
 }
 
 @code {

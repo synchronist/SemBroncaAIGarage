@@ -74,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<IPlatformGarageAdministration, PlatformGarageAdministration>();
         services.Configure<SubscriptionOptions>(configuration.GetSection(SubscriptionOptions.SectionName));
         services.AddScoped<ITeamManagement, TeamManagement>();
+        services.AddScoped<IAuditWriter, AuditWriter>();
 
         services.AddScoped<IUnitOfWork>(sp =>
             sp.GetRequiredService<GarageDbContext>());
