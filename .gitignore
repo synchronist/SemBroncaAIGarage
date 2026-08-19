@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 
 # Local tenant branding assets
 brand-assets/
+
+# PostgreSQL logical backups (contain production data)
+backups/
