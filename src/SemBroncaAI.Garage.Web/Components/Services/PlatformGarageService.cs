@@ -78,7 +78,8 @@ public sealed class PlatformGarageService(HttpClient httpClient)
             return null;
         try
         {
-            return await response.Content.ReadFromJsonAsync<PlatformGarageValidationError>(JsonOptions, cancellationToken);
+            var validation = await response.Content.ReadFromJsonAsync<PlatformGarageValidationError>(JsonOptions, cancellationToken);
+            return validation?.Errors is { Count: > 0 } ? validation : null;
         }
         catch (System.Text.Json.JsonException)
         {

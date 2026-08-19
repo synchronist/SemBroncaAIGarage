@@ -1,0 +1,123 @@
+name: sbgarage-production
+
+x-api-environment: &api-environment
+  ASPNETCORE_ENVIRONMENT: Production
+  Deployment__LocalProduction: ${LOCAL_PRODUCTION:-false}
+  ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:?configure POSTGRES_DB};Username=${POSTGRES_USER:?configure POSTGRES_USER};Password=${POSTGRES_PASSWORD:?configure POSTGRES_PASSWORD}
+  App__PublicBaseUrl: ${APP_PUBLIC_BASE_URL:?configure APP_PUBLIC_BASE_URL}
+  Web__BaseUrl: http://web:8080/
+  BrandAssets__RootPath: /var/lib/sbgarage/brand-assets
+  DataProtection__KeysPath: /var/lib/sbgarage/data-protection
+  ReverseProxy__KnownProxies__0: 172.30.0.1
+  IdentitySeed__Enabled: "false"
+  Email__Provider: ${EMAIL_PROVIDER:-Smtp}
+  Email__Host: ${EMAIL_SMTP_HOST:-}
+  Email__Port: ${EMAIL_SMTP_PORT:-587}
+  Email__Username: ${EMAIL_SMTP_USERNAME:-}
+  Email__Password: ${EMAIL_SMTP_PASSWORD:-}
+  Email__FromAddress: ${EMAIL_FROM_ADDRESS:-}
+  Email__FromName: ${EMAIL_FROM_NAME:-SemBroncaAI Garage}
+  Email__UseSsl: ${EMAIL_USE_SSL:-true}
+  Email__TimeoutSeconds: ${EMAIL_TIMEOUT_SECONDS:-15}
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?configure POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?configure POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?configure POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - data-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  api:
+    build:
+      context: ..
+      dockerfile: src/SemBroncaAI.Garage.Api/Dockerfile
+      target: runtime
+    restart: "on-failure:5"
+    environment: *api-environment
+    volumes:
+      - api-data-protection:/var/lib/sbgarage/data-protection
+      - brand-assets:/var/lib/sbgarage/brand-assets
+    networks:
+      - app-network
+      - data-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://localhost:8080/health/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  web:
+    build:
+      context: ..
+      dockerfile: src/SemBroncaAI.Garage.Web/Dockerfile
+      target: runtime
+    restart: "on-failure:5"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Deployment__LocalProduction: ${LOCAL_PRODUCTION:-false}
+      Api__BaseUrl: http://api:8080/
+      PublicAppBaseUrl: ${APP_PUBLIC_BASE_URL:?configure APP_PUBLIC_BASE_URL}
+      DataProtection__KeysPath: /var/lib/sbgarage/data-protection
+      ReverseProxy__KnownProxies__0: 172.30.0.1
+    ports:
+      - "8080:8080"
+    volumes:
+      - web-data-protection:/var/lib/sbgarage/data-protection
+    networks:
+      - app-network
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://localhost:8080/health/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  migrate:
+    profiles: ["tools"]
+    build:
+      context: ..
+      dockerfile: src/SemBroncaAI.Garage.Api/Dockerfile
+      target: migrations
+    restart: "no"
+    environment: *api-environment
+    networks:
+      - app-network
+      - data-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  api-data-protection:
+  web-data-protection:
+  brand-assets:
+
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+  data-network:
+    driver: bridge
+    internal: true

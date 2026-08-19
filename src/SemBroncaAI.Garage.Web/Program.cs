@@ -16,6 +16,16 @@ builder.Services
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddMudServices();
 builder.Services.AddHttpContextAccessor();
+var localProduction = builder.Environment.IsProduction() && builder.Configuration.GetValue<bool>("Deployment:LocalProduction");
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.Name = WebDeploymentConfiguration.GetAntiforgeryCookieName(builder.Configuration, builder.Environment);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() || localProduction
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+});
 builder.Services.AddTransient<CorrelationIdHandler>();
 builder.Services.AddHealthChecks().AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
 

@@ -39,15 +39,26 @@ public static class ApiDeploymentConfiguration
     public static void ValidateProduction(IConfiguration configuration, IHostEnvironment environment)
     {
         if (!environment.IsProduction()) return;
+        var localProduction = configuration.GetValue<bool>("Deployment:LocalProduction");
         var connection = configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrWhiteSpace(connection) || connection.Contains("Password=postgres", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection de forma segura em Production.");
         if (configuration.GetValue<bool>("IdentitySeed:Enabled"))
             throw new InvalidOperationException("IdentitySeed não pode ser habilitado em Production.");
         var publicBaseUrl = configuration["App:PublicBaseUrl"];
-        if (!Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var publicUri) || publicUri.Scheme != Uri.UriSchemeHttps || publicUri.IsLoopback)
+        if (!Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var publicUri) ||
+            (!localProduction && (publicUri.Scheme != Uri.UriSchemeHttps || publicUri.IsLoopback)) ||
+            (localProduction && !(publicUri.IsLoopback && publicUri.Scheme == Uri.UriSchemeHttp)))
             throw new InvalidOperationException("Configure App:PublicBaseUrl com uma URL HTTPS pública em Production.");
-        ValidateEmail(configuration);
+        if (localProduction)
+        {
+            if (!string.Equals(configuration["Email:Provider"], "Development", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("LocalProduction sem SMTP deve usar explicitamente Email:Provider=Development.");
+        }
+        else
+        {
+            ValidateEmail(configuration);
+        }
         var webBaseUrl = configuration["Web:BaseUrl"];
         if (string.IsNullOrWhiteSpace(webBaseUrl) || webBaseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Configure Web:BaseUrl de Production para geração de documentos.");

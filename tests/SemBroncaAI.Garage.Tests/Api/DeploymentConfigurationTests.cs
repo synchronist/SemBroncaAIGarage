@@ -62,6 +62,26 @@ public sealed class DeploymentConfigurationTests
     }
 
     [Fact]
+    public void Antiforgery_cookie_names_should_isolate_local_environments()
+    {
+        var development = Configuration(new Dictionary<string, string?>());
+        var localProduction = Configuration(new Dictionary<string, string?>
+        {
+            ["Deployment:LocalProduction"] = "true"
+        });
+        var production = Configuration(new Dictionary<string, string?>());
+
+        WebDeploymentConfiguration.GetAntiforgeryCookieName(development, Environment("Development"))
+            .ShouldBe(WebDeploymentConfiguration.DevelopmentAntiforgeryCookieName);
+        WebDeploymentConfiguration.GetAntiforgeryCookieName(localProduction, Environment("Production"))
+            .ShouldBe(WebDeploymentConfiguration.LocalProductionAntiforgeryCookieName);
+        WebDeploymentConfiguration.GetAntiforgeryCookieName(production, Environment("Production"))
+            .ShouldBe(WebDeploymentConfiguration.ProductionAntiforgeryCookieName);
+        WebDeploymentConfiguration.DevelopmentAntiforgeryCookieName
+            .ShouldNotBe(WebDeploymentConfiguration.LocalProductionAntiforgeryCookieName);
+    }
+
+    [Fact]
     public void Production_api_should_allow_password_recovery_with_valid_email_provider()
     {
         var values = SafeApiValues();
@@ -78,6 +98,35 @@ public sealed class DeploymentConfigurationTests
         values["Email:Password"] = null;
         Should.Throw<InvalidOperationException>(() =>
             ApiDeploymentConfiguration.ValidateProduction(Configuration(values), Environment("Production")));
+    }
+
+    [Fact]
+    public void Explicit_local_production_should_allow_loopback_http_and_development_email_only()
+    {
+        var values = SafeApiValues();
+        values["Deployment:LocalProduction"] = "true";
+        values["App:PublicBaseUrl"] = "http://localhost:8080";
+        values["Email:Provider"] = "Development";
+        values["Email:Host"] = values["Email:Username"] = values["Email:Password"] = values["Email:FromAddress"] = null;
+
+        Should.NotThrow(() => ApiDeploymentConfiguration.ValidateProduction(
+            Configuration(values), Environment("Production")));
+
+        values["Deployment:LocalProduction"] = "false";
+        Should.Throw<InvalidOperationException>(() => ApiDeploymentConfiguration.ValidateProduction(
+            Configuration(values), Environment("Production")));
+    }
+
+    [Fact]
+    public void Local_production_should_not_accept_an_arbitrary_non_smtp_provider()
+    {
+        var values = SafeApiValues();
+        values["Deployment:LocalProduction"] = "true";
+        values["App:PublicBaseUrl"] = "http://localhost:8080";
+        values["Email:Provider"] = "Disabled";
+
+        Should.Throw<InvalidOperationException>(() => ApiDeploymentConfiguration.ValidateProduction(
+            Configuration(values), Environment("Production")));
     }
 
     [Fact]

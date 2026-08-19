@@ -24,6 +24,29 @@ window.sbgTogglePassword = function (inputId, button) {
     button.setAttribute("title", label);
 };
 
+window.sbgPreventImplicitLongFormSubmit = function (event) {
+    if (event.key !== "Enter") return true;
+    event.preventDefault();
+    return false;
+};
+
+window.sbgReadPlatformGarageForm = function () {
+    const value = id => document.getElementById(id)?.value ?? "";
+    return {
+        name: value("garage-name"), document: value("garage-document"),
+        phone: value("garage-phone"), email: value("garage-email"),
+        ownerName: value("owner-name"), ownerEmail: value("owner-email"),
+        ownerUserName: value("owner-username"), initialPassword: value("initial-password"),
+        confirmPassword: value("confirm-password")
+    };
+};
+
+document.addEventListener("keydown", function (event) {
+    if (!(event.target instanceof HTMLInputElement)) return;
+    if (!event.target.form?.hasAttribute("data-prevent-implicit-submit")) return;
+    window.sbgPreventImplicitLongFormSubmit(event);
+}, true);
+
 window.sbgValidateResetForm = function (form) {
     const password = form.elements.password.value;
     const confirmation = form.elements.confirmPassword.value;

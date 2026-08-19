@@ -58,7 +58,8 @@ builder.Services.AddScoped<PasswordRecoveryService>();
 builder.Services.AddScoped<ServiceOrderConcurrencyExceptionFilter>();
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 var smtpConfigured = string.Equals(builder.Configuration["Email:Provider"], "Smtp", StringComparison.OrdinalIgnoreCase);
-if (builder.Environment.IsDevelopment() && !smtpConfigured)
+var localProduction = builder.Environment.IsProduction() && builder.Configuration.GetValue<bool>("Deployment:LocalProduction");
+if ((builder.Environment.IsDevelopment() || localProduction) && !smtpConfigured)
     builder.Services.AddScoped<ITransactionalEmailSender, DevelopmentTransactionalEmailSender>();
 else
     builder.Services.AddScoped<ITransactionalEmailSender, SmtpTransactionalEmailSender>();
@@ -73,6 +74,7 @@ builder.Services.AddRateLimiter(options =>
     ApprovalRateLimiting.Configure(options);
     AuthenticationRateLimiting.AddLoginPolicy(options);
 });
+builder.Services.AddHostedService<ApplicationIdentityRoleHostedService>();
 if (builder.Environment.IsDevelopment())
     builder.Services.AddHostedService<DevelopmentIdentitySeedHostedService>();
 

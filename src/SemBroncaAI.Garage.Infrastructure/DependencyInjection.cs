@@ -71,6 +71,7 @@ public static class DependencyInjection
         services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, ApplicationUserClaimsPrincipalFactory>();
 
         services.AddScoped<IDevelopmentIdentitySeedStore, IdentityDevelopmentSeedStore>();
+        services.AddScoped<ApplicationIdentityRoleInitializer>();
         services.AddScoped<IPlatformGarageAdministration, PlatformGarageAdministration>();
         services.Configure<SubscriptionOptions>(configuration.GetSection(SubscriptionOptions.SectionName));
         services.AddScoped<ITeamManagement, TeamManagement>();

@@ -7,6 +7,18 @@ namespace SemBroncaAI.Garage.Web.Services;
 public static class WebDeploymentConfiguration
 {
     public const string DataProtectionApplicationName = "SBGarage.Web";
+    public const string DevelopmentAntiforgeryCookieName = "SBGarage.Development.Antiforgery";
+    public const string LocalProductionAntiforgeryCookieName = "SBGarage.LocalProduction.Antiforgery";
+    public const string ProductionAntiforgeryCookieName = "__Host-SBGarage.Antiforgery";
+
+    public static string GetAntiforgeryCookieName(IConfiguration configuration, IHostEnvironment environment)
+    {
+        if (environment.IsDevelopment()) return DevelopmentAntiforgeryCookieName;
+        return configuration.GetValue<bool>("Deployment:LocalProduction")
+            ? LocalProductionAntiforgeryCookieName
+            : ProductionAntiforgeryCookieName;
+    }
+
     public static void Configure(WebApplicationBuilder builder)
     {
         ValidateProduction(builder.Configuration, builder.Environment);

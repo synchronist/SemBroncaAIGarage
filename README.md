@@ -2,6 +2,8 @@
 
 > A política de retenção das entradas de auditoria administrativa será definida antes da produção comercial definitiva. Nesta fase não há limpeza automática.
 
+Instruções do ambiente production-like: [Produção local com Docker Compose](docs/deployment-local-production.md).
+
 Você conserta carros. Nós cuidamos da burocracia.
 
 ## Sobre o produto
