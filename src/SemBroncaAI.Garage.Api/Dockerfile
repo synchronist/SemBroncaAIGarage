@@ -17,6 +17,8 @@ ENV PATH="${PATH}:/root/.dotnet/tools"
 ENTRYPOINT ["dotnet", "ef", "database", "update", "--project", "src/SemBroncaAI.Garage.Infrastructure", "--startup-project", "src/SemBroncaAI.Garage.Api", "--configuration", "Release", "--no-build"]
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+ARG APP_VERSION=local
+LABEL org.opencontainers.image.revision=$APP_VERSION
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080 \
     DOTNET_EnableDiagnostics=0 \

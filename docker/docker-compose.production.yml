@@ -2,6 +2,7 @@ name: sbgarage-production
 
 x-api-environment: &api-environment
   ASPNETCORE_ENVIRONMENT: Production
+  App__Version: ${APP_VERSION:-local}
   Deployment__LocalProduction: ${LOCAL_PRODUCTION:-false}
   ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:?configure POSTGRES_DB};Username=${POSTGRES_USER:?configure POSTGRES_USER};Password=${POSTGRES_PASSWORD:?configure POSTGRES_PASSWORD}
   App__PublicBaseUrl: ${APP_PUBLIC_BASE_URL:?configure APP_PUBLIC_BASE_URL}
@@ -44,6 +45,10 @@ services:
       context: ..
       dockerfile: src/SemBroncaAI.Garage.Api/Dockerfile
       target: runtime
+      args:
+        APP_VERSION: ${APP_VERSION:-local}
+    labels:
+      org.opencontainers.image.revision: ${APP_VERSION:-local}
     restart: "on-failure:5"
     environment: *api-environment
     volumes:
@@ -67,9 +72,14 @@ services:
       context: ..
       dockerfile: src/SemBroncaAI.Garage.Web/Dockerfile
       target: runtime
+      args:
+        APP_VERSION: ${APP_VERSION:-local}
+    labels:
+      org.opencontainers.image.revision: ${APP_VERSION:-local}
     restart: "on-failure:5"
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+      App__Version: ${APP_VERSION:-local}
       Deployment__LocalProduction: ${LOCAL_PRODUCTION:-false}
       Api__BaseUrl: http://api:8080/
       PublicAppBaseUrl: ${APP_PUBLIC_BASE_URL:?configure APP_PUBLIC_BASE_URL}

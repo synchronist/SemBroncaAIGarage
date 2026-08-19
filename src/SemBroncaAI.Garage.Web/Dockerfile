@@ -11,6 +11,8 @@ RUN dotnet publish src/SemBroncaAI.Garage.Web/SemBroncaAI.Garage.Web.csproj -c R
     rm -f /app/publish/appsettings.Development.json
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+ARG APP_VERSION=local
+LABEL org.opencontainers.image.revision=$APP_VERSION
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080 \
     DOTNET_EnableDiagnostics=0
