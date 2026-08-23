@@ -12,9 +12,26 @@
 
 **Você conserta carros. Nós cuidamos da operação.**
 
+[🌐 **Acessar demonstração online**](https://sembronca-garage.onrender.com/)
+
 </div>
 
+> O plano gratuito pode levar alguns segundos para despertar após um período sem acessos.
+
 ---
+
+## 🧪 Demonstração online
+
+| | Acesso |
+|---|---|
+| 🌐 Aplicação | [sembronca-garage.onrender.com](https://sembronca-garage.onrender.com/) |
+| 👤 Usuário | `demo.owner` |
+| 🔑 Senha | Solicite ao mantenedor — credenciais não são versionadas |
+| 🏢 Ambiente | Oficina demo compartilhada, plano Standard em Trial |
+
+Explore o fluxo completo: clientes, veículos, ordens de serviço, diagnóstico, orçamento e operação da oficina.
+
+> Use somente dados fictícios. O conteúdo é compartilhado entre visitantes e pode ser restaurado periodicamente. O acesso PlatformAdmin não é público.
 
 ## ✨ O produto
 
