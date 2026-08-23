@@ -27,8 +27,8 @@ services:
         value: /tmp/sbgarage/brand-assets
       - key: DataProtection__KeysPath
         value: /tmp/sbgarage/data-protection
-      - key: ReverseProxy__KnownProxies__0
-        value: 127.0.0.1
+      - key: ReverseProxy__TrustRenderProxy
+        value: "true"
       - key: IdentitySeed__Enabled
         value: "false"
       - key: PasswordRecovery__Enabled
@@ -76,5 +76,5 @@ services:
         value: https://sembronca-garage.onrender.com
       - key: DataProtection__KeysPath
         value: /tmp/sbgarage/data-protection
-      - key: ReverseProxy__KnownProxies__0
-        value: 127.0.0.1
+      - key: ReverseProxy__TrustRenderProxy
+        value: "true"

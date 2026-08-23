@@ -92,6 +92,16 @@ public sealed class DeploymentConfigurationTests
     }
 
     [Fact]
+    public void Production_api_should_reject_disabled_password_recovery()
+    {
+        var values = SafeApiValues();
+        values["PasswordRecovery:Enabled"] = "false";
+
+        Should.Throw<InvalidOperationException>(() =>
+            ApiDeploymentConfiguration.ValidateProduction(Configuration(values), Environment("Production")));
+    }
+
+    [Fact]
     public void Production_api_should_reject_incomplete_smtp_configuration()
     {
         var values = SafeApiValues();
@@ -143,7 +153,7 @@ public sealed class DeploymentConfigurationTests
     {
         ["ConnectionStrings:DefaultConnection"] = "Host=db.internal;Username=app;Password=strong-secret",
         ["IdentitySeed:Enabled"] = "false",
-        ["PasswordRecovery:Enabled"] = "false",
+        ["PasswordRecovery:Enabled"] = "true",
         ["App:PublicBaseUrl"] = "https://garage.example",
         ["Web:BaseUrl"] = "https://web.internal",
         ["Email:Provider"] = "Smtp",

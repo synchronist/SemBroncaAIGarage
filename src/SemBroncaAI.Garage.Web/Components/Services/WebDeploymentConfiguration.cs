@@ -36,13 +36,17 @@ public static class WebDeploymentConfiguration
         }
 
         var proxies = builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [];
+        var trustRenderProxy = builder.Configuration.GetValue<bool>("ReverseProxy:TrustRenderProxy");
         builder.Services.Configure<ForwardedHeadersOptions>(options =>
         {
             options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
             options.ForwardLimit = 1;
             options.KnownIPNetworks.Clear();
             options.KnownProxies.Clear();
-            foreach (var proxy in proxies) options.KnownProxies.Add(IPAddress.Parse(proxy));
+            if (!trustRenderProxy)
+            {
+                foreach (var proxy in proxies) options.KnownProxies.Add(IPAddress.Parse(proxy));
+            }
         });
     }
 
@@ -54,7 +58,11 @@ public static class WebDeploymentConfiguration
             throw new InvalidOperationException("Configure Api:BaseUrl de Production.");
         if (string.IsNullOrWhiteSpace(configuration["DataProtection:KeysPath"]))
             throw new InvalidOperationException("Configure DataProtection:KeysPath em Production.");
-        if (!configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>()?.Any() ?? true)
+        var trustRenderProxy = configuration.GetValue<bool>("ReverseProxy:TrustRenderProxy");
+        var runningOnRender = string.Equals(configuration["RENDER"], "true", StringComparison.OrdinalIgnoreCase);
+        if (trustRenderProxy && !runningOnRender)
+            throw new InvalidOperationException("ReverseProxy:TrustRenderProxy só pode ser habilitado no Render.");
+        if (!trustRenderProxy && (!configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>()?.Any() ?? true))
             throw new InvalidOperationException("Configure ReverseProxy:KnownProxies em Production.");
     }
 }
