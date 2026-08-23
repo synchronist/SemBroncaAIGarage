@@ -1,0 +1,80 @@
+services:
+  - type: web
+    name: sembronca-garage-api
+    runtime: docker
+    plan: free
+    region: virginia
+    branch: main
+    dockerfilePath: ./src/SemBroncaAI.Garage.Api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health/ready
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_HTTP_PORTS
+        value: "10000"
+      - key: ASPNETCORE_FORWARDEDHEADERS_ENABLED
+        value: "true"
+      - key: Deployment__LocalProduction
+        value: "false"
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: App__PublicBaseUrl
+        value: https://sembronca-garage.onrender.com
+      - key: Web__BaseUrl
+        value: https://sembronca-garage.onrender.com/
+      - key: BrandAssets__RootPath
+        value: /tmp/sbgarage/brand-assets
+      - key: DataProtection__KeysPath
+        value: /tmp/sbgarage/data-protection
+      - key: ReverseProxy__KnownProxies__0
+        value: 127.0.0.1
+      - key: IdentitySeed__Enabled
+        value: "false"
+      - key: PasswordRecovery__Enabled
+        value: "true"
+      - key: Email__Provider
+        value: Smtp
+      - key: Email__Host
+        value: smtp-relay.brevo.com
+      - key: Email__Port
+        value: "2525"
+      - key: Email__Username
+        sync: false
+      - key: Email__Password
+        sync: false
+      - key: Email__FromAddress
+        sync: false
+      - key: Email__FromName
+        value: SemBroncaAI Garage
+      - key: Email__UseSsl
+        value: "true"
+      - key: Email__TimeoutSeconds
+        value: "15"
+
+  - type: web
+    name: sembronca-garage
+    runtime: docker
+    plan: free
+    region: virginia
+    branch: main
+    dockerfilePath: ./src/SemBroncaAI.Garage.Web/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health/ready
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_HTTP_PORTS
+        value: "10000"
+      - key: ASPNETCORE_FORWARDEDHEADERS_ENABLED
+        value: "true"
+      - key: Deployment__LocalProduction
+        value: "false"
+      - key: Api__BaseUrl
+        value: https://sembronca-garage-api.onrender.com/
+      - key: PublicAppBaseUrl
+        value: https://sembronca-garage.onrender.com
+      - key: DataProtection__KeysPath
+        value: /tmp/sbgarage/data-protection
+      - key: ReverseProxy__KnownProxies__0
+        value: 127.0.0.1
