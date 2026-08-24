@@ -6,6 +6,7 @@ using SemBroncaAI.Garage.Web.Components;
 using SemBroncaAI.Garage.Web.Services;
 using SemBroncaAI.Garage.Application.Abstractions.Security;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using MudBlazor;
 
 var builder = WebApplication.CreateBuilder(args);
 WebDeploymentConfiguration.Configure(builder);
@@ -14,7 +15,12 @@ builder.Services
     .AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddCascadingAuthenticationState();
-builder.Services.AddMudServices();
+builder.Services.AddMudServices(configuration =>
+{
+    configuration.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
+    configuration.SnackbarConfiguration.ShowCloseIcon = true;
+    configuration.SnackbarConfiguration.VisibleStateDuration = 4500;
+});
 builder.Services.AddHttpContextAccessor();
 var localProduction = builder.Environment.IsProduction() && builder.Configuration.GetValue<bool>("Deployment:LocalProduction");
 builder.Services.AddAntiforgery(options =>

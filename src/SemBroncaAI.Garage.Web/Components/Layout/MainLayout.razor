@@ -108,7 +108,14 @@
         </nav>
 
         <div class="sbg-sidebar-footer">
-            Tecnologia SBGarage
+            <form method="post" action="/auth/logout" class="sbg-sidebar-logout">
+                <AntiforgeryToken />
+                <button type="submit" aria-label="Sair" title="Sair">
+                    <MudIcon Icon="@Icons.Material.Filled.Logout" Size="Size.Small" />
+                    <span>Sair</span>
+                </button>
+            </form>
+            <small>Tecnologia SBGarage</small>
         </div>
 
     </aside>
@@ -126,21 +133,23 @@
 
             <div class="sbg-topbar-actions">
 
+                <AuthorizeView Policy="@ApplicationPermissions.ManageGarageSettings">
+                    <NavLink href="/settings" class="sbg-topbar-button" title="Configurações" aria-label="Configurações">
+                        <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
+                    </NavLink>
+                </AuthorizeView>
+
                 <SystemThemeToggle />
 
                 <AuthorizeView Context="auth">
                     <Authorized>
-                        <div class="sbg-user-avatar">@GetInitials(auth.User.Identity?.Name)</div>
-                        <div class="sbg-user-data">
-                            <strong>@auth.User.Identity?.Name</strong>
-                            <span>@GetRoleLabel(auth.User)</span>
+                        <div class="sbg-user">
+                            <div class="sbg-user-avatar">@GetInitials(auth.User.Identity?.Name)</div>
+                            <div class="sbg-user-data">
+                                <strong>@auth.User.Identity?.Name</strong>
+                                <span>@GetRoleLabel(auth.User)</span>
+                            </div>
                         </div>
-                        <form method="post" action="/auth/logout" class="sbg-logout-form">
-                            <AntiforgeryToken />
-                            <button class="sbg-icon-button" type="submit" aria-label="Sair" title="Sair">
-                                <MudIcon Icon="@Icons.Material.Filled.Logout" Size="Size.Small" />
-                            </button>
-                        </form>
                     </Authorized>
                 </AuthorizeView>
 

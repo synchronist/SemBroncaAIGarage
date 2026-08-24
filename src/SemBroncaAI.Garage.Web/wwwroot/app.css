@@ -27,6 +27,9 @@
     --sbg-warning-text: #92400e;
     --sbg-header-glass: rgb(255 255 255 / 97%);
     --sbg-shadow: rgb(15 23 42 / 8%);
+    --sbg-radius-sm: 8px;
+    --sbg-radius-md: 10px;
+    --sbg-control-height: 40px;
 }
 
 :root[data-sbg-theme="dark"] {
