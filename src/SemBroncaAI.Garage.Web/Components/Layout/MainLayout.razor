@@ -133,7 +133,7 @@
 
             <div class="sbg-topbar-actions">
 
-                <AuthorizeView Policy="@ApplicationPermissions.ManageGarageSettings">
+                <AuthorizeView Roles="Owner">
                     <NavLink href="/settings" class="sbg-topbar-button" title="Configurações" aria-label="Configurações">
                         <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
                     </NavLink>

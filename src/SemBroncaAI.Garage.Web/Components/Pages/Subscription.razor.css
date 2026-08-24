@@ -10,12 +10,12 @@ header p, .section-heading p { margin: 6px 0 0; color: var(--sbg-text-secondary)
 .summary-heading h2 { margin: 2px 0 0; font-size: 1.45rem; }
 .status-badge { margin-left: auto; padding: 7px 11px; border-radius: 999px; background: var(--sbg-orange-soft); color: var(--sbg-orange-text); font-size: .8rem; font-weight: 700; }
 .status-active { background: var(--sbg-success-soft); color: var(--sbg-success-text); }
-.status-pastdue, .status-suspended { background: var(--sbg-danger-soft); color: #b91c1c; }
+.status-pastdue, .status-suspended { background: var(--sbg-danger-soft); color: var(--sbg-danger-text); }
 .status-cancelled { background: var(--sbg-surface-subtle); color: var(--sbg-text-secondary); }
 .status-description { margin: 22px 0; color: var(--sbg-text-secondary); line-height: 1.55; }
-.trial-access { margin: -10px 0 22px; padding: 12px 14px; border-left: 3px solid #f97316; border-radius: 0 10px 10px 0; background: var(--sbg-orange-soft); color: #7c2d12; line-height: 1.5; }
+.trial-access { margin: -10px 0 22px; padding: 12px 14px; border-left: 3px solid #f97316; border-radius: 0 10px 10px 0; background: var(--sbg-orange-soft); color: var(--sbg-orange-text); line-height: 1.5; }
 .date-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.date-grid div { padding: 14px 16px; border-radius: 12px; background: #f9fafb; }
+.date-grid div { padding: 14px 16px; border: 1px solid var(--sbg-border); border-radius: 12px; background: var(--sbg-surface-muted); }
 .date-grid span, .date-grid strong { display: block; }
 .date-grid span { color: var(--sbg-text-secondary); font-size: .8rem; margin-bottom: 4px; }
 .date-grid strong { color: var(--sbg-text); }
