@@ -28,9 +28,11 @@ public sealed class PlatformGarageNewFormTests
     }
 
     [Fact]
-    public void Password_visibility_buttons_never_submit_the_form()
+    public void Platform_admin_does_not_define_an_initial_owner_password()
     {
-        Count("<button type=\"button\" @onclick=\"TogglePassword\"").ShouldBe(2);
+        _markup.ShouldNotContain("initial-password");
+        _markup.ShouldNotContain("ConfirmPassword");
+        _markup.ShouldContain("O proprietário receberá um convite para criar sua senha e ativar o acesso.");
     }
 
     [Fact]

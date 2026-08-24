@@ -36,8 +36,7 @@ window.sbgReadPlatformGarageForm = function () {
         name: value("garage-name"), document: value("garage-document"),
         phone: value("garage-phone"), email: value("garage-email"),
         ownerName: value("owner-name"), ownerEmail: value("owner-email"),
-        ownerUserName: value("owner-username"), initialPassword: value("initial-password"),
-        confirmPassword: value("confirm-password")
+        ownerUserName: value("owner-username")
     };
 };
 

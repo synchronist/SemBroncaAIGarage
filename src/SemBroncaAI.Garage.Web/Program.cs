@@ -130,6 +130,7 @@ builder.Services.AddScoped<GarageService>(CreateAuthenticatedService<GarageServi
 builder.Services.AddScoped<EstimateService>(CreateAuthenticatedService<EstimateService>);
 builder.Services.AddScoped<PlatformGarageService>(CreateAuthenticatedService<PlatformGarageService>);
 builder.Services.AddScoped<TeamService>(CreateAuthenticatedService<TeamService>);
+builder.Services.AddScoped<OwnerSubscriptionService>(CreateAuthenticatedService<OwnerSubscriptionService>);
 builder.Services.AddHttpClient<PublicApprovalService>(client =>
     client.BaseAddress = new Uri(apiBaseUrl));
 builder.Services.AddHttpClient<TeamInvitationService>(client => client.BaseAddress = new Uri(apiBaseUrl));

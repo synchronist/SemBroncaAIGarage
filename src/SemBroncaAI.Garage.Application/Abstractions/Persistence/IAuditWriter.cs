@@ -17,4 +17,8 @@ public static class AuditActions
     public const string MemberDeactivated = "member.deactivated";
     public const string MemberRoleChanged = "member.role-changed";
     public const string GarageSettingsChanged = "garage.settings-changed";
+    public const string OwnerPendingCreated = "owner.pending-created";
+    public const string OwnerInvitationCreated = "owner.invitation-created";
+    public const string OwnerInvitationResent = "owner.invitation-resent";
+    public const string OwnerActivated = "owner.activated";
 }

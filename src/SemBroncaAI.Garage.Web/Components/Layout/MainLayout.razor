@@ -5,7 +5,6 @@
 @inject GarageService GarageService
 @inject IConfiguration Configuration
 
-<MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -99,6 +98,13 @@
             </NavLink>
             </AuthorizeView>
 
+            <AuthorizeView Policy="@ApplicationPermissions.ViewSubscription">
+            <NavLink href="/subscription" Match="NavLinkMatch.Prefix" class="sbg-menu-item">
+                <MudIcon Icon="@Icons.Material.Filled.CreditCard" Size="Size.Small" />
+                <span>Plano e assinatura</span>
+            </NavLink>
+            </AuthorizeView>
+
         </nav>
 
         <div class="sbg-sidebar-footer">
@@ -120,12 +126,7 @@
 
             <div class="sbg-topbar-actions">
 
-                <button class="sbg-icon-button"
-                        type="button"
-                        aria-label="Notificações">
-                    <MudIcon Icon="@Icons.Material.Filled.NotificationsNone"
-                             Size="Size.Small" />
-                </button>
+                <SystemThemeToggle />
 
                 <AuthorizeView Context="auth">
                     <Authorized>
@@ -195,15 +196,4 @@
         }
     }
 
-    private readonly MudTheme _theme = new()
-    {
-        PaletteLight = new PaletteLight
-        {
-            Primary = "#F97316",
-            Background = "#F7F8FA",
-            Surface = "#FFFFFF",
-            TextPrimary = "#111827",
-            TextSecondary = "#6B7280"
-        }
-    };
 }

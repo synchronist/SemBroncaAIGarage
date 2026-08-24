@@ -260,23 +260,10 @@
                 <MudTextField T="string"
                               @bind-Value="_customerComplaint"
                               Immediate="true"
-                              Placeholder="Digite ou dite o que precisa ser verificado..."
+                              Placeholder="Digite o que precisa ser verificado..."
                               Variant="Variant.Outlined"
                               Lines="5"
                               FullWidth="true" />
-
-                <div class="complaint-actions">
-
-                    <MudButton Variant="Variant.Outlined"
-                               StartIcon="@Icons.Material.Filled.Mic">
-                        Ditar relato
-                    </MudButton>
-
-                    <span>
-                        A transcrição por voz será adicionada nesta etapa depois.
-                    </span>
-
-                </div>
 
             </div>
 
@@ -290,17 +277,6 @@
         </span>
 
         <div class="footer-actions">
-
-            <MudButton Variant="Variant.Outlined"
-                       Disabled="@(!_hasChanges)">
-                Salvar rascunho
-            </MudButton>
-
-            <MudButton Variant="Variant.Outlined"
-                       Disabled="@(!CanReceive)"
-                       StartIcon="@Icons.Material.Filled.Print">
-                Receber e imprimir ficha
-            </MudButton>
 
             <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
@@ -350,13 +326,6 @@
     private bool _showResults;
 
     private bool _isReceiving;
-
-    private bool _hasChanges =>
-        _selectedVehicle is not null &&
-        (
-            !string.IsNullOrWhiteSpace(_customerComplaint) ||
-            _mileage != _selectedVehicle.Mileage
-        );
 
     private bool CanReceive =>
         _selectedVehicle is not null &&

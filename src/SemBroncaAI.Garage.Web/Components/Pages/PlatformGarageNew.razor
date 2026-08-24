@@ -26,10 +26,7 @@
         <div class="field"><label for="owner-email">E-mail de acesso</label><InputText id="owner-email" class="platform-input" type="text" inputmode="email" autocomplete="email" @bind-Value="_form.OwnerEmail" placeholder="owner@oficina.com.br" /><ValidationMessage For="@(() => _form.OwnerEmail)" /></div>
         <div class="field wide"><label for="owner-username">Username</label><InputText id="owner-username" class="platform-input" @bind-Value="_form.OwnerUserName" placeholder="Identificador para acesso" maxlength="101" /><ValidationMessage For="@(() => _form.OwnerUserName)" /></div>
     </div></section>
-    <section><header><span class="step">3</span><div><h2>Senha inicial</h2><p>O proprietário poderá alterá-la posteriormente pela recuperação de senha.</p></div></header><div class="grid">
-        <div class="field"><label for="initial-password">Senha inicial</label><div class="password"><InputText id="initial-password" class="platform-input" type="@(_showPassword ? "text" : "password")" @bind-Value="_form.InitialPassword" autocomplete="new-password" /><button type="button" @onclick="TogglePassword" aria-label="@(_showPassword ? "Ocultar senha inicial" : "Mostrar senha inicial")" title="@(_showPassword ? "Ocultar senha" : "Mostrar senha")"><MudIcon Icon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)" Size="Size.Small" /></button></div><ValidationMessage For="@(() => _form.InitialPassword)" /></div>
-        <div class="field"><label for="confirm-password">Confirmar senha</label><div class="password"><InputText id="confirm-password" class="platform-input" type="@(_showPassword ? "text" : "password")" @bind-Value="_form.ConfirmPassword" autocomplete="new-password" /><button type="button" @onclick="TogglePassword" aria-label="@(_showPassword ? "Ocultar confirmação de senha" : "Mostrar confirmação de senha")" title="@(_showPassword ? "Ocultar senha" : "Mostrar senha")"><MudIcon Icon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)" Size="Size.Small" /></button></div><ValidationMessage For="@(() => _form.ConfirmPassword)" /></div>
-    </div><div class="password-hint"><MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" /><span>Mínimo de 10 caracteres, com letra maiúscula, minúscula, número e quatro caracteres distintos.</span></div></section>
+    <section><header><span class="step">3</span><div><h2>Ativação do acesso</h2><p>O proprietário receberá um convite para criar sua senha e ativar o acesso.</p></div></header></section>
     <div class="actions"><a href="/platform-admin/garages">Cancelar</a><button type="submit" disabled="@_saving">@if(_saving){<MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Inherit" />}<span>@(_saving ? "Criando oficina..." : "Criar oficina")</span></button></div>
 </EditForm>
 
@@ -37,17 +34,15 @@
     private readonly FormModel _form = new();
     private EditContext _editContext = null!;
     private ValidationMessageStore _serverErrors = null!;
-    private bool _saving, _showPassword;
+    private bool _saving;
     private string? _error;
     protected override void OnInitialized() { _editContext = new EditContext(_form); _serverErrors = new ValidationMessageStore(_editContext); _editContext.OnFieldChanged += (_, args) => _serverErrors.Clear(args.FieldIdentifier); }
-    private void TogglePassword() => _showPassword = !_showPassword;
     private async Task HandleSubmitAsync(EditContext editContext)
     {
         var values = await JS.InvokeAsync<FormValues>("sbgReadPlatformGarageForm");
         _form.Name = values.Name; _form.Document = values.Document; _form.Phone = values.Phone;
         _form.Email = values.Email; _form.OwnerName = values.OwnerName; _form.OwnerEmail = values.OwnerEmail;
-        _form.OwnerUserName = values.OwnerUserName; _form.InitialPassword = values.InitialPassword;
-        _form.ConfirmPassword = values.ConfirmPassword;
+        _form.OwnerUserName = values.OwnerUserName;
         if (!editContext.Validate()) { HandleInvalidSubmit(editContext); return; }
         await SubmitAsync();
     }
@@ -57,7 +52,7 @@
         _saving = true; _error = null; _serverErrors.Clear();
         try
         {
-            var result = await Service.CreateAsync(new(_form.Name.Trim(), PlatformGarageInputRules.NormalizeDocument(_form.Document), PlatformGarageInputRules.NormalizePhone(_form.Phone), _form.Email.Trim(), _form.OwnerName.Trim(), _form.OwnerEmail.Trim(), _form.OwnerUserName.Trim(), _form.InitialPassword, _form.ConfirmPassword));
+            var result = await Service.CreateAsync(new(_form.Name.Trim(), PlatformGarageInputRules.NormalizeDocument(_form.Document), PlatformGarageInputRules.NormalizePhone(_form.Phone), _form.Email.Trim(), _form.OwnerName.Trim(), _form.OwnerEmail.Trim(), _form.OwnerUserName.Trim()));
             Navigation.NavigateTo($"/platform-admin/garages/{result.GarageId}?created=true");
         }
         catch (PlatformGarageFormValidationException exception)
@@ -75,7 +70,7 @@
         finally { _saving = false; }
     }
     private static readonly IReadOnlyDictionary<string, string> FieldProperties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-    { ["name"] = nameof(FormModel.Name), ["document"] = nameof(FormModel.Document), ["phone"] = nameof(FormModel.Phone), ["email"] = nameof(FormModel.Email), ["ownerName"] = nameof(FormModel.OwnerName), ["ownerEmail"] = nameof(FormModel.OwnerEmail), ["ownerUserName"] = nameof(FormModel.OwnerUserName), ["initialPassword"] = nameof(FormModel.InitialPassword), ["confirmPassword"] = nameof(FormModel.ConfirmPassword) };
+    { ["name"] = nameof(FormModel.Name), ["document"] = nameof(FormModel.Document), ["phone"] = nameof(FormModel.Phone), ["email"] = nameof(FormModel.Email), ["ownerName"] = nameof(FormModel.OwnerName), ["ownerEmail"] = nameof(FormModel.OwnerEmail), ["ownerUserName"] = nameof(FormModel.OwnerUserName) };
     private sealed class FormModel
     {
         [Required(ErrorMessage = "Informe o nome da oficina."), MaxLength(150, ErrorMessage = "O nome da oficina deve ter no máximo 150 caracteres.")] public string Name { get; set; } = "";
@@ -85,9 +80,7 @@
         [Required(ErrorMessage = "Informe o nome do proprietário."), MaxLength(256, ErrorMessage = "O nome do proprietário é muito longo.")] public string OwnerName { get; set; } = "";
         [ProductEmail(256, ErrorMessage = "Informe um e-mail válido.")] public string OwnerEmail { get; set; } = "";
         [Required(ErrorMessage = "Informe um nome de usuário."), MaxLength(100, ErrorMessage = "O nome de usuário é muito longo.")] public string OwnerUserName { get; set; } = "";
-        [Required(ErrorMessage = PlatformGarageInputRules.PasswordMessage), PasswordPolicy(ErrorMessage = PlatformGarageInputRules.PasswordMessage)] public string InitialPassword { get; set; } = "";
-        [Required(ErrorMessage = "Confirme a senha."), Compare(nameof(InitialPassword), ErrorMessage = "As senhas não coincidem.")] public string ConfirmPassword { get; set; } = "";
     }
     private sealed record FormValues(string Name, string Document, string Phone, string Email, string OwnerName,
-        string OwnerEmail, string OwnerUserName, string InitialPassword, string ConfirmPassword);
+        string OwnerEmail, string OwnerUserName);
 }

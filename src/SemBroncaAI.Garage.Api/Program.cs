@@ -92,6 +92,14 @@ builder.Services.AddHealthChecks()
     .AddCheck<PostgreSqlReadinessCheck>("postgresql", tags: ["ready"]);
 
 var app = builder.Build();
+if (args.Contains("--bootstrap-platform-admin", StringComparer.Ordinal))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var result = await scope.ServiceProvider.GetRequiredService<PlatformAdminBootstrapper>().RunAsync();
+    Console.WriteLine(result.Message);
+    if (!result.Succeeded) Environment.ExitCode = 1;
+    return;
+}
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler(exceptionApp => exceptionApp.Run(async context =>

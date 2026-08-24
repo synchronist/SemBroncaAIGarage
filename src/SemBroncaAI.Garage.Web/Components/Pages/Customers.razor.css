@@ -1,21 +1,21 @@
 .customers-page { max-width: 1180px; margin: 0 auto; }
 .customers-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 24px; }
-.customers-header h1 { margin: 0; color: #111827; font-size: 28px; }
-.customers-header p { margin: 6px 0 0; color: #6b7280; font-size: 12px; }
-.customers-toolbar { padding: 18px; margin-bottom: 18px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; }
-.customers-state { min-height: 340px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #94a3b8; text-align: center; }
-.customers-state h2 { margin: 4px 0 0; color: #334155; font-size: 17px; }
+.customers-header h1 { margin: 0; color: var(--sbg-text); font-size: 28px; }
+.customers-header p { margin: 6px 0 0; color: var(--sbg-text-secondary); font-size: 12px; }
+.customers-toolbar { padding: 18px; margin-bottom: 18px; border: 1px solid var(--sbg-border); border-radius: 12px; background: var(--sbg-surface); }
+.customers-state { min-height: 340px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--sbg-text-muted); text-align: center; }
+.customers-state h2 { margin: 4px 0 0; color: var(--sbg-text-slate); font-size: 17px; }
 .customers-state p { margin: 0; font-size: 12px; }
-.customers-summary { margin: 0 0 10px; color: #64748b; font-size: 11px; }
+.customers-summary { margin: 0 0 10px; color: var(--sbg-text-secondary); font-size: 11px; }
 .customers-list { display: grid; gap: 10px; }
-.customer-card { display: grid; grid-template-columns: 44px minmax(160px, 1.2fr) minmax(120px, .8fr) minmax(180px, 1fr) 70px auto; gap: 16px; align-items: center; padding: 15px 18px; border: 1px solid #e5e7eb; border-radius: 11px; background: #fff; }
-.customer-avatar { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; background: #fff1e9; color: #ea580c; font-size: 11px; font-weight: 700; }
+.customer-card { display: grid; grid-template-columns: 44px minmax(160px, 1.2fr) minmax(120px, .8fr) minmax(180px, 1fr) 70px auto; gap: 16px; align-items: center; padding: 15px 18px; border: 1px solid var(--sbg-border); border-radius: 11px; background: var(--sbg-surface); }
+.customer-avatar { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; background: var(--sbg-orange-softer); color: #ea580c; font-size: 11px; font-weight: 700; }
 .customer-main, .customer-field { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.customer-main strong { overflow: hidden; color: #111827; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-.customer-main span, .customer-field span { overflow: hidden; color: #64748b; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.customer-field small { color: #94a3b8; font-size: 9px; }
-.vehicle-count { display: flex; align-items: center; justify-content: center; gap: 5px; color: #64748b; font-size: 11px; }
-.customers-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 20px; color: #64748b; font-size: 11px; }
+.customer-main strong { overflow: hidden; color: var(--sbg-text); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.customer-main span, .customer-field span { overflow: hidden; color: var(--sbg-text-secondary); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.customer-field small { color: var(--sbg-text-muted); font-size: 9px; }
+.vehicle-count { display: flex; align-items: center; justify-content: center; gap: 5px; color: var(--sbg-text-secondary); font-size: 11px; }
+.customers-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 20px; color: var(--sbg-text-secondary); font-size: 11px; }
 @media (max-width: 900px) { .customer-card { grid-template-columns: 44px 1fr auto; } .customer-field { grid-column: 2; } .vehicle-count { grid-column: 3; grid-row: 1; } }
 @media (max-width: 600px) { .customers-header { flex-direction: column; } .customer-card { grid-template-columns: 40px 1fr; } .customer-card > :last-child, .vehicle-count { grid-column: 2; } }
 @media(max-width:768px){.customers-header{align-items:stretch;margin-bottom:16px}.customers-header>:deep(.mud-button-root){min-height:44px}.customers-toolbar{padding:12px;margin-bottom:14px}.customer-card{gap:10px 12px;padding:14px}.customer-card>:deep(.mud-button-root){min-height:44px}.customers-pagination>:deep(.mud-button-root){min-height:44px}}

@@ -1,5 +1,69 @@
+:root {
+    color-scheme: light;
+    --sbg-canvas: #f7f8fa;
+    --sbg-surface: #ffffff;
+    --sbg-surface-muted: #f8fafc;
+    --sbg-surface-subtle: #f1f5f9;
+    --sbg-border: #e5e7eb;
+    --sbg-border-strong: #cbd5e1;
+    --sbg-text: #111827;
+    --sbg-text-strong: #1f2937;
+    --sbg-text-slate: #334155;
+    --sbg-text-secondary: #64748b;
+    --sbg-text-muted: #94a3b8;
+    --sbg-field-border: #d1d5db;
+    --sbg-orange-soft: #fff7ed;
+    --sbg-orange-softer: #fff1e9;
+    --sbg-orange-border: #fed7aa;
+    --sbg-orange-text: #c2410c;
+    --sbg-success-soft: #ecfdf5;
+    --sbg-success-softer: #f0fdf4;
+    --sbg-success-border: #bbf7d0;
+    --sbg-success-text: #047857;
+    --sbg-danger-soft: #fef2f2;
+    --sbg-danger-border: #fecaca;
+    --sbg-danger-text: #991b1b;
+    --sbg-warning-soft: #fffbeb;
+    --sbg-warning-text: #92400e;
+    --sbg-header-glass: rgb(255 255 255 / 97%);
+    --sbg-shadow: rgb(15 23 42 / 8%);
+}
+
+:root[data-sbg-theme="dark"] {
+        color-scheme: dark;
+        --sbg-canvas: #0f172a;
+        --sbg-surface: #172033;
+        --sbg-surface-muted: #1e293b;
+        --sbg-surface-subtle: #263449;
+        --sbg-border: #334155;
+        --sbg-border-strong: #475569;
+        --sbg-text: #f8fafc;
+        --sbg-text-strong: #f1f5f9;
+        --sbg-text-slate: #e2e8f0;
+        --sbg-text-secondary: #cbd5e1;
+        --sbg-text-muted: #94a3b8;
+        --sbg-field-border: #475569;
+        --sbg-orange-soft: #422006;
+        --sbg-orange-softer: #351a08;
+        --sbg-orange-border: #9a3412;
+        --sbg-orange-text: #fdba74;
+        --sbg-success-soft: #052e26;
+        --sbg-success-softer: #052e1b;
+        --sbg-success-border: #166534;
+        --sbg-success-text: #6ee7b7;
+        --sbg-danger-soft: #3f1519;
+        --sbg-danger-border: #7f1d1d;
+        --sbg-danger-text: #fca5a5;
+        --sbg-warning-soft: #3b2f0c;
+        --sbg-warning-text: #fde68a;
+        --sbg-header-glass: rgb(23 32 51 / 97%);
+        --sbg-shadow: rgb(0 0 0 / 28%);
+}
+
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: var(--sbg-canvas);
+    color: var(--sbg-text);
 }
 
 *, *::before, *::after {

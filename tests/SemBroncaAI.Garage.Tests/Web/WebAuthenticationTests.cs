@@ -209,6 +209,16 @@ public sealed class WebAuthenticationTests
     }
 
     [Fact]
+    public void Subscription_return_url_should_only_be_preserved_for_owner_permission()
+    {
+        var owner = Principal("Owner", ApplicationPermissions.ViewSubscription);
+        var receptionist = Principal("Receptionist", ApplicationPermissions.CreateServiceOrder);
+
+        AuthorizedLandingPage.Resolve(owner, "/subscription").ShouldBe("/subscription");
+        AuthorizedLandingPage.Resolve(receptionist, "/subscription").ShouldBe("/");
+    }
+
+    [Fact]
     public async Task Platform_onboarding_client_should_preserve_api_errors_by_field()
     {
         using var client = new HttpClient(new StaticResponseHandler(new HttpResponseMessage(HttpStatusCode.BadRequest)
@@ -218,7 +228,7 @@ public sealed class WebAuthenticationTests
         var service = new PlatformGarageService(client);
 
         var exception = await Should.ThrowAsync<PlatformGarageFormValidationException>(() => service.CreateAsync(
-            new CreatePlatformGarageCommand("Garage", "123", "15999999999", "garage@test.local", "Owner", "invalid", "owner", "ValidPass1", "ValidPass1")));
+            new CreatePlatformGarageCommand("Garage", "123", "15999999999", "garage@test.local", "Owner", "invalid", "owner")));
 
         exception.Errors["ownerEmail"].ShouldBe(["Informe um e-mail válido."]);
         exception.Message.ShouldBe("Revise os campos destacados abaixo.");

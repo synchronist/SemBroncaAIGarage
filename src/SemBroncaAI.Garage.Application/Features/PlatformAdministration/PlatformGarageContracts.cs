@@ -1,4 +1,5 @@
 using SemBroncaAI.Garage.Domain.Entities.Garage;
+using SemBroncaAI.Garage.Domain.Entities;
 
 namespace SemBroncaAI.Garage.Application.Features.PlatformAdministration;
 
@@ -59,6 +60,8 @@ public sealed record PlatformGarageDetailsResponse(
     string? OwnerName,
     string? OwnerEmail,
     string? OwnerUserName,
+    bool? OwnerActive,
+    InvitationDeliveryStatus? OwnerInvitationDeliveryStatus,
     PlatformSubscriptionResponse Subscription,
     IReadOnlyCollection<PlatformAuditItem> RecentActivity);
 
@@ -75,11 +78,12 @@ public sealed record CreatePlatformGarageCommand(
     string Email,
     string OwnerName,
     string OwnerEmail,
-    string OwnerUserName,
-    string InitialPassword,
-    string ConfirmPassword);
+    string OwnerUserName);
 
-public sealed record CreatePlatformGarageResponse(Guid GarageId, string Name, bool Active);
+public sealed record CreatePlatformGarageResponse(
+    Guid GarageId, string Name, bool Active, InvitationDeliveryStatus OwnerInvitationDeliveryStatus);
+
+public sealed record OwnerInvitationOperationResponse(InvitationDeliveryStatus DeliveryStatus);
 
 public interface IPlatformGarageAdministration
 {
@@ -87,6 +91,7 @@ public interface IPlatformGarageAdministration
     Task<PlatformGarageListResponse> ListAsync(ListPlatformGaragesQuery query, CancellationToken cancellationToken = default);
     Task<PlatformGarageDetailsResponse?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<CreatePlatformGarageResponse> CreateAsync(CreatePlatformGarageCommand command, CancellationToken cancellationToken = default);
+    Task<OwnerInvitationOperationResponse?> ResendOwnerInvitationAsync(Guid id, CancellationToken cancellationToken = default);
     Task<bool> SetActiveAsync(Guid id, bool active, CancellationToken cancellationToken = default);
     Task<PlatformSubscriptionResponse?> UpdateSubscriptionAsync(Guid id, UpdateGarageSubscriptionCommand command,
         CancellationToken cancellationToken = default);

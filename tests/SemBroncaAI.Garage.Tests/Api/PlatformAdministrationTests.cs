@@ -95,12 +95,44 @@ public sealed class PlatformAdministrationTests
     public void Administrative_contracts_should_not_expose_password_or_operational_data()
     {
         var properties = new[] { typeof(PlatformGarageListItem), typeof(PlatformGarageDetailsResponse),
+            typeof(CreatePlatformGarageCommand),
             typeof(CreatePlatformGarageResponse), typeof(PlatformDashboardResponse) }
             .SelectMany(type => type.GetProperties()).Select(property => property.Name).ToArray();
 
         properties.ShouldNotContain(name => name.Contains("Password", StringComparison.OrdinalIgnoreCase));
         properties.ShouldNotContain(name =>
             new[] { "Customers", "Vehicles", "ServiceOrders", "Estimates" }.Contains(name));
+    }
+
+    [Fact]
+    public void Owner_onboarding_should_use_the_existing_secure_invitation_flow()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+        var onboarding = File.ReadAllText(Path.Combine(root, "src", "SemBroncaAI.Garage.Infrastructure", "Services", "PlatformGarageAdministration.cs"));
+        var acceptance = File.ReadAllText(Path.Combine(root, "src", "SemBroncaAI.Garage.Infrastructure", "Services", "TeamManagement.cs"));
+
+        onboarding.ShouldContain("owner.Deactivate()");
+        onboarding.ShouldContain("userManager.CreateAsync(owner)");
+        onboarding.ShouldNotContain("CreateAsync(owner, command.");
+        onboarding.ShouldContain("new TeamInvitationEntity");
+        acceptance.ShouldContain("userManager.AddPasswordAsync(user, command.Password)");
+        acceptance.ShouldContain("userManager.UpdateSecurityStampAsync(user)");
+    }
+
+    [Fact]
+    public void Platform_admin_bootstrap_should_be_explicit_one_shot_and_have_no_default_password()
+    {
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+        var program = File.ReadAllText(Path.Combine(root, "src", "SemBroncaAI.Garage.Api", "Program.cs"));
+        var compose = File.ReadAllText(Path.Combine(root, "docker", "docker-compose.production.yml"));
+        var bootstrap = File.ReadAllText(Path.Combine(root, "src", "SemBroncaAI.Garage.Infrastructure", "Identity", "PlatformAdminBootstrapper.cs"));
+
+        program.ShouldContain("args.Contains(\"--bootstrap-platform-admin\"");
+        compose.ShouldContain("bootstrap-admin:");
+        compose.ShouldContain("profiles: [\"tools\"]");
+        bootstrap.ShouldContain("PlatformAdmin já configurado.");
+        bootstrap.ShouldContain("BootstrapAdmin:Password");
+        bootstrap.ShouldNotContain("BootstrapAdmin:Password\"] ??");
     }
 
     [Fact]
@@ -128,14 +160,14 @@ public sealed class PlatformAdministrationTests
         var administration = new FakeAdministration();
         var controller = new PlatformGaragesController(administration);
         var command = new CreatePlatformGarageCommand("Oficina", "123", "1199", "garage@test.local",
-            "Owner", "owner@test.local", "owner", "Initial123", "Initial123");
+            "Owner", "owner@test.local", "owner");
 
         var result = await controller.Create(command, default);
 
         result.Result.ShouldBeOfType<CreatedAtActionResult>();
         administration.CreateCommand.ShouldBe(command);
         typeof(CreatePlatformGarageResponse).GetProperties().Select(x => x.Name)
-            .ShouldBe(["GarageId", "Name", "Active"]);
+            .ShouldBe(["GarageId", "Name", "Active", "OwnerInvitationDeliveryStatus"]);
     }
 
     [Fact]
@@ -203,7 +235,6 @@ public sealed class PlatformAdministrationTests
         var subscription = new GarageSubscriptionEntity(Guid.NewGuid(), SubscriptionPlan.Standard, now, 14);
         subscription.ChangePlan(SubscriptionPlan.Standard, now.AddMinutes(1));
         subscription.Plan.ShouldBe(SubscriptionPlan.Standard);
-        new SubscriptionOptions().DefaultTrialDays.ShouldBe(10);
     }
 
     [Fact]
@@ -237,7 +268,7 @@ public sealed class PlatformAdministrationTests
             SubscriptionStatus = SubscriptionStatus.Suspended };
         var list = new PlatformGarageListResponse(1, 20, 2, 1, [active, suspended]);
         var details = new PlatformGarageDetailsResponse(active.Id, active.Name, active.Document, active.Email,
-            active.Phone, active.Active, now, 1, active.OwnerName, active.OwnerEmail, "owner",
+            active.Phone, active.Active, now, 1, active.OwnerName, active.OwnerEmail, "owner", true, null,
             new(SubscriptionStatus.Active, SubscriptionPlan.Standard, now, null, null, null, null, null, false), []);
         var handler = new JsonResponseHandler(list, details);
         var service = new PlatformGarageService(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
@@ -280,17 +311,14 @@ public sealed class PlatformAdministrationTests
     [Fact]
     public void Empty_onboarding_should_return_safe_portuguese_errors_by_field()
     {
-        var exception = Validate(new CreatePlatformGarageCommand("", "", "", "invalid", "", "invalid", "", "weak", "different"));
+        var exception = Validate(new CreatePlatformGarageCommand("", "", "", "invalid", "", "invalid", ""));
 
         exception.Errors.Keys.ShouldContain("name");
         exception.Errors.Keys.ShouldContain("phone");
         exception.Errors.Keys.ShouldContain("ownerEmail");
-        exception.Errors.Keys.ShouldContain("initialPassword");
-        exception.Errors.Keys.ShouldContain("confirmPassword");
         var messages = string.Join(" ", exception.Errors.SelectMany(x => x.Value));
         messages.ShouldContain("Informe o nome da oficina.");
         messages.ShouldContain("Informe um e-mail válido.");
-        messages.ShouldContain("As senhas não coincidem.");
         messages.ShouldNotContain("maximum length");
         messages.ShouldNotContain("InitialPassword");
         messages.ShouldNotContain("OwnerName");
@@ -308,7 +336,7 @@ public sealed class PlatformAdministrationTests
         };
 
         var result = await new PlatformGaragesController(administration).Create(
-            new("Garage", "123", "15999999999", "garage@test.local", "Owner", "invalid", "owner", "ValidPass1", "ValidPass1"), default);
+            new("Garage", "123", "15999999999", "garage@test.local", "Owner", "invalid", "owner"), default);
 
         var response = result.Result.ShouldBeOfType<BadRequestObjectResult>().Value
             .ShouldBeOfType<PlatformGarageValidationErrorResponse>();
@@ -349,7 +377,7 @@ public sealed class PlatformAdministrationTests
         PlatformGarageInputRules.IsValidUserName(new string('a', 100)).ShouldBeTrue();
         PlatformGarageInputRules.IsValidUserName(new string('a', 101)).ShouldBeFalse();
         Validate(new CreatePlatformGarageCommand("Garage", "123", "15999999999", "garage@test.local",
-            "Owner", "owner@test.local", new string('a', 101), "ValidPass1", "ValidPass1"))
+            "Owner", "owner@test.local", new string('a', 101)))
             .Errors["ownerUserName"].ShouldBe(["O nome de usuário é muito longo."]);
     }
 
@@ -380,8 +408,11 @@ public sealed class PlatformAdministrationTests
         {
             if (CreateException is not null) throw CreateException;
             CreateCommand = command;
-            return Task.FromResult(new CreatePlatformGarageResponse(Guid.NewGuid(), command.Name, true));
+            return Task.FromResult(new CreatePlatformGarageResponse(Guid.NewGuid(), command.Name, true,
+                SemBroncaAI.Garage.Domain.Entities.InvitationDeliveryStatus.Sent));
         }
+        public Task<OwnerInvitationOperationResponse?> ResendOwnerInvitationAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<OwnerInvitationOperationResponse?>(new(SemBroncaAI.Garage.Domain.Entities.InvitationDeliveryStatus.Sent));
         public Task<bool> SetActiveAsync(Guid id, bool active, CancellationToken cancellationToken = default)
         {
             StatusChange = (id, active);

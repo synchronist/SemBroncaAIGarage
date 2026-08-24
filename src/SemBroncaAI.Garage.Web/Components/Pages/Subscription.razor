@@ -1,0 +1,92 @@
+@page "/subscription"
+@attribute [Authorize(Policy = ApplicationPermissions.ViewSubscription)]
+@using SemBroncaAI.Garage.Application.Abstractions.Security
+@using SemBroncaAI.Garage.Application.Features.Subscriptions
+@using SemBroncaAI.Garage.Domain.Entities.Garage
+@using SemBroncaAI.Garage.Web.Models
+@using SemBroncaAI.Garage.Web.Services
+@inject OwnerSubscriptionService SubscriptionService
+
+<PageTitle>Plano e assinatura</PageTitle>
+
+<div class="subscription-page">
+    <header>
+        <div><h1>Plano e assinatura</h1><p>Acompanhe o período gratuito e as condições do plano da oficina.</p></div>
+    </header>
+
+    @if (_loading)
+    {
+        <div class="subscription-state"><MudProgressCircular Indeterminate="true" /> Carregando assinatura...</div>
+    }
+    else if (_subscription is null)
+    {
+        <div class="subscription-state">Não foi possível carregar a assinatura da oficina.</div>
+    }
+    else
+    {
+        <section class="subscription-card summary-card">
+            <div class="summary-heading">
+                <div class="summary-icon"><MudIcon Icon="@Icons.Material.Filled.WorkspacePremium" /></div>
+                <div><span class="eyebrow">Plano atual</span><h2>SemBroncaAI Garage — @SubscriptionPresentation.PlanLabel(_subscription.Plan)</h2></div>
+                <span class="status-badge @StatusClass">@StatusLabel</span>
+            </div>
+            <p class="status-description">@StatusDescription</p>
+            @if (_subscription.Status == SubscriptionStatus.Trial && !SubscriptionPresentation.IsTrialExpired(_subscription.TrialEndsAt, _now))
+            {
+                <p class="trial-access">Durante o período gratuito, sua oficina tem acesso completo ao SemBroncaAI Garage.</p>
+            }
+            <div class="date-grid">
+                <div><span>Início</span><strong>@FormatDate(_subscription.StartedAt)</strong></div>
+                @if (_subscription.Status == SubscriptionStatus.Trial && _subscription.TrialEndsAt.HasValue)
+                {
+                    <div><span>Fim do período gratuito</span><strong>@FormatDate(_subscription.TrialEndsAt.Value)</strong></div>
+                    <div><span>Tempo restante</span><strong>@RemainingDays @(RemainingDays == 1 ? "dia restante" : "dias restantes")</strong></div>
+                }
+                else if (_subscription.CurrentPeriodEnd.HasValue)
+                {
+                    <div><span>Período atual até</span><strong>@FormatDate(_subscription.CurrentPeriodEnd.Value)</strong></div>
+                }
+            </div>
+        </section>
+
+        @if (_subscription.Status == SubscriptionStatus.Trial)
+        {
+            <section class="plans-section" aria-labelledby="plans-title">
+                <div class="section-heading"><span class="eyebrow">Após o período gratuito</span><h2 id="plans-title">Escolha seu plano quando chegar a hora</h2><p>As opções abaixo são informativas. A contratação online ainda não está disponível.</p></div>
+                <div class="plans-grid">
+                    <article class="subscription-card plan-card">
+                        <div><span class="plan-name">Mensal</span><h3>R$ 199 <small>/ mês</small></h3></div>
+                        <p>Flexibilidade para acompanhar o ritmo da oficina mês a mês.</p>
+                        <span class="availability">Disponível em breve</span>
+                    </article>
+                    <article class="subscription-card plan-card featured">
+                        <span class="saving-badge">Economize R$ 700 em relação ao plano mensal.</span>
+                        <div><span class="plan-name">Anual</span><h3>R$ 1.700 <small>/ ano</small></h3><span class="equivalent">Equivale a R$ 141,67 por mês</span></div>
+                        <p>Um ano de acesso ao plano Standard com melhor condição.</p>
+                        <span class="availability">Disponível em breve</span>
+                    </article>
+                </div>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private OwnerSubscriptionResponse? _subscription;
+    private bool _loading = true;
+    private DateTime _now;
+    private string StatusLabel => SubscriptionPresentation.StatusLabel(_subscription!.Status, _subscription.TrialEndsAt, _now);
+    private string StatusDescription => SubscriptionPresentation.StatusDescription(_subscription!.Status, _subscription.TrialEndsAt, _now);
+    private int RemainingDays => SubscriptionPresentation.RemainingTrialDays(_subscription!.TrialEndsAt, _now);
+    private string StatusClass => $"status-{_subscription!.Status.ToString().ToLowerInvariant()}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _now = DateTime.UtcNow;
+        try { _subscription = await SubscriptionService.GetAsync(); }
+        catch { _subscription = null; }
+        finally { _loading = false; }
+    }
+
+    private static string FormatDate(DateTime date) => date.ToString("dd/MM/yyyy");
+}

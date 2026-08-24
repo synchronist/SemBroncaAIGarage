@@ -32,7 +32,7 @@ public sealed class PlatformAdministrationPostgresTests
             var administration = scope.ServiceProvider.GetRequiredService<IPlatformGarageAdministration>();
             var created = await administration.CreateAsync(new(
                 $"Platform QA {suffix[..6]}", document, "11999999999", $"garage-{suffix}@test.local",
-                "Owner QA", ownerEmail, $"owner-{suffix}", "Initial123", "Initial123"));
+                "Owner QA", ownerEmail, $"owner-{suffix}"));
             garageId = created.GarageId;
             created.Active.ShouldBeTrue();
 
@@ -49,7 +49,9 @@ public sealed class PlatformAdministrationPostgresTests
             var owner = await userManager.FindByEmailAsync(ownerEmail);
             owner.ShouldNotBeNull();
             owner.GarageId.ShouldBe(garageId);
-            owner.Active.ShouldBeTrue();
+            owner.Active.ShouldBeFalse();
+            owner.EmailConfirmed.ShouldBeFalse();
+            owner.PasswordHash.ShouldBeNull();
             (await userManager.IsInRoleAsync(owner, ApplicationRoles.Owner)).ShouldBeTrue();
         }
         finally
@@ -71,7 +73,7 @@ public sealed class PlatformAdministrationPostgresTests
             var administration = scope.ServiceProvider.GetRequiredService<IPlatformGarageAdministration>();
             await Should.ThrowAsync<ArgumentException>(() => administration.CreateAsync(new(
                 "Rollback QA", document, "11999999999", $"rollback-{suffix}@test.local",
-                "Owner QA", $"rollback-owner-{suffix}@test.local", $"rollback-{suffix}", "short", "short")));
+                "", $"rollback-owner-{suffix}@test.local", $"rollback-{suffix}")));
         }
 
         await using var verifyScope = provider.CreateAsyncScope();

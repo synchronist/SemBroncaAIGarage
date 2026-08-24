@@ -20,12 +20,13 @@ public static class ApplicationPermissions
     public const string FinishService = "service-execution.finish";
     public const string ManageGarageSettings = "garage-settings.manage";
     public const string ManageTeam = "team.manage";
+    public const string ViewSubscription = "subscription.view";
 
     public static IReadOnlyCollection<string> All { get; } =
     [
         ViewCustomersVehicles, ManageCustomersVehicles, CreateServiceOrder, ViewServiceOrders,
         CancelServiceOrder, DeliverServiceOrder, ArchiveServiceOrder, ViewDiagnosis, ManageDiagnosis,
         ViewEstimateValues, ManageEstimates, SendEstimateForApproval, StartService,
-        ChangeServiceExecutionStatus, FinishService, ManageGarageSettings, ManageTeam
+        ChangeServiceExecutionStatus, FinishService, ManageGarageSettings, ManageTeam, ViewSubscription
     ];
 }

@@ -13,6 +13,7 @@ public static class AuthorizedLandingPage
         if (Has(user, ApplicationPermissions.ViewCustomersVehicles)) return "/customers";
         if (Has(user, ApplicationPermissions.ViewEstimateValues)) return "/estimates";
         if (Has(user, ApplicationPermissions.ManageGarageSettings)) return "/settings";
+        if (Has(user, ApplicationPermissions.ViewSubscription)) return "/subscription";
         return "/access-denied";
     }
 
@@ -32,6 +33,7 @@ public static class AuthorizedLandingPage
             return Has(user, ApplicationPermissions.ViewCustomersVehicles);
         if (path.StartsWith("/estimates", StringComparison.OrdinalIgnoreCase)) return Has(user, ApplicationPermissions.ViewEstimateValues);
         if (path.StartsWith("/settings", StringComparison.OrdinalIgnoreCase)) return Has(user, ApplicationPermissions.ManageGarageSettings);
+        if (path.StartsWith("/subscription", StringComparison.OrdinalIgnoreCase)) return Has(user, ApplicationPermissions.ViewSubscription);
         return false;
     }
 

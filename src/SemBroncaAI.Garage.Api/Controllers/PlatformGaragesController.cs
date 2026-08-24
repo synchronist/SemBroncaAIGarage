@@ -64,6 +64,21 @@ public sealed class PlatformGaragesController(IPlatformGarageAdministration admi
         CancellationToken cancellationToken) =>
         await administration.SetActiveAsync(id, request.Active, cancellationToken) ? NoContent() : NotFound();
 
+    [HttpPost("{id:guid}/owner-invitation")]
+    public async Task<ActionResult<OwnerInvitationOperationResponse>> ResendOwnerInvitation(
+        Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await administration.ResendOwnerInvitationAsync(id, cancellationToken);
+            return result is null ? NotFound() : Ok(result);
+        }
+        catch (PlatformGarageConflictException exception)
+        {
+            return Conflict(new { message = exception.Message });
+        }
+    }
+
     [HttpPut("{id:guid}/subscription")]
     public async Task<ActionResult<PlatformSubscriptionResponse>> UpdateSubscription(
         Guid id, [FromBody] UpdateGarageSubscriptionCommand command, CancellationToken cancellationToken)

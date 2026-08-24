@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -63,8 +62,8 @@ public sealed class TeamManagement(
         if (!created.Succeeded) return new(false, "invalid", new Dictionary<string, string[]> { ["form"] = ["Não foi possível preparar o convite."] });
         if (!(await userManager.AddToRoleAsync(user, command.Role)).Succeeded) return new(false, "invalid");
 
-        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        var invitation = new TeamInvitationEntity(garageId, user.Id, currentUser.UserId, Hash(token), DateTime.UtcNow.AddHours(24));
+        var token = InvitationTokens.Create();
+        var invitation = new TeamInvitationEntity(garageId, user.Id, currentUser.UserId, InvitationTokens.Hash(token), DateTime.UtcNow.AddHours(24));
         context.TeamInvitations.Add(invitation);
         auditWriter.Add(garageId, AuditActions.MemberInvited, "ApplicationUser", user.Id.ToString("D"),
             $"Membro convidado para o perfil {command.Role}.");
@@ -98,8 +97,8 @@ public sealed class TeamManagement(
         var now = DateTime.UtcNow;
         foreach (var previousInvitation in invitations.Skip(1)) previousInvitation.Invalidate(now);
 
-        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        invitation.Renew(Hash(token), now.AddHours(24));
+        var token = InvitationTokens.Create();
+        invitation.Renew(InvitationTokens.Hash(token), now.AddHours(24));
         auditWriter.Add(garageId, AuditActions.InvitationResent, "ApplicationUser", user.Id.ToString("D"),
             "Convite de membro reenviado.");
         await context.SaveChangesAsync(cancellationToken);
@@ -148,7 +147,7 @@ public sealed class TeamManagement(
             .OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
             .Select(x => (Guid?)x.Id)
             .FirstOrDefaultAsync(cancellationToken);
-        if (currentInvitationId != invitation.Id || !invitation.MatchesTokenHash(Hash(command.Token), DateTime.UtcNow))
+        if (currentInvitationId != invitation.Id || !invitation.MatchesTokenHash(InvitationTokens.Hash(command.Token), DateTime.UtcNow))
             return new(false, "invalid");
         if (invitation.UsedAt is not null) return new(false, "used");
         if (invitation.ExpiresAt <= DateTime.UtcNow) return new(false, "expired");
@@ -158,6 +157,11 @@ public sealed class TeamManagement(
         var result = await userManager.AddPasswordAsync(user, command.Password);
         if (!result.Succeeded) return new(false, "password", new Dictionary<string, string[]> { ["password"] = PasswordMessages(result.Errors) });
         user.EmailConfirmed = true; user.Activate(); invitation.MarkUsed(DateTime.UtcNow);
+        var roles = await userManager.GetRolesAsync(user);
+        if (roles.Contains(ApplicationRoles.Owner))
+            context.AuditEntries.Add(new AuditEntryEntity(DateTime.UtcNow, user.Id, ApplicationRoles.Owner,
+                invitation.GarageId, AuditActions.OwnerActivated, "ApplicationUser", user.Id.ToString("D"),
+                "Proprietário ativou o acesso pelo convite."));
         await userManager.UpdateAsync(user); await userManager.UpdateSecurityStampAsync(user); await context.SaveChangesAsync(cancellationToken);
         return new(true);
     }
@@ -173,7 +177,7 @@ public sealed class TeamManagement(
                         x.UsedAt == null && x.ExpiresAt > DateTime.UtcNow)
             .OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
             .Select(x => (Guid?)x.Id).FirstOrDefaultAsync(cancellationToken);
-        return currentInvitationId == invitation.Id && invitation.MatchesTokenHash(Hash(token), DateTime.UtcNow);
+        return currentInvitationId == invitation.Id && invitation.MatchesTokenHash(InvitationTokens.Hash(token), DateTime.UtcNow);
     }
 
     private static Dictionary<string, string[]> ValidateInvite(InviteTeamMemberCommand command)
@@ -186,7 +190,6 @@ public sealed class TeamManagement(
         return errors;
     }
     private static TeamOperationResult Conflict(string field, string message) => new(false, "conflict", new Dictionary<string, string[]> { [field] = [message] });
-    private static string Hash(string token) => Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token)));
     private static string[] PasswordMessages(IEnumerable<IdentityError> errors) => errors.Select(x => x.Code switch { "PasswordTooShort" => "A senha deve ter pelo menos 10 caracteres.", "PasswordRequiresUpper" => "Adicione uma letra maiúscula.", "PasswordRequiresLower" => "Adicione uma letra minúscula.", "PasswordRequiresDigit" => "Adicione um número.", "PasswordRequiresUniqueChars" => "Use quatro caracteres diferentes.", _ => null }).Where(x => x is not null).Cast<string>().ToArray();
     private async Task<TeamOperationResult> DeliverInvitationAsync(
         TeamInvitationEntity invitation, TeamInvitationEmail email, CancellationToken cancellationToken)

@@ -1,12 +1,16 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Configuration;
 using SemBroncaAI.Garage.Application.Common;
 using SemBroncaAI.Garage.Application.Features.PlatformAdministration;
 using SemBroncaAI.Garage.Domain.Entities.Garage;
 using SemBroncaAI.Garage.Infrastructure.Identity;
 using SemBroncaAI.Garage.Infrastructure.Persistence;
 using SemBroncaAI.Garage.Application.Abstractions.Persistence;
+using SemBroncaAI.Garage.Application.Abstractions.Security;
+using SemBroncaAI.Garage.Application.Features.TeamManagement;
+using SemBroncaAI.Garage.Domain.Entities;
 
 namespace SemBroncaAI.Garage.Infrastructure.Services;
 
@@ -14,7 +18,10 @@ public sealed class PlatformGarageAdministration(
     GarageDbContext context,
     UserManager<ApplicationUser> userManager,
     IOptions<SubscriptionOptions> subscriptionOptions,
-    IAuditWriter auditWriter) : IPlatformGarageAdministration
+    IAuditWriter auditWriter,
+    ICurrentUser currentUser,
+    ITeamInvitationSender invitationSender,
+    IConfiguration configuration) : IPlatformGarageAdministration
 {
     public async Task<PlatformDashboardResponse> GetDashboardAsync(CancellationToken cancellationToken = default)
     {
@@ -90,6 +97,14 @@ public sealed class PlatformGarageAdministration(
                  where user.GarageId == garage.Id && userRole.RoleId == ownerRoleId orderby user.Id select user.Email).FirstOrDefault(),
                 (from user in context.Users join userRole in context.UserRoles on user.Id equals userRole.UserId
                  where user.GarageId == garage.Id && userRole.RoleId == ownerRoleId orderby user.Id select user.UserName).FirstOrDefault(),
+                (from user in context.Users join userRole in context.UserRoles on user.Id equals userRole.UserId
+                 where user.GarageId == garage.Id && userRole.RoleId == ownerRoleId orderby user.Id select (bool?)user.Active).FirstOrDefault(),
+                context.TeamInvitations
+                    .Where(invitation => invitation.GarageId == garage.Id &&
+                        (from user in context.Users join userRole in context.UserRoles on user.Id equals userRole.UserId
+                         where user.GarageId == garage.Id && userRole.RoleId == ownerRoleId select user.Id).Contains(invitation.UserId))
+                    .OrderByDescending(invitation => invitation.CreatedAt).ThenByDescending(invitation => invitation.Id)
+                    .Select(invitation => (InvitationDeliveryStatus?)invitation.DeliveryStatus).FirstOrDefault(),
                 context.GarageSubscriptions.Where(x => x.GarageId == garage.Id).Select(x => new PlatformSubscriptionResponse(
                     x.Status, x.Plan, x.StartedAt, x.TrialEndsAt, x.CurrentPeriodStart, x.CurrentPeriodEnd,
                     x.SuspendedAt, x.CancelledAt, x.Status == SubscriptionStatus.Trial && x.TrialEndsAt < DateTime.UtcNow)).Single(),
@@ -117,6 +132,9 @@ public sealed class PlatformGarageAdministration(
         if (await userManager.FindByNameAsync(command.OwnerUserName.Trim()) is not null)
             throw new PlatformGarageConflictException("ownerUserName", "Este nome de usuário já está em uso.");
 
+        string token;
+        TeamInvitationEntity invitation;
+        ApplicationUser owner;
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         try
         {
@@ -126,25 +144,67 @@ public sealed class PlatformGarageAdministration(
                 garage.Id, SubscriptionPlan.Standard, now, subscriptionOptions.Value.DefaultTrialDays));
             await context.SaveChangesAsync(cancellationToken);
 
-            var owner = ApplicationUser.CreateGarageUser(
+            owner = ApplicationUser.CreateGarageUser(
                 command.OwnerName, command.OwnerEmail, command.OwnerUserName, garage.Id);
-            owner.EmailConfirmed = true;
+            owner.Deactivate();
+            owner.EmailConfirmed = false;
             owner.LockoutEnabled = true;
-            EnsureUserCreated(await userManager.CreateAsync(owner, command.InitialPassword));
+            EnsureUserCreated(await userManager.CreateAsync(owner));
             if (!(await userManager.AddToRoleAsync(owner, ApplicationRoles.Owner)).Succeeded)
                 throw new InvalidOperationException("Não foi possível concluir o cadastro da oficina.");
 
+            token = InvitationTokens.Create();
+            invitation = new TeamInvitationEntity(garage.Id, owner.Id, currentUser.UserId,
+                InvitationTokens.Hash(token), DateTime.UtcNow.AddHours(24));
+            context.TeamInvitations.Add(invitation);
+
             auditWriter.Add(garage.Id, AuditActions.GarageCreated, "Garage", garage.Id.ToString("D"),
                 "Oficina criada com assinatura inicial.");
+            auditWriter.Add(garage.Id, AuditActions.OwnerPendingCreated, "ApplicationUser", owner.Id.ToString("D"),
+                "Proprietário criado aguardando ativação.");
+            auditWriter.Add(garage.Id, AuditActions.OwnerInvitationCreated, "TeamInvitation", invitation.Id.ToString("D"),
+                "Convite inicial do proprietário gerado.");
             await context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return new(garage.Id, garage.Name, garage.Active);
         }
         catch
         {
             await transaction.RollbackAsync(cancellationToken);
             throw;
         }
+
+        var deliveryStatus = await DeliverOwnerInvitationAsync(garage.Name, owner, invitation, token, cancellationToken);
+        return new(garage.Id, garage.Name, garage.Active, deliveryStatus);
+    }
+
+    public async Task<OwnerInvitationOperationResponse?> ResendOwnerInvitationAsync(
+        Guid id, CancellationToken cancellationToken = default)
+    {
+        var ownerRoleId = await context.Roles.Where(x => x.NormalizedName == ApplicationRoles.Owner.ToUpperInvariant())
+            .Select(x => (Guid?)x.Id).SingleOrDefaultAsync(cancellationToken);
+        var owner = await (from user in context.Users
+                           join userRole in context.UserRoles on user.Id equals userRole.UserId
+                           where user.GarageId == id && userRole.RoleId == ownerRoleId
+                           orderby user.Id select user).FirstOrDefaultAsync(cancellationToken);
+        if (owner is null) return null;
+        if (owner.Active || owner.EmailConfirmed)
+            throw new PlatformGarageConflictException("owner", "O proprietário já está ativo.");
+
+        var invitations = await context.TeamInvitations
+            .Where(x => x.GarageId == id && x.UserId == owner.Id && x.UsedAt == null)
+            .OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id).ToArrayAsync(cancellationToken);
+        var invitation = invitations.FirstOrDefault();
+        if (invitation is null) return null;
+        var now = DateTime.UtcNow;
+        foreach (var oldInvitation in invitations.Skip(1)) oldInvitation.Invalidate(now);
+        var token = InvitationTokens.Create();
+        invitation.Renew(InvitationTokens.Hash(token), now.AddHours(24));
+        auditWriter.Add(id, AuditActions.OwnerInvitationResent, "TeamInvitation", invitation.Id.ToString("D"),
+            "Convite do proprietário reenviado.");
+        await context.SaveChangesAsync(cancellationToken);
+        var garageName = await context.Garages.Where(x => x.Id == id).Select(x => x.Name).SingleAsync(cancellationToken);
+        var status = await DeliverOwnerInvitationAsync(garageName, owner, invitation, token, cancellationToken);
+        return new(status);
     }
 
     public async Task<bool> SetActiveAsync(Guid id, bool active, CancellationToken cancellationToken = default)
@@ -211,7 +271,7 @@ public sealed class PlatformGarageAdministration(
         if (result.Succeeded) return;
         throw new PlatformGarageValidationException(new Dictionary<string, string[]>
         {
-            ["initialPassword"] = ["A senha deve ter pelo menos 10 caracteres, incluindo letra maiúscula, minúscula, número e quatro caracteres distintos."]
+            ["owner"] = ["Não foi possível preparar o acesso do proprietário."]
         });
     }
 
@@ -231,10 +291,6 @@ public sealed class PlatformGarageAdministration(
         if (string.IsNullOrWhiteSpace(command.OwnerUserName))
             errors["ownerUserName"] = ["Informe um nome de usuário."];
         else if (command.OwnerUserName.Trim().Length > 100) errors["ownerUserName"] = ["O nome de usuário é muito longo."];
-        if (!PasswordMeetsPolicy(command.InitialPassword))
-            errors["initialPassword"] = ["A senha deve ter pelo menos 10 caracteres, incluindo letra maiúscula, minúscula, número e quatro caracteres distintos."];
-        if (!string.Equals(command.InitialPassword, command.ConfirmPassword, StringComparison.Ordinal))
-            errors["confirmPassword"] = ["As senhas não coincidem."];
         if (errors.Count > 0) throw new PlatformGarageValidationException(errors);
     }
 
@@ -242,7 +298,21 @@ public sealed class PlatformGarageAdministration(
         !string.IsNullOrWhiteSpace(value) && value.Trim().Length <= maximumLength &&
         System.Net.Mail.MailAddress.TryCreate(value.Trim(), out _);
 
-    private static bool PasswordMeetsPolicy(string? password) =>
-        password is { Length: >= 10 } && password.Any(char.IsUpper) && password.Any(char.IsLower) &&
-        password.Any(char.IsDigit) && password.Distinct().Count() >= 4;
+    private async Task<InvitationDeliveryStatus> DeliverOwnerInvitationAsync(string garageName, ApplicationUser owner,
+        TeamInvitationEntity invitation, string token, CancellationToken cancellationToken)
+    {
+        var baseUrl = configuration["App:PublicBaseUrl"] ?? throw new InvalidOperationException("App:PublicBaseUrl não configurada.");
+        var link = $"{baseUrl.TrimEnd('/')}/accept-invitation?id={invitation.Id:D}&token={Uri.EscapeDataString(token)}";
+        try
+        {
+            await invitationSender.SendAsync(new(owner.Email!, garageName, ApplicationRoles.Owner, link, invitation.ExpiresAt), cancellationToken);
+            invitation.MarkSent(DateTime.UtcNow);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            invitation.MarkDeliveryFailed(DateTime.UtcNow);
+        }
+        await context.SaveChangesAsync(cancellationToken);
+        return invitation.DeliveryStatus;
+    }
 }

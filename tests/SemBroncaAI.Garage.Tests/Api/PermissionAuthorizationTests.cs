@@ -34,6 +34,7 @@ public sealed class PermissionAuthorizationTests
         permissions.ShouldNotContain(ApplicationPermissions.FinishService);
         permissions.ShouldNotContain(ApplicationPermissions.ManageGarageSettings);
         permissions.ShouldNotContain(ApplicationPermissions.ManageTeam);
+        permissions.ShouldNotContain(ApplicationPermissions.ViewSubscription);
     }
 
     [Fact]
@@ -55,6 +56,7 @@ public sealed class PermissionAuthorizationTests
         permissions.ShouldNotContain(ApplicationPermissions.ArchiveServiceOrder);
         permissions.ShouldNotContain(ApplicationPermissions.ManageGarageSettings);
         permissions.ShouldNotContain(ApplicationPermissions.ManageTeam);
+        permissions.ShouldNotContain(ApplicationPermissions.ViewSubscription);
     }
 
     [Fact]

@@ -1,0 +1,25 @@
+.theme-toggle {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    flex: 0 0 40px;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--sbg-border);
+    border-radius: 10px;
+    background: var(--sbg-surface);
+    color: var(--sbg-text-secondary);
+    cursor: pointer;
+    transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
+}
+
+.theme-toggle:hover {
+    border-color: var(--sbg-orange-border);
+    background: var(--sbg-orange-soft);
+    color: #f97316;
+}
+
+.theme-toggle:focus-visible {
+    outline: 3px solid rgb(249 115 22 / 22%);
+    outline-offset: 2px;
+}

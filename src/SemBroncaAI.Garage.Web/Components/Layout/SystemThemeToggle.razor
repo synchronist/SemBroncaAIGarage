@@ -1,0 +1,54 @@
+@inject IJSRuntime JavaScript
+
+<MudThemeProvider @ref="_provider"
+                  Theme="@GarageTheme.Value"
+                  IsDarkMode="@_isDarkMode"
+                  IsDarkModeChanged="OnSystemThemeChanged"
+                  ObserveSystemDarkModeChange="@(!_hasManualPreference)" />
+
+<button type="button"
+        class="theme-toggle"
+        title="@(_isDarkMode ? "Usar tema claro" : "Usar tema escuro")"
+        aria-label="@(_isDarkMode ? "Usar tema claro" : "Usar tema escuro")"
+        aria-pressed="@_isDarkMode"
+        @onclick="ToggleThemeAsync">
+    <MudIcon Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+             Size="Size.Small" />
+</button>
+
+@code {
+    private MudThemeProvider? _provider;
+    private bool _isDarkMode;
+    private bool _hasManualPreference;
+    private bool _initialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _provider is null) return;
+
+        var preference = await JavaScript.InvokeAsync<ThemePreference>("sbgTheme.getPreference");
+        _hasManualPreference = preference.IsManual;
+        _isDarkMode = preference.IsManual
+            ? preference.IsDark
+            : await _provider.GetSystemDarkModeAsync();
+        _initialized = true;
+        StateHasChanged();
+    }
+
+    private async Task ToggleThemeAsync()
+    {
+        _hasManualPreference = true;
+        _isDarkMode = !_isDarkMode;
+        await JavaScript.InvokeVoidAsync("sbgTheme.setPreference", _isDarkMode);
+    }
+
+    private async Task OnSystemThemeChanged(bool isDarkMode)
+    {
+        if (!_initialized || _hasManualPreference) return;
+
+        _isDarkMode = isDarkMode;
+        await JavaScript.InvokeVoidAsync("sbgTheme.applySystemPreference");
+    }
+
+    private sealed record ThemePreference(bool IsManual, bool IsDark);
+}

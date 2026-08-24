@@ -1,6 +1,5 @@
 @inherits LayoutComponentBase
 
-<MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -11,12 +10,9 @@
             <a href="/platform-admin" class="platform-brand"><span class="brand-mark"><MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Small" /></span><span><strong>SemBroncaAI</strong><small>Administração da plataforma</small></span></a>
             <span class="admin-context">Área administrativa</span>
             <nav class="platform-nav" aria-label="Navegação administrativa"><NavLink class="platform-nav-item" href="/platform-admin" Match="NavLinkMatch.All">Visão geral</NavLink><NavLink class="platform-nav-item" href="/platform-admin/garages" Match="NavLinkMatch.Prefix">Oficinas</NavLink></nav>
+            <SystemThemeToggle />
             <form method="post" action="/auth/logout"><AntiforgeryToken /><button type="submit" title="Sair da plataforma" aria-label="Sair da plataforma"><span>Sair</span><MudIcon Icon="@Icons.Material.Filled.Logout" Size="Size.Small" /></button></form>
         </div>
     </header>
     <main class="platform-main">@Body</main>
 </div>
-
-@code {
-    private readonly MudTheme _theme = new() { PaletteLight = new PaletteLight { Primary = "#F97316", Background = "#F7F8FA", Surface = "#FFFFFF", TextPrimary = "#111827", TextSecondary = "#6B7280" } };
-}

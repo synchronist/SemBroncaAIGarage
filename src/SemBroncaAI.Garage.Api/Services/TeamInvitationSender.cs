@@ -10,7 +10,7 @@ public sealed class TeamInvitationEmailSender(ITransactionalEmailSender sender) 
     {
         var garage = WebUtility.HtmlEncode(invitation.GarageName);
         var link = WebUtility.HtmlEncode(invitation.InvitationLink);
-        var role = invitation.Role == "Mechanic" ? "Mecânico" : "Recepção";
+        var role = invitation.Role switch { "Mechanic" => "Mecânico", "Owner" => "Proprietário", _ => "Recepção" };
         var expiration = invitation.ExpiresAt.ToString("dd/MM/yyyy 'às' HH:mm 'UTC'");
         var html = $"""
             <div style="font-family:Arial,sans-serif;max-width:600px;color:#1f2937">

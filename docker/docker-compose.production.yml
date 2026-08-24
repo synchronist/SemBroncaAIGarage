@@ -11,6 +11,7 @@ x-api-environment: &api-environment
   DataProtection__KeysPath: /var/lib/sbgarage/data-protection
   ReverseProxy__KnownProxies__0: 172.30.0.1
   IdentitySeed__Enabled: "false"
+  PasswordRecovery__Enabled: ${PASSWORD_RECOVERY_ENABLED:-false}
   Email__Provider: ${EMAIL_PROVIDER:-Smtp}
   Email__Host: ${EMAIL_SMTP_HOST:-}
   Email__Port: ${EMAIL_SMTP_PORT:-587}
@@ -109,6 +110,29 @@ services:
       target: migrations
     restart: "no"
     environment: *api-environment
+    networks:
+      - app-network
+      - data-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  bootstrap-admin:
+    profiles: ["tools"]
+    build:
+      context: ..
+      dockerfile: src/SemBroncaAI.Garage.Api/Dockerfile
+      target: runtime
+      args:
+        APP_VERSION: ${APP_VERSION:-local}
+    restart: "no"
+    environment:
+      <<: *api-environment
+      BootstrapAdmin__Name: ${BOOTSTRAP_ADMIN_NAME:-}
+      BootstrapAdmin__Email: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BootstrapAdmin__UserName: ${BOOTSTRAP_ADMIN_USERNAME:-}
+      BootstrapAdmin__Password: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+    command: ["--bootstrap-platform-admin"]
     networks:
       - app-network
       - data-network

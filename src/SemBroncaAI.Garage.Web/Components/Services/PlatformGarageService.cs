@@ -50,6 +50,15 @@ public sealed class PlatformGarageService(HttpClient httpClient)
         if (!response.IsSuccessStatusCode) throw new InvalidOperationException(await ReadErrorAsync(response, cancellationToken));
     }
 
+    public async Task<OwnerInvitationOperationResponse> ResendOwnerInvitationAsync(
+        Guid id, CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsync($"api/platform/garages/{id}/owner-invitation", null, cancellationToken);
+        if (!response.IsSuccessStatusCode) throw new InvalidOperationException(await ReadErrorAsync(response, cancellationToken));
+        return await response.Content.ReadFromJsonAsync<OwnerInvitationOperationResponse>(JsonOptions, cancellationToken)
+            ?? throw new InvalidOperationException("A API não retornou o estado do convite.");
+    }
+
     public async Task<PlatformSubscriptionResponse> UpdateSubscriptionAsync(Guid id,
         UpdateGarageSubscriptionCommand command, CancellationToken cancellationToken = default)
     {
