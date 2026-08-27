@@ -15,7 +15,7 @@ public static class AuthenticationRateLimiting
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions
                 {
-                    PermitLimit = 10,
+                    PermitLimit = 100,
                     Window = TimeSpan.FromMinutes(1),
                     QueueLimit = 0
                 }));
