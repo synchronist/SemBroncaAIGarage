@@ -39,15 +39,16 @@ public sealed class SubscriptionPresentationTests
     }
 
     [Fact]
-    public void Subscription_page_should_not_expose_a_fake_checkout_action()
+    public void Subscription_page_should_expose_real_checkout_and_portal_actions()
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
         var page = File.ReadAllText(Path.Combine(root, "src", "SemBroncaAI.Garage.Web", "Components", "Pages", "Subscription.razor"));
 
-        page.ShouldContain("Disponível em breve");
-        page.ShouldNotContain("Comprar");
-        page.ShouldNotContain("Assinar agora");
-        page.ShouldNotContain("OnClick");
+        page.ShouldContain("StartCheckoutAsync(BillingCycle.Monthly)");
+        page.ShouldContain("StartCheckoutAsync(BillingCycle.Annual)");
+        page.ShouldContain("OpenPortalAsync");
+        page.ShouldContain("forceLoad: true");
+        page.ShouldNotContain("Disponível em breve");
     }
 
     [Fact]

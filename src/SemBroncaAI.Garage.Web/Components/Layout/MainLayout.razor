@@ -21,8 +21,7 @@
 
         <div class="sbg-brand">
             <div class="sbg-brand-icon">
-                <MudIcon Icon="@Icons.Material.Filled.Build"
-                         Size="Size.Small" />
+                <img src="/brand/sembronca-symbol.svg" alt="" aria-hidden="true" />
             </div>
 
             <div class="sbg-brand-text">
@@ -115,7 +114,7 @@
                     <span>Sair</span>
                 </button>
             </form>
-            <small>Tecnologia SBGarage</small>
+            <small>Tecnologia SemBroncaAI Garage</small>
         </div>
 
     </aside>
@@ -170,7 +169,7 @@
     private void ToggleMobileMenu() => _mobileMenuOpen = !_mobileMenuOpen;
     private void CloseMobileMenu() => _mobileMenuOpen = false;
     private string _garageName = "Oficina";
-    private string _garageLocation = "SBGarage";
+    private string _garageLocation = "SemBroncaAI Garage";
 
     private static string GetInitials(string? name)
     {
@@ -197,7 +196,7 @@
             _garageName = string.IsNullOrWhiteSpace(garage.Name) ? "Oficina" : garage.Name;
             _garageLocation = !string.IsNullOrWhiteSpace(garage.City) && !string.IsNullOrWhiteSpace(garage.State)
                 ? $"{garage.City} — {garage.State}"
-                : "SBGarage";
+                : "SemBroncaAI Garage";
         }
         catch
         {

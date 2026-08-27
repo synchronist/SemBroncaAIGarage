@@ -81,6 +81,19 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.AddScoped<ITeamManagement, TeamManagement>();
         services.AddScoped<IOwnerSubscriptionQuery, OwnerSubscriptionQuery>();
+        services.AddOptions<StripeBillingOptions>()
+            .Bind(configuration.GetSection(StripeBillingOptions.SectionName))
+            .Validate(options => !options.Enabled ||
+                (options.SecretKey.StartsWith("sk_", StringComparison.Ordinal) &&
+                 options.WebhookSecret.StartsWith("whsec_", StringComparison.Ordinal) &&
+                 options.MonthlyPriceId.StartsWith("price_", StringComparison.Ordinal) &&
+                 options.AnnualPriceId.StartsWith("price_", StringComparison.Ordinal) &&
+                 !string.Equals(options.MonthlyPriceId, options.AnnualPriceId, StringComparison.Ordinal)),
+                "A configuração Stripe habilitada deve conter SecretKey, WebhookSecret e os Price IDs mensal/anual.")
+            .ValidateOnStart();
+        services.AddScoped<StripeBillingService>();
+        services.AddScoped<IOwnerBillingService>(sp => sp.GetRequiredService<StripeBillingService>());
+        services.AddScoped<IBillingWebhookProcessor>(sp => sp.GetRequiredService<StripeBillingService>());
         services.AddScoped<IAuditWriter, AuditWriter>();
 
         services.AddScoped<IUnitOfWork>(sp =>

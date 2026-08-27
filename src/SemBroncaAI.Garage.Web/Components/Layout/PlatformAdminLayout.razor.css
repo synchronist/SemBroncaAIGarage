@@ -2,4 +2,7 @@
 
 @media(min-width:601px){.platform-header nav{margin-left:2px;padding-left:18px;border-left:1px solid var(--sbg-border)}}@media(max-width:600px){.platform-header nav{padding-left:0;border-top:1px solid var(--sbg-surface-subtle);border-left:0}}
 
+.brand-mark{display:block!important;flex:0 0 38px;padding:0;background:none;color:inherit}
+.brand-mark img{width:100%;height:100%;display:block}
+
 .platform-nav{gap:10px}.platform-nav ::deep .platform-nav-item{min-height:40px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;padding:0 16px;border:1px solid var(--sbg-border);border-radius:9px;background:var(--sbg-surface);color:var(--sbg-text-secondary);text-decoration:none;font-size:12px;font-weight:700;line-height:1;transition:background-color .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease}.platform-nav ::deep .platform-nav-item:hover{border-color:var(--sbg-border-strong);background:var(--sbg-surface-muted);color:var(--sbg-text-slate)}.platform-nav ::deep .platform-nav-item.active{border-color:#fdba74;background:var(--sbg-orange-soft);color:var(--sbg-orange-text);box-shadow:inset 0 0 0 1px rgba(249,115,22,.08)}.platform-nav ::deep .platform-nav-item:focus-visible{outline:3px solid rgba(249,115,22,.22);outline-offset:2px}@media(max-width:600px){.platform-nav{gap:8px}.platform-nav ::deep .platform-nav-item{flex:1;padding:0 10px}}

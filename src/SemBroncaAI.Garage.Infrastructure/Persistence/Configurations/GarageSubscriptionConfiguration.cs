@@ -12,6 +12,11 @@ public sealed class GarageSubscriptionConfiguration : IEntityTypeConfiguration<G
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(x => x.Plan).HasConversion<string>().HasMaxLength(30).IsRequired();
+        builder.Property(x => x.BillingCustomerId).HasMaxLength(100);
+        builder.Property(x => x.BillingSubscriptionId).HasMaxLength(100);
+        builder.Property(x => x.BillingPriceId).HasMaxLength(100);
+        builder.HasIndex(x => x.BillingCustomerId).IsUnique();
+        builder.HasIndex(x => x.BillingSubscriptionId).IsUnique();
         builder.HasIndex(x => x.GarageId).IsUnique();
         builder.HasOne<GarageEntity>().WithOne().HasForeignKey<GarageSubscriptionEntity>(x => x.GarageId)
             .OnDelete(DeleteBehavior.Cascade);

@@ -6,6 +6,7 @@
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
 @inject OwnerSubscriptionService SubscriptionService
+@inject NavigationManager Navigation
 
 <PageTitle>Plano e assinatura</PageTitle>
 
@@ -24,6 +25,18 @@
     }
     else
     {
+        @if (_checkout == "success")
+        {
+            <MudAlert Severity="Severity.Success">Checkout concluído. Estamos confirmando o pagamento e a assinatura será atualizada em instantes.</MudAlert>
+        }
+        else if (_checkout == "cancelled")
+        {
+            <MudAlert Severity="Severity.Info">Checkout cancelado. Nenhuma cobrança foi concluída.</MudAlert>
+        }
+        @if (!string.IsNullOrWhiteSpace(_actionError))
+        {
+            <MudAlert Severity="Severity.Error">@_actionError</MudAlert>
+        }
         <section class="subscription-card summary-card">
             <div class="summary-heading">
                 <div class="summary-icon"><MudIcon Icon="@Icons.Material.Filled.WorkspacePremium" /></div>
@@ -47,23 +60,33 @@
                     <div><span>Período atual até</span><strong>@FormatDate(_subscription.CurrentPeriodEnd.Value)</strong></div>
                 }
             </div>
+            @if (_subscription.CanManageBilling && _subscription.OnlineBillingEnabled)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@_actionLoading" OnClick="OpenPortalAsync">
+                    Gerenciar cobrança
+                </MudButton>
+            }
+            @if (_subscription.CancelAtPeriodEnd)
+            {
+                <p class="billing-notice">O cancelamento está agendado para o fim do período atual.</p>
+            }
         </section>
 
-        @if (_subscription.Status == SubscriptionStatus.Trial)
+        @if (_subscription.Status is SubscriptionStatus.Trial or SubscriptionStatus.Cancelled)
         {
             <section class="plans-section" aria-labelledby="plans-title">
-                <div class="section-heading"><span class="eyebrow">Após o período gratuito</span><h2 id="plans-title">Escolha seu plano quando chegar a hora</h2><p>As opções abaixo são informativas. A contratação online ainda não está disponível.</p></div>
+                <div class="section-heading"><span class="eyebrow">Após o período gratuito</span><h2 id="plans-title">Escolha seu plano quando chegar a hora</h2><p>Pagamento seguro processado pela Stripe. Cancele quando quiser pelo portal do cliente.</p></div>
                 <div class="plans-grid">
                     <article class="subscription-card plan-card">
                         <div><span class="plan-name">Mensal</span><h3>R$ 199 <small>/ mês</small></h3></div>
                         <p>Flexibilidade para acompanhar o ritmo da oficina mês a mês.</p>
-                        <span class="availability">Disponível em breve</span>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Disabled="@(!_subscription.OnlineBillingEnabled || _actionLoading)" OnClick="@(() => StartCheckoutAsync(BillingCycle.Monthly))">Assinar mensal</MudButton>
                     </article>
                     <article class="subscription-card plan-card featured">
                         <span class="saving-badge">Economize R$ 700 em relação ao plano mensal.</span>
                         <div><span class="plan-name">Anual</span><h3>R$ 1.700 <small>/ ano</small></h3><span class="equivalent">Equivale a R$ 141,67 por mês</span></div>
                         <p>Um ano de acesso ao plano Standard com melhor condição.</p>
-                        <span class="availability">Disponível em breve</span>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Disabled="@(!_subscription.OnlineBillingEnabled || _actionLoading)" OnClick="@(() => StartCheckoutAsync(BillingCycle.Annual))">Assinar anual</MudButton>
                     </article>
                 </div>
             </section>
@@ -74,6 +97,10 @@
 @code {
     private OwnerSubscriptionResponse? _subscription;
     private bool _loading = true;
+    private bool _actionLoading;
+    private string? _actionError;
+    [SupplyParameterFromQuery(Name = "checkout")]
+    private string? _checkout { get; set; }
     private DateTime _now;
     private string StatusLabel => SubscriptionPresentation.StatusLabel(_subscription!.Status, _subscription.TrialEndsAt, _now);
     private string StatusDescription => SubscriptionPresentation.StatusDescription(_subscription!.Status, _subscription.TrialEndsAt, _now);
@@ -89,4 +116,29 @@
     }
 
     private static string FormatDate(DateTime date) => date.ToString("dd/MM/yyyy");
+
+    private async Task StartCheckoutAsync(BillingCycle cycle) =>
+        await RedirectAsync(() => SubscriptionService.CreateCheckoutAsync(cycle));
+
+    private async Task OpenPortalAsync() =>
+        await RedirectAsync(() => SubscriptionService.CreatePortalAsync());
+
+    private async Task RedirectAsync(Func<Task<BillingRedirectResponse>> create)
+    {
+        _actionLoading = true;
+        _actionError = null;
+        try
+        {
+            var redirect = await create();
+            Navigation.NavigateTo(redirect.Url, forceLoad: true);
+        }
+        catch
+        {
+            _actionError = "Não foi possível iniciar a cobrança. Tente novamente.";
+        }
+        finally
+        {
+            _actionLoading = false;
+        }
+    }
 }

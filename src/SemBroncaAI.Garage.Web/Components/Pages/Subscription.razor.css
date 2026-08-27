@@ -14,6 +14,7 @@ header p, .section-heading p { margin: 6px 0 0; color: var(--sbg-text-secondary)
 .status-cancelled { background: var(--sbg-surface-subtle); color: var(--sbg-text-secondary); }
 .status-description { margin: 22px 0; color: var(--sbg-text-secondary); line-height: 1.55; }
 .trial-access { margin: -10px 0 22px; padding: 12px 14px; border-left: 3px solid #f97316; border-radius: 0 10px 10px 0; background: var(--sbg-orange-soft); color: var(--sbg-orange-text); line-height: 1.5; }
+.billing-notice { margin: 16px 0 0; color: var(--sbg-text-secondary); font-size: .9rem; }
 .date-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .date-grid div { padding: 14px 16px; border: 1px solid var(--sbg-border); border-radius: 12px; background: var(--sbg-surface-muted); }
 .date-grid span, .date-grid strong { display: block; }
@@ -28,5 +29,5 @@ header p, .section-heading p { margin: 6px 0 0; color: var(--sbg-text-secondary)
 .plan-card p, .equivalent { color: var(--sbg-text-secondary); }
 .equivalent { display: block; margin-top: 5px; font-size: .88rem; }
 .saving-badge { align-self: flex-start; padding: 5px 9px; border-radius: 999px; background: var(--sbg-success-soft); color: var(--sbg-success-text); font-size: .76rem; font-weight: 700; }
-.availability { margin-top: auto; padding: 11px 14px; border-radius: 10px; background: var(--sbg-surface-subtle); color: var(--sbg-text-secondary); text-align: center; font-weight: 700; }
+.plan-card ::deep .mud-button-root { margin-top: auto; min-height: 44px; border-radius: 10px; font-weight: 700; }
 @media (max-width: 700px) { .subscription-page { gap: 18px; } .summary-card, .plan-card { padding: 20px; } .summary-heading { align-items: flex-start; flex-wrap: wrap; } .status-badge { margin-left: 0; width: 100%; text-align: center; } .date-grid, .plans-grid { grid-template-columns: 1fr; } }

@@ -21,6 +21,11 @@ x-api-environment: &api-environment
   Email__FromName: ${EMAIL_FROM_NAME:-SemBroncaAI Garage}
   Email__UseSsl: ${EMAIL_USE_SSL:-true}
   Email__TimeoutSeconds: ${EMAIL_TIMEOUT_SECONDS:-15}
+  Stripe__Enabled: ${STRIPE_ENABLED:-false}
+  Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}
+  Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET:-}
+  Stripe__MonthlyPriceId: ${STRIPE_MONTHLY_PRICE_ID:-}
+  Stripe__AnnualPriceId: ${STRIPE_ANNUAL_PRICE_ID:-}
 
 services:
   postgres:

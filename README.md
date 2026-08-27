@@ -41,7 +41,7 @@ O **SemBroncaAI Garage** é uma plataforma SaaS multi-oficina que centraliza cli
 |---|---|---|
 | Clientes e veículos | Orçamentos digitais | PlatformAdmin multi-tenant |
 | Diagnóstico e execução | Aprovação por link seguro | Equipe, roles e convites |
-| Peças, serviços e PDF | Compartilhamento via WhatsApp | Trial, assinatura e auditoria |
+| Peças, serviços e PDF | Compartilhamento via WhatsApp | Trial, Stripe Billing e auditoria |
 
 ## 🧭 Fluxo principal
 
@@ -69,7 +69,7 @@ Blazor Web (BFF) → API → Application → Domain
 
 ## ⚙️ Stack
 
-**.NET 10** · **ASP.NET Core** · **Blazor** · **MudBlazor** · **EF Core** · **PostgreSQL 17** · **Docker Compose** · **xUnit**
+**.NET 10** · **ASP.NET Core** · **Blazor** · **MudBlazor** · **EF Core** · **PostgreSQL 17** · **Stripe** · **Docker Compose** · **xUnit**
 
 ## 🚀 Começando
 
@@ -128,10 +128,11 @@ docs/     # Guias operacionais e decisões futuras
 | [Deploy e rollback](docs/deployment-runbook.md) | Atualização segura da aplicação |
 | [Backup e restore](docs/backup-restore.md) | Proteção e recuperação do PostgreSQL |
 | [Bootstrap PlatformAdmin](docs/platform-admin-bootstrap.md) | Primeiro acesso administrativo |
+| [Stripe Billing](docs/stripe-billing.md) | Checkout, portal, webhooks e configuração segura |
 
 ## 📍 Status do produto
 
-MVP em evolução ativa. Voz/IA, billing automatizado, gateway e WhatsApp transacional permanecem fora do escopo atual até implementação explícita.
+MVP em evolução ativa. Voz/IA e WhatsApp transacional permanecem fora do escopo atual até implementação explícita.
 
 ---
 

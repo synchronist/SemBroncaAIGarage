@@ -5,7 +5,10 @@ using SemBroncaAI.Garage.Infrastructure.Persistence;
 
 namespace SemBroncaAI.Garage.Infrastructure.Services;
 
-public sealed class OwnerSubscriptionQuery(GarageDbContext context, ICurrentGarage currentGarage)
+public sealed class OwnerSubscriptionQuery(
+    GarageDbContext context,
+    ICurrentGarage currentGarage,
+    Microsoft.Extensions.Options.IOptions<StripeBillingOptions> billingOptions)
     : IOwnerSubscriptionQuery
 {
     public Task<OwnerSubscriptionResponse?> GetAsync(CancellationToken cancellationToken)
@@ -20,7 +23,10 @@ public sealed class OwnerSubscriptionQuery(GarageDbContext context, ICurrentGara
                 subscription.StartedAt,
                 subscription.TrialEndsAt,
                 subscription.CurrentPeriodStart,
-                subscription.CurrentPeriodEnd))
+                subscription.CurrentPeriodEnd,
+                billingOptions.Value.Enabled,
+                subscription.BillingSubscriptionId != null,
+                subscription.CancelAtPeriodEnd))
             .SingleOrDefaultAsync(cancellationToken);
     }
 }

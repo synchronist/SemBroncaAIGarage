@@ -6,7 +6,7 @@
 @inject TeamService Service
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
-<PageTitle>Adicionar membro | SBGarage</PageTitle>
+<PageTitle>Adicionar membro | SemBroncaAI Garage</PageTitle>
 <a class="back" href="/team">← Voltar para equipe</a><h1>Adicionar membro</h1><p class="intro">O membro receberá um convite para definir a própria senha.</p>
 @if(_error is not null){<div class="error" role="alert">@_error</div>}
 <EditForm Model="_form" OnValidSubmit="Submit" novalidate><DataAnnotationsValidator /><div class="grid"><label>Nome<InputText @bind-Value="_form.Name" /><ValidationMessage For="@(()=>_form.Name)" /></label><label>E-mail<InputText type="text" inputmode="email" @bind-Value="_form.Email" /><ValidationMessage For="@(()=>_form.Email)" /></label><label>Username<InputText @bind-Value="_form.UserName" maxlength="101" /><ValidationMessage For="@(()=>_form.UserName)" /></label><label>Perfil<InputSelect @bind-Value="_form.Role"><option value="Receptionist">Recepção</option><option value="Mechanic">Mecânico</option></InputSelect></label></div><div class="actions"><a href="/team">Cancelar</a><button disabled="@_saving">@(_saving?"Enviando...":"Enviar convite")</button></div></EditForm>

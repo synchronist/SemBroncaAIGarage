@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Símbolo SemBroncaAI Garage</title>
+  <desc id="desc">Um caminho contínuo em forma de S representa uma oficina em movimento e sob controle.</desc>
+  <defs><linearGradient id="brand" x1="72" y1="48" x2="438" y2="464" gradientUnits="userSpaceOnUse"><stop stop-color="#FB923C"/><stop offset="1" stop-color="#EA580C"/></linearGradient></defs>
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#brand)"/>
+  <path d="M370 104H220C154 104 116 138 116 190s42 80 104 80h72c64 0 104 34 104 86s-42 80-104 80H142" fill="none" stroke="#FFFFFF" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="370" cy="104" r="12" fill="#0F172A"/><circle cx="142" cy="436" r="12" fill="#0F172A"/>
+</svg>

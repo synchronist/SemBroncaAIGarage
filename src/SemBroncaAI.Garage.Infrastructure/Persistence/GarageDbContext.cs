@@ -36,6 +36,7 @@ public sealed class GarageDbContext : IdentityDbContext<ApplicationUser, Identit
     public DbSet<TeamInvitationEntity> TeamInvitations => Set<TeamInvitationEntity>();
     public DbSet<GarageSubscriptionEntity> GarageSubscriptions => Set<GarageSubscriptionEntity>();
     public DbSet<AuditEntryEntity> AuditEntries => Set<AuditEntryEntity>();
+    public DbSet<ProcessedBillingEvent> ProcessedBillingEvents => Set<ProcessedBillingEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

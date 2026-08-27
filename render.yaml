@@ -51,6 +51,16 @@ services:
         value: "true"
       - key: Email__TimeoutSeconds
         value: "15"
+      - key: Stripe__Enabled
+        value: "true"
+      - key: Stripe__SecretKey
+        sync: false
+      - key: Stripe__WebhookSecret
+        sync: false
+      - key: Stripe__MonthlyPriceId
+        sync: false
+      - key: Stripe__AnnualPriceId
+        sync: false
 
   - type: web
     name: sembronca-garage

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 400" role="img" aria-labelledby="title desc">
+  <title id="title">SemBroncaAI Garage</title><desc id="desc">Logotipo horizontal SemBroncaAI Garage.</desc>
+  <defs><linearGradient id="brand" x1="48" y1="44" x2="344" y2="356" gradientUnits="userSpaceOnUse"><stop stop-color="#FB923C"/><stop offset="1" stop-color="#EA580C"/></linearGradient></defs>
+  <g transform="translate(36 36) scale(.640625)"><rect x="16" y="16" width="480" height="480" rx="112" fill="url(#brand)"/><path d="M370 104H220C154 104 116 138 116 190s42 80 104 80h72c64 0 104 34 104 86s-42 80-104 80H142" fill="none" stroke="#FFFFFF" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/><circle cx="370" cy="104" r="12" fill="#0F172A"/><circle cx="142" cy="436" r="12" fill="#0F172A"/></g>
+  <text x="420" y="224" fill="#0F172A" font-family="Segoe UI, Arial, sans-serif" font-size="116" font-weight="750" letter-spacing="-4">SemBroncaAI</text><text x="1125" y="224" fill="#EA580C" font-family="Segoe UI, Arial, sans-serif" font-size="72" font-weight="750">Garage</text><rect x="424" y="255" width="940" height="8" rx="4" fill="#EA580C" opacity=".9"/><text x="424" y="315" fill="#64748B" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="600" letter-spacing="5">GESTÃO PARA OFICINAS</text>
+</svg>

@@ -8,7 +8,10 @@ public sealed record OwnerSubscriptionResponse(
     DateTime StartedAt,
     DateTime? TrialEndsAt,
     DateTime? CurrentPeriodStart,
-    DateTime? CurrentPeriodEnd);
+    DateTime? CurrentPeriodEnd,
+    bool OnlineBillingEnabled,
+    bool CanManageBilling,
+    bool CancelAtPeriodEnd);
 
 public interface IOwnerSubscriptionQuery
 {

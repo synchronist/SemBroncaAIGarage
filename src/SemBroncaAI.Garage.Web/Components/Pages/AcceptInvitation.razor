@@ -2,9 +2,9 @@
 @layout AuthLayout
 @using SemBroncaAI.Garage.Application.Features.TeamManagement
 @inject TeamInvitationService Service
-<PageTitle>Aceitar convite | SBGarage</PageTitle>
+<PageTitle>Aceitar convite | SemBroncaAI Garage</PageTitle>
 <main class="invitation-page">
-    <section class="invitation-brand" aria-label="SemBroncaAI Garage"><span><MudIcon Icon="@Icons.Material.Filled.Build" /></span><div><strong>SemBroncaAI Garage</strong><small>Gestão para oficinas</small></div></section>
+    <section class="invitation-brand" aria-label="SemBroncaAI Garage"><span><img src="/brand/sembronca-symbol.svg" alt="" aria-hidden="true" /></span><div><strong>SemBroncaAI Garage</strong><small>Gestão para oficinas</small></div></section>
     <section class="invitation-card">
         @if (_loading) { <span class="state-icon"><MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Medium" /></span><h1>Validando convite</h1><p>Aguarde um instante.</p> }
         else if (!_canAccept && !_activated) { <span class="state-icon invalid"><MudIcon Icon="@Icons.Material.Filled.LinkOff" Size="Size.Large" /></span><h1>Este convite não é mais válido.</h1><p>Solicite um novo convite ao responsável pela oficina.</p><a class="login-cta" href="/login">Ir para o login</a> }

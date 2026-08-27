@@ -15,6 +15,10 @@ public sealed class GarageSubscriptionEntity : Entity
     public DateTime? CancelledAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
+    public string? BillingCustomerId { get; private set; }
+    public string? BillingSubscriptionId { get; private set; }
+    public string? BillingPriceId { get; private set; }
+    public bool CancelAtPeriodEnd { get; private set; }
 
     private GarageSubscriptionEntity() { }
 
@@ -49,6 +53,36 @@ public sealed class GarageSubscriptionEntity : Entity
         SuspendedAt = status == SubscriptionStatus.Suspended ? now : null;
         if (status == SubscriptionStatus.Cancelled) CancelledAt = now;
         UpdatedAt = now;
+    }
+
+    public void SetBillingCustomer(string customerId, DateTime now)
+    {
+        if (string.IsNullOrWhiteSpace(customerId)) throw new ArgumentException("O cliente de cobrança é obrigatório.", nameof(customerId));
+        BillingCustomerId = customerId;
+        UpdatedAt = now;
+    }
+
+    public void SynchronizeBilling(
+        string customerId,
+        string subscriptionId,
+        string priceId,
+        SubscriptionStatus status,
+        DateTime? currentPeriodStart,
+        DateTime? currentPeriodEnd,
+        bool cancelAtPeriodEnd,
+        DateTime now)
+    {
+        if (string.IsNullOrWhiteSpace(customerId)) throw new ArgumentException("O cliente de cobrança é obrigatório.", nameof(customerId));
+        if (string.IsNullOrWhiteSpace(subscriptionId)) throw new ArgumentException("A assinatura externa é obrigatória.", nameof(subscriptionId));
+        if (string.IsNullOrWhiteSpace(priceId)) throw new ArgumentException("O preço externo é obrigatório.", nameof(priceId));
+
+        BillingCustomerId = customerId;
+        BillingSubscriptionId = subscriptionId;
+        BillingPriceId = priceId;
+        CurrentPeriodStart = currentPeriodStart;
+        CurrentPeriodEnd = currentPeriodEnd;
+        CancelAtPeriodEnd = cancelAtPeriodEnd;
+        ChangeStatus(status, now);
     }
 
 }

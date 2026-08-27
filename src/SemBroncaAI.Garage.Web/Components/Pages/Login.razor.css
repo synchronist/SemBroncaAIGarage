@@ -1,6 +1,7 @@
 .login-page { width: min(100%, 430px); }
 .login-brand { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:24px; }
-.login-brand-icon { width:42px; height:42px; display:grid; place-items:center; border-radius:12px; color:#fff; background:#f97316; box-shadow:0 8px 20px rgb(249 115 22 / 25%); }
+.login-brand-icon { width:42px; height:42px; flex:0 0 42px; }
+.login-brand-icon img { width:100%; height:100%; display:block; }
 .login-brand div { display:flex; flex-direction:column; line-height:1.15; }
 .login-brand strong { font-size:18px; color:var(--sbg-text); }
 .login-brand div span { margin-top:3px; font-size:12px; color:var(--sbg-text-secondary); }

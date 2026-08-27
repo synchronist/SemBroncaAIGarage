@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using SemBroncaAI.Garage.Api.Controllers;
 using SemBroncaAI.Garage.Application.Abstractions.Security;
 using SemBroncaAI.Garage.Application.Features.PlatformAdministration;
+using SemBroncaAI.Garage.Application.Features.Subscriptions;
 using SemBroncaAI.Garage.Domain.Entities.Garage;
 using Shouldly;
 
@@ -70,6 +71,46 @@ public sealed class OwnerSubscriptionTests
         properties.ShouldNotContain("BillingCycle");
         properties.ShouldNotContain(name => name.Contains("Card", StringComparison.OrdinalIgnoreCase));
         properties.ShouldNotContain(name => name.Contains("Cvv", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Stripe_webhook_should_be_explicitly_anonymous_while_owner_actions_remain_protected()
+    {
+        typeof(StripeWebhookController).GetCustomAttribute<AllowAnonymousAttribute>().ShouldNotBeNull();
+        typeof(SubscriptionController).GetCustomAttribute<AuthorizeAttribute>()!.Policy
+            .ShouldBe(ApplicationPermissions.ViewSubscription);
+        typeof(StripeWebhookController).GetCustomAttribute<AuthorizeAttribute>().ShouldBeNull();
+    }
+
+    [Fact]
+    public void Billing_state_should_preserve_tenant_and_never_store_card_data()
+    {
+        var garageId = Guid.NewGuid();
+        var now = new DateTime(2026, 8, 27, 12, 0, 0, DateTimeKind.Utc);
+        var subscription = new GarageSubscriptionEntity(garageId, SubscriptionPlan.Standard, now, 90);
+
+        subscription.SynchronizeBilling(
+            "cus_test", "sub_test", "price_test", SubscriptionStatus.Active,
+            now, now.AddMonths(1), false, now.AddMinutes(1));
+
+        subscription.GarageId.ShouldBe(garageId);
+        subscription.Status.ShouldBe(SubscriptionStatus.Active);
+        subscription.BillingCustomerId.ShouldBe("cus_test");
+        subscription.BillingSubscriptionId.ShouldBe("sub_test");
+        subscription.BillingPriceId.ShouldBe("price_test");
+        subscription.CurrentPeriodEnd.ShouldBe(now.AddMonths(1));
+        typeof(GarageSubscriptionEntity).GetProperties()
+            .ShouldNotContain(property => property.Name.Contains("Card", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Checkout_contract_should_accept_a_cycle_but_never_a_client_supplied_price()
+    {
+        var properties = typeof(CreateCheckoutCommand).GetProperties();
+
+        properties.Length.ShouldBe(1);
+        properties[0].Name.ShouldBe(nameof(CreateCheckoutCommand.Cycle));
+        properties.ShouldNotContain(property => property.Name.Contains("Price", StringComparison.OrdinalIgnoreCase));
     }
 
     private static string RepositoryRoot() => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));

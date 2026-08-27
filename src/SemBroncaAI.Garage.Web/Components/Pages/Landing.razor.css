@@ -12,7 +12,7 @@
 .hero-proof { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 22px; color: var(--sbg-text-secondary); font-size: .8rem; }
 .hero-proof span { display: inline-flex; align-items: center; gap: 6px; }
 .hero-proof :deep(.mud-icon-root) { color: var(--sbg-success-text); }
-.product-preview { overflow: hidden; border: 1px solid var(--sbg-border); border-radius: 22px; background: var(--sbg-surface); box-shadow: 0 28px 70px rgb(15 23 42 / 13%); transform: rotate(1.2deg); }
+.product-preview { overflow: hidden; border: 1px solid var(--sbg-border); border-radius: 22px; background: var(--sbg-surface); box-shadow: 0 28px 70px rgb(15 23 42 / 13%); }
 .preview-top { height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; border-bottom: 1px solid var(--sbg-border); background: var(--sbg-surface-muted); }
 .preview-top > span { display: flex; gap: 6px; }
 .preview-top i { width: 8px; height: 8px; border-radius: 50%; background: var(--sbg-border-strong); }
