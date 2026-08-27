@@ -84,7 +84,8 @@ public static class DependencyInjection
         services.AddOptions<StripeBillingOptions>()
             .Bind(configuration.GetSection(StripeBillingOptions.SectionName))
             .Validate(options => !options.Enabled ||
-                (options.SecretKey.StartsWith("sk_", StringComparison.Ordinal) &&
+                ((options.SecretKey.StartsWith("sk_", StringComparison.Ordinal) ||
+                  options.SecretKey.StartsWith("rk_", StringComparison.Ordinal)) &&
                  options.WebhookSecret.StartsWith("whsec_", StringComparison.Ordinal) &&
                  options.MonthlyPriceId.StartsWith("price_", StringComparison.Ordinal) &&
                  options.AnnualPriceId.StartsWith("price_", StringComparison.Ordinal) &&
