@@ -184,8 +184,8 @@ public sealed class WebAuthenticationTests
     }
 
     [Theory]
-    [InlineData("Owner", ApplicationPermissions.CreateServiceOrder, "/")]
-    [InlineData("Receptionist", ApplicationPermissions.CreateServiceOrder, "/")]
+    [InlineData("Owner", ApplicationPermissions.CreateServiceOrder, "/receive")]
+    [InlineData("Receptionist", ApplicationPermissions.CreateServiceOrder, "/receive")]
     [InlineData("Mechanic", ApplicationPermissions.ViewServiceOrders, "/service-orders")]
     [InlineData("PlatformAdmin", null, "/platform-admin")]
     public void Landing_page_should_be_accessible_for_each_profile(string role, string? permission, string expected)
@@ -215,7 +215,7 @@ public sealed class WebAuthenticationTests
         var receptionist = Principal("Receptionist", ApplicationPermissions.CreateServiceOrder);
 
         AuthorizedLandingPage.Resolve(owner, "/subscription").ShouldBe("/subscription");
-        AuthorizedLandingPage.Resolve(receptionist, "/subscription").ShouldBe("/");
+        AuthorizedLandingPage.Resolve(receptionist, "/subscription").ShouldBe("/receive");
     }
 
     [Fact]

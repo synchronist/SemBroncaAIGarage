@@ -8,7 +8,7 @@ public static class AuthorizedLandingPage
     public static string For(ClaimsPrincipal user)
     {
         if (user.IsInRole("PlatformAdmin")) return "/platform-admin";
-        if (Has(user, ApplicationPermissions.CreateServiceOrder)) return "/";
+        if (Has(user, ApplicationPermissions.CreateServiceOrder)) return "/receive";
         if (Has(user, ApplicationPermissions.ViewServiceOrders)) return "/service-orders";
         if (Has(user, ApplicationPermissions.ViewCustomersVehicles)) return "/customers";
         if (Has(user, ApplicationPermissions.ViewEstimateValues)) return "/estimates";
@@ -27,7 +27,7 @@ public static class AuthorizedLandingPage
     {
         if (path.Equals("/platform-admin", StringComparison.OrdinalIgnoreCase)) return user.IsInRole("PlatformAdmin");
         if (user.IsInRole("PlatformAdmin")) return false;
-        if (path.Equals("/", StringComparison.OrdinalIgnoreCase)) return Has(user, ApplicationPermissions.CreateServiceOrder);
+        if (path.Equals("/receive", StringComparison.OrdinalIgnoreCase)) return Has(user, ApplicationPermissions.CreateServiceOrder);
         if (path.StartsWith("/service-orders", StringComparison.OrdinalIgnoreCase)) return Has(user, ApplicationPermissions.ViewServiceOrders);
         if (path.StartsWith("/customers", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/vehicles", StringComparison.OrdinalIgnoreCase))
             return Has(user, ApplicationPermissions.ViewCustomersVehicles);

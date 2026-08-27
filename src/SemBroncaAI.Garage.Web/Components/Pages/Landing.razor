@@ -1,0 +1,65 @@
+@page "/"
+@layout PublicLayout
+
+<PageTitle>SemBroncaAI Garage | Gestão inteligente para oficinas</PageTitle>
+
+<main class="landing-page">
+    <section class="hero">
+        <div class="hero-copy">
+            <span class="eyebrow"><MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" /> Gestão simples. Oficina sob controle.</span>
+            <h1>Menos improviso.<br /><em>Mais oficina rodando.</em></h1>
+            <p>O SemBroncaAI Garage organiza clientes, veículos, ordens de serviço, diagnóstico, orçamento e aprovação em um único fluxo.</p>
+            <div class="hero-actions">
+                <a class="primary-cta" href="/login">Acessar demonstração <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" /></a>
+                <a class="secondary-cta" href="#recursos">Conhecer recursos</a>
+            </div>
+            <div class="hero-proof"><span><MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" /> 90 dias gratuitos</span><span><MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" /> Sem cartão para testar</span></div>
+        </div>
+        <div class="product-preview" aria-label="Resumo visual do produto">
+            <div class="preview-top"><span><i></i><i></i><i></i></span><small>Visão geral da oficina</small></div>
+            <div class="preview-body">
+                <div class="preview-metric"><span>Ordens em andamento</span><strong>12</strong><small>Fluxo centralizado</small></div>
+                <div class="preview-metric accent"><span>Aguardando aprovação</span><strong>4</strong><small>Orçamentos acompanhados</small></div>
+                <div class="preview-list">
+                    <div><span class="car-icon"><MudIcon Icon="@Icons.Material.Filled.DirectionsCar" /></span><p><strong>ABC-1D23</strong><small>Diagnóstico em andamento</small></p><em>Diagnóstico</em></div>
+                    <div><span class="car-icon"><MudIcon Icon="@Icons.Material.Filled.DirectionsCar" /></span><p><strong>EFG-4H56</strong><small>Orçamento enviado ao cliente</small></p><em>Aprovação</em></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="trust-strip" aria-label="Benefícios"><span>Feito para oficinas brasileiras</span><span>•</span><span>Multiusuário e responsivo</span><span>•</span><span>Dados separados por oficina</span></section>
+
+    <section id="recursos" class="content-section">
+        <div class="section-heading"><span class="eyebrow">Do atendimento à entrega</span><h2>O processo inteiro, sem perder o fio.</h2><p>Uma rotina conectada para a equipe trabalhar com clareza e o cliente acompanhar decisões importantes.</p></div>
+        <div class="features-grid">
+            <article><span><MudIcon Icon="@Icons.Material.Filled.PeopleOutline" /></span><h3>Clientes e veículos</h3><p>Histórico organizado por cliente, veículo e oficina.</p></article>
+            <article><span><MudIcon Icon="@Icons.Material.Filled.Assignment" /></span><h3>Ordens de serviço</h3><p>Status e movimentações consistentes do recebimento à entrega.</p></article>
+            <article><span><MudIcon Icon="@Icons.Material.Filled.FactCheck" /></span><h3>Diagnóstico e orçamento</h3><p>Informações técnicas e valores reunidos no mesmo fluxo.</p></article>
+            <article><span><MudIcon Icon="@Icons.Material.Filled.Approval" /></span><h3>Aprovação digital</h3><p>O cliente revisa o orçamento por um link seguro.</p></article>
+            <article><span><MudIcon Icon="@Icons.Material.Filled.Group" /></span><h3>Equipe e permissões</h3><p>Acessos adequados para proprietário, recepção e mecânicos.</p></article>
+            <article><span><MudIcon Icon="@Icons.Material.Filled.QueryStats" /></span><h3>Visão operacional</h3><p>Prioridades e andamento da oficina fáceis de consultar.</p></article>
+        </div>
+    </section>
+
+    <section id="planos" class="content-section plans-section">
+        <div class="section-heading"><span class="eyebrow">Plano Standard</span><h2>Escolha a condição que combina com sua oficina.</h2><p>Comece com 90 dias gratuitos e decida quando chegar a hora.</p></div>
+        <div class="plans-grid">
+            <article class="price-card"><span>Mensal</span><h3>R$ 199 <small>/ mês</small></h3><p>Flexibilidade para acompanhar a operação mês a mês.</p><a href="/login">Começar demonstração</a></article>
+            <article class="price-card featured"><b>Melhor condição</b><span>Anual</span><h3>R$ 1.700 <small>/ ano</small></h3><p>Equivale a R$ 141,67 por mês. Economize R$ 700.</p><a href="/login">Começar demonstração</a></article>
+        </div>
+        <p class="billing-note">Cancele quando quiser. Em assinaturas pagas, o acesso permanece até o fim do período contratado. Solicitações de cobrança, reembolso ou contestação são analisadas pelo suporte conforme a legislação aplicável.</p>
+    </section>
+
+    <section id="seguranca" class="security-section">
+        <span><MudIcon Icon="@Icons.Material.Filled.Shield" /></span><div><small>SEGURANÇA DESDE A BASE</small><h2>Seu trabalho pertence à sua oficina.</h2><p>Autenticação segura, permissões por função e isolamento dos dados de cada oficina fazem parte da arquitetura do produto.</p></div>
+    </section>
+
+    <section class="final-cta"><div><span class="eyebrow">SemBroncaAI Garage</span><h2>Uma oficina organizada começa por um fluxo claro.</h2></div><a href="/login">Entrar no sistema <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" /></a></section>
+</main>
+
+<footer class="landing-footer">
+    <div><strong>SemBroncaAI Garage</strong><span>Software de gestão para oficinas automotivas.</span></div>
+    <div><a href="mailto:sembroncaai@hotmail.com">sembroncaai@hotmail.com</a><a href="#planos">Planos e cancelamento</a><a href="/login">Entrar</a></div>
+    <small>© @DateTime.UtcNow.Year SemBroncaAI Garage</small>
+</footer>
