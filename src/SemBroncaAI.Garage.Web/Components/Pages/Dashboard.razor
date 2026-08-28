@@ -1,0 +1,71 @@
+@page "/dashboard"
+@attribute [Authorize(Policy = ApplicationPermissions.ViewServiceOrders)]
+@using SemBroncaAI.Garage.Application.Abstractions.Security
+@using SemBroncaAI.Garage.Application.Features.Dashboard
+@inject DashboardService DashboardService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Visão geral da oficina</PageTitle>
+
+<main class="dashboard-page">
+    <header><div><span class="eyebrow">OPERAÇÃO</span><h1>Visão geral da oficina</h1><p>O que está acontecendo e onde sua equipe precisa agir.</p></div><button @onclick="LoadAsync" disabled="@_loading"><MudIcon Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" />Atualizar</button></header>
+
+    @if (_loading)
+    {
+        <div class="dashboard-state"><MudProgressCircular Indeterminate="true" Color="Color.Primary" /><span>Carregando a oficina...</span></div>
+    }
+    else if (_dashboard is not null)
+    {
+        <section class="metric-grid" aria-label="Indicadores operacionais">
+            @foreach (var metric in Metrics)
+            {
+                <a class="metric-card @metric.Tone" href="/service-orders"><span><MudIcon Icon="@metric.Icon" /></span><small>@metric.Title</small><b>@metric.Value</b><em>Ver ordens <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" /></em></a>
+            }
+        </section>
+
+        <div class="dashboard-grid">
+            <section class="panel attention-panel">
+                <div class="panel-title"><div><MudIcon Icon="@Icons.Material.Filled.PriorityHigh" /><span><b>Precisa de atenção</b><small>Prioridades operacionais</small></span></div><a href="/service-orders">Ver todas</a></div>
+                @if (_dashboard.Attention.Count == 0) { <div class="empty-small"><MudIcon Icon="@Icons.Material.Filled.CheckCircle" /><span>Nenhuma pendência relevante agora.</span></div> }
+                else { <div class="attention-list">@foreach (var item in _dashboard.Attention) { <button @onclick="() => OpenOrder(item.ServiceOrderId)"><span class="attention-dot"></span><span><b>OS #@item.Number.ToString("D4") · @item.Plate</b><small>@item.Reason</small></span><time>@RelativeTime(item.LastMovementAt)</time><MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" /></button> }</div> }
+            </section>
+
+            @if (_dashboard.MonthlySummary is { } month)
+            {
+                <section class="panel monthly-panel"><div class="panel-title"><div><MudIcon Icon="@Icons.Material.Filled.CalendarMonth" /><span><b>Resumo do mês</b><small>@DateTime.Now.ToString("MMMM 'de' yyyy")</small></span></div></div>
+                    <div class="monthly-grid"><div><small>OS concluídas</small><b>@month.Completed</b></div><div><small>Valor aprovado em orçamentos</small><b>@Currency(month.ApprovedEstimateValue)</b></div><div><small>Ticket médio aprovado</small><b>@Currency(month.AverageTicket)</b></div><div><small>Taxa de aprovação</small><b>@month.ApprovalRate.ToString("N1")%</b></div><div><small>Tempo médio até conclusão</small><b>@(month.AverageCompletionHours is null ? "—" : Duration(month.AverageCompletionHours.Value))</b></div></div>
+                </section>
+            }
+
+            <section class="panel activity-panel"><div class="panel-title"><div><MudIcon Icon="@Icons.Material.Filled.History" /><span><b>Atividade recente</b><small>Últimas movimentações</small></span></div></div>
+                <div class="activity-list">@foreach (var item in _dashboard.RecentActivity) { <button @onclick="() => OpenOrder(item.ServiceOrderId)"><span class="activity-icon"><MudIcon Icon="@ActivityIcon(item.Status)" Size="Size.Small" /></span><span><b>OS #@item.Number.ToString("D4") · @item.Plate</b><small>@item.Description</small></span><time>@RelativeTime(item.OccurredAt)</time></button> }</div>
+            </section>
+
+            <section class="panel chart-panel"><div class="panel-title"><div><MudIcon Icon="@Icons.Material.Filled.BarChart" /><span><b>OS concluídas</b><small>Últimos 30 dias</small></span></div></div>
+                @{ var max = Math.Max(1, _dashboard.DailyCompletions.Max(x => x.Count)); }
+                <div class="mini-chart" aria-label="OS concluídas nos últimos 30 dias">@foreach (var day in _dashboard.DailyCompletions) { <span style="--bar-height:@(Math.Max(4, day.Count * 100 / max))%" title="@day.Date.ToString("dd/MM"): @day.Count"><i></i></span> }</div>
+            </section>
+        </div>
+    }
+</main>
+
+@code {
+    private OperationalDashboardResponse? _dashboard; private bool _loading = true;
+    protected override Task OnInitializedAsync() => LoadAsync();
+    private async Task LoadAsync() { _loading = true; try { _dashboard = await DashboardService.GetAsync(); } catch { Snackbar.Add("Não foi possível carregar o dashboard.", Severity.Error, options => options.VisibleStateDuration = 8000); } finally { _loading = false; } }
+    private IReadOnlyCollection<MetricItem> Metrics => _dashboard is null ? [] :
+    [
+        new("OS abertas", _dashboard.Counters.Open, Icons.Material.Filled.Assignment, "neutral"),
+        new("Aguardando aprovação", _dashboard.Counters.WaitingApproval, Icons.Material.Filled.HourglassTop, "warning"),
+        new("Em serviço", _dashboard.Counters.InService, Icons.Material.Filled.Build, "info"),
+        new("Prontas para entrega", _dashboard.Counters.ReadyForDelivery, Icons.Material.Filled.TaskAlt, "success"),
+        new("Entradas hoje", _dashboard.Counters.EntriesToday, Icons.Material.Filled.Login, "accent")
+    ];
+    private void OpenOrder(Guid id) => Navigation.NavigateTo($"/service-orders/{id}");
+    private static string Currency(decimal value) => value.ToString("C2", new System.Globalization.CultureInfo("pt-BR"));
+    private static string Duration(double hours) => hours < 48 ? $"{hours:N0} h" : $"{hours / 24:N1} dias";
+    private static string RelativeTime(DateTimeOffset value) { var elapsed = DateTimeOffset.UtcNow - value; return elapsed.TotalMinutes < 60 ? $"há {Math.Max(1, (int)elapsed.TotalMinutes)} min" : elapsed.TotalHours < 24 ? $"há {(int)elapsed.TotalHours} h" : $"há {(int)elapsed.TotalDays} d"; }
+    private static string ActivityIcon(string status) => status switch { "WaitingApproval" => Icons.Material.Filled.HourglassTop, "InProgress" => Icons.Material.Filled.Build, "WaitingParts" => Icons.Material.Filled.Inventory2, "Finished" => Icons.Material.Filled.TaskAlt, "Delivered" => Icons.Material.Filled.DoneAll, _ => Icons.Material.Filled.Assignment };
+    private sealed record MetricItem(string Title, int Value, string Icon, string Tone);
+}

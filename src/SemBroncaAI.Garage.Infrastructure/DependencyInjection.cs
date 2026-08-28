@@ -100,6 +100,8 @@ public static class DependencyInjection
         services.AddScoped<IOwnerBillingService>(sp => sp.GetRequiredService<StripeBillingService>());
         services.AddScoped<IBillingWebhookProcessor>(sp => sp.GetRequiredService<StripeBillingService>());
         services.AddScoped<IAuditWriter, AuditWriter>();
+        services.AddScoped<SemBroncaAI.Garage.Application.Features.Dashboard.IOperationalDashboardQuery,
+            SemBroncaAI.Garage.Infrastructure.Services.OperationalDashboardQuery>();
 
         services.AddScoped<IUnitOfWork>(sp =>
             sp.GetRequiredService<GarageDbContext>());

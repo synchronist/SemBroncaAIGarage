@@ -186,7 +186,7 @@ public sealed class WebAuthenticationTests
     [Theory]
     [InlineData("Owner", ApplicationPermissions.CreateServiceOrder, "/receive")]
     [InlineData("Receptionist", ApplicationPermissions.CreateServiceOrder, "/receive")]
-    [InlineData("Mechanic", ApplicationPermissions.ViewServiceOrders, "/service-orders")]
+    [InlineData("Mechanic", ApplicationPermissions.ViewServiceOrders, "/dashboard")]
     [InlineData("PlatformAdmin", null, "/platform-admin")]
     public void Landing_page_should_be_accessible_for_each_profile(string role, string? permission, string expected)
     {
@@ -204,8 +204,8 @@ public sealed class WebAuthenticationTests
 
         AuthorizedLandingPage.Resolve(user, "/service-orders/00000000-0000-0000-0000-000000000001")
             .ShouldBe("/service-orders/00000000-0000-0000-0000-000000000001");
-        AuthorizedLandingPage.Resolve(user, "/settings").ShouldBe("/service-orders");
-        AuthorizedLandingPage.Resolve(user, "https://evil.example").ShouldBe("/service-orders");
+        AuthorizedLandingPage.Resolve(user, "/settings").ShouldBe("/dashboard");
+        AuthorizedLandingPage.Resolve(user, "https://evil.example").ShouldBe("/dashboard");
     }
 
     [Fact]

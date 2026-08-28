@@ -130,6 +130,7 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddScoped<AuthenticatedApiHttpClient>();
 builder.Services.AddScoped<LookupService>(CreateAuthenticatedService<LookupService>);
 builder.Services.AddScoped<ServiceOrderService>(CreateAuthenticatedService<ServiceOrderService>);
+builder.Services.AddScoped<DashboardService>(CreateAuthenticatedService<DashboardService>);
 builder.Services.AddScoped<CustomerService>(CreateAuthenticatedService<CustomerService>);
 builder.Services.AddScoped<VehicleService>(CreateAuthenticatedService<VehicleService>);
 builder.Services.AddScoped<GarageService>(CreateAuthenticatedService<GarageService>);

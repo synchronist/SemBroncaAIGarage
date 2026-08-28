@@ -32,6 +32,13 @@
 
         <nav class="sbg-menu" @onclick="CloseMobileMenu">
 
+            <AuthorizeView Policy="@ApplicationPermissions.ViewServiceOrders">
+            <NavLink href="/dashboard" Match="NavLinkMatch.All" class="sbg-menu-item">
+                <MudIcon Icon="@Icons.Material.Filled.Dashboard" Size="Size.Small" />
+                <span>Visão geral</span>
+            </NavLink>
+            </AuthorizeView>
+
             <AuthorizeView Policy="@ApplicationPermissions.CreateServiceOrder">
             <NavLink href="/receive"
                      Match="NavLinkMatch.All"
