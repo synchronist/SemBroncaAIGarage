@@ -11,9 +11,36 @@ public sealed record PlatformDashboardResponse(
     int TrialSubscriptions,
     int ActiveSubscriptions,
     int SuspendedSubscriptions,
-    IReadOnlyCollection<PlatformRecentGarage> RecentGarages);
+    IReadOnlyCollection<PlatformRecentGarage> RecentGarages)
+{
+    public int PastDueSubscriptions { get; init; }
+    public int CancelledSubscriptions { get; init; }
+    public int NewGaragesLast30Days { get; init; }
+    public int TrialsStartedLast30Days { get; init; }
+    public int ActiveGaragesToday { get; init; }
+    public int ActiveGaragesLast7Days { get; init; }
+    public int ActiveGaragesLast30Days { get; init; }
+    public int ServiceOrdersToday { get; init; }
+    public int ServiceOrdersLast30Days { get; init; }
+    public int DigitalApprovalsLast30Days { get; init; }
+    public int DigitalApprovalWaiversLast30Days { get; init; }
+    public int TrialsEndingNext7Days { get; init; }
+    public int GaragesWithoutServiceOrders { get; init; }
+    public int Inactive7Days { get; init; }
+    public int Inactive14Days { get; init; }
+    public int Inactive30Days { get; init; }
+    public IReadOnlyCollection<PlatformRelevantGarage> RelevantGarages { get; init; } = [];
+    public IReadOnlyCollection<PlatformDailyVolume> ServiceOrderVolume { get; init; } = [];
+}
 
 public sealed record PlatformRecentGarage(Guid Id, string Name, bool Active, DateTime CreatedAt);
+
+public sealed record PlatformRelevantGarage(
+    Guid Id, string Name, bool Active, SubscriptionStatus SubscriptionStatus, SubscriptionPlan Plan,
+    DateTime? BillingReferenceAt, DateTimeOffset? LastOperationalActivityAt,
+    int ServiceOrdersLast30Days, string Situation, int RiskPriority);
+
+public sealed record PlatformDailyVolume(DateOnly Date, int Count);
 
 public sealed record ListPlatformGaragesQuery(string? Search, bool? Active, int Page = 1, int PageSize = 20);
 

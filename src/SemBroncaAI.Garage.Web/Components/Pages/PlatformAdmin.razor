@@ -3,26 +3,44 @@
 @attribute [Authorize(Policy = PlatformAuthorization.Policy)]
 @using SemBroncaAI.Garage.Application.Abstractions.Security
 @using SemBroncaAI.Garage.Application.Features.PlatformAdministration
+@using SemBroncaAI.Garage.Domain.Entities.Garage
 @inject PlatformGarageService Service
 
-<PageTitle>Administração | SemBroncaAI</PageTitle>
-
-<div class="page-head"><div><span class="eyebrow">PLATAFORMA</span><h1>Visão geral</h1><p>Acompanhe as oficinas clientes e seus acessos.</p></div><a class="primary" href="/platform-admin/garages/new"><MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />Nova oficina</a></div>
-@if (_loading) { <div class="state"><MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Medium" /><strong>Carregando painel</strong><span>Buscando os dados mais recentes da plataforma.</span></div> }
-else if (_error is not null) { <div class="state error"><span class="state-icon"><MudIcon Icon="@Icons.Material.Filled.CloudOff" /></span><strong>Não foi possível carregar o painel</strong><span>@_error</span><button @onclick="LoadAsync">Tentar novamente</button></div> }
+<PageTitle>Dashboard da plataforma | SemBroncaAI</PageTitle>
+<div class="page-head"><div><span class="eyebrow">PLATAFORMA</span><h1>Dashboard da plataforma</h1><p>Visão comercial, uso e riscos da operação SaaS.</p></div><a class="primary" href="/platform-admin/garages/new"><MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />Nova oficina</a></div>
+@if (_loading) { <div class="state"><MudProgressCircular Indeterminate="true" Color="Color.Primary" /><strong>Carregando indicadores</strong></div> }
+else if (_error is not null) { <div class="state"><strong>Não foi possível carregar o painel</strong><button @onclick="LoadAsync">Tentar novamente</button></div> }
 else if (_dashboard is not null)
 {
-    <section class="metrics"><article><span class="metric-icon"><MudIcon Icon="@Icons.Material.Filled.Storefront" Size="Size.Small" /></span><div><span>Oficinas cadastradas</span><strong>@_dashboard.TotalGarages</strong></div></article><article><span class="metric-icon positive"><MudIcon Icon="@Icons.Material.Filled.CheckCircleOutline" Size="Size.Small" /></span><div><span>Trials ativos</span><strong>@_dashboard.TrialSubscriptions</strong></div></article><article><span class="metric-icon"><MudIcon Icon="@Icons.Material.Filled.CreditCard" Size="Size.Small" /></span><div><span>Assinaturas ativas</span><strong>@_dashboard.ActiveSubscriptions</strong></div></article><article><span class="metric-icon muted"><MudIcon Icon="@Icons.Material.Filled.PauseCircleOutline" Size="Size.Small" /></span><div><span>Suspensas</span><strong>@_dashboard.SuspendedSubscriptions</strong></div></article></section>
-    <section class="panel"><div class="panel-head"><div><h2>Oficinas recentes</h2><p>Últimos clientes adicionados à plataforma.</p></div><a href="/platform-admin/garages">Ver todas <span>→</span></a></div>
-        @if (_dashboard.RecentGarages.Count == 0) { <div class="empty"><span class="state-icon"><MudIcon Icon="@Icons.Material.Filled.Storefront" /></span><strong>Nenhuma oficina cadastrada</strong><p>Crie a primeira oficina para iniciar o onboarding.</p><a class="empty-action" href="/platform-admin/garages/new">Cadastrar oficina</a></div> }
-        else { <div class="rows">@foreach (var garage in _dashboard.RecentGarages) { <a href="@($"/platform-admin/garages/{garage.Id}")"><span class="garage-mark">@GetInitial(garage.Name)</span><span class="garage-copy"><strong>@garage.Name</strong><small>Cadastrada em @garage.CreatedAt.ToString("dd/MM/yyyy")</small></span><em class="@(garage.Active ? "active" : "inactive")">@(garage.Active ? "Ativa" : "Inativa")</em><MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" /></a> }</div> }
+    <section class="metrics">
+        @Metric("Oficinas cadastradas", _dashboard.TotalGarages, Icons.Material.Filled.Storefront, "")
+        @Metric("Trials ativos", _dashboard.TrialSubscriptions, Icons.Material.Filled.HourglassTop, "positive")
+        @Metric("Assinaturas ativas", _dashboard.ActiveSubscriptions, Icons.Material.Filled.CreditCard, "positive")
+        @Metric("Pagamento pendente", _dashboard.PastDueSubscriptions, Icons.Material.Filled.WarningAmber, "warning")
+        @Metric("Suspensas", _dashboard.SuspendedSubscriptions, Icons.Material.Filled.PauseCircleOutline, "muted")
+        @Metric("Canceladas", _dashboard.CancelledSubscriptions, Icons.Material.Filled.Cancel, "muted")
     </section>
+    <section class="dashboard-grid">
+        <article class="panel"><div class="panel-head"><div><h2>Aquisição</h2><p>Movimento dos últimos 30 dias</p></div></div><div class="compact-metrics"><div><span>Novas oficinas</span><strong>@_dashboard.NewGaragesLast30Days</strong></div><div><span>Trials iniciados</span><strong>@_dashboard.TrialsStartedLast30Days</strong></div></div><small class="data-note">Conversão não exibida: não há data histórica confiável no modelo atual.</small></article>
+        <article class="panel"><div class="panel-head"><div><h2>Uso da plataforma</h2><p>Atividade real em OS e histórico</p></div></div><div class="usage-grid"><div><span>Oficinas hoje</span><b>@_dashboard.ActiveGaragesToday</b></div><div><span>7 dias</span><b>@_dashboard.ActiveGaragesLast7Days</b></div><div><span>30 dias</span><b>@_dashboard.ActiveGaragesLast30Days</b></div><div><span>OS hoje</span><b>@_dashboard.ServiceOrdersToday</b></div><div><span>OS em 30 dias</span><b>@_dashboard.ServiceOrdersLast30Days</b></div><div><span>Aceites / dispensas</span><b>@_dashboard.DigitalApprovalsLast30Days / @_dashboard.DigitalApprovalWaiversLast30Days</b></div></div></article>
+        <article class="panel risk-panel"><div class="panel-head"><div><h2>Atenção operacional</h2><p>Faixas exclusivas pela última atividade</p></div></div><div class="risk-grid"><div><span>Trial termina em 7 dias</span><b>@_dashboard.TrialsEndingNext7Days</b></div><div><span>Nunca criou OS</span><b>@_dashboard.GaragesWithoutServiceOrders</b></div><div><span>Sem atividade 7 dias</span><b>@_dashboard.Inactive7Days</b></div><div><span>Sem atividade 14 dias</span><b>@_dashboard.Inactive14Days</b></div><div><span>Sem atividade +30 dias</span><b>@_dashboard.Inactive30Days</b></div></div></article>
+        <article class="panel chart-panel"><div class="panel-head"><div><h2>Volume de OS</h2><p>Criações por dia — últimos 30 dias</p></div></div><div class="mini-chart">@foreach (var day in _dashboard.ServiceOrderVolume) { <span title="@($"{day.Date:dd/MM}: {day.Count}")"><i style="--bar-height:@BarHeight(day.Count)%"></i></span> }</div></article>
+    </section>
+    <section class="panel relevant-panel"><div class="panel-head"><div><h2>Oficinas relevantes</h2><p>Prioridade comercial e operacional</p></div><a href="/platform-admin/garages">Ver todas →</a></div>
+        @if (_dashboard.RelevantGarages.Count == 0) { <div class="empty"><strong>Nenhuma oficina cadastrada</strong></div> }
+        else { <div class="garage-table"><div class="table-head"><span>Oficina</span><span>Assinatura</span><span>Última atividade</span><span>OS 30d</span><span>Situação</span></div>@foreach (var garage in _dashboard.RelevantGarages) { <a href="@($"/platform-admin/garages/{garage.Id}")"><span class="garage-name"><i>@GetInitial(garage.Name)</i><b>@garage.Name</b></span><span><em class="status @StatusClass(garage.SubscriptionStatus)">@StatusLabel(garage.SubscriptionStatus)</em><small>@garage.Plan</small></span><span>@FormatActivity(garage.LastOperationalActivityAt)</span><strong>@garage.ServiceOrdersLast30Days</strong><span class="situation risk-@garage.RiskPriority">@garage.Situation</span></a> }</div> }
+    </section>
+    <PlatformHealth />
 }
-<PlatformHealth />
 
 @code {
     private PlatformDashboardResponse? _dashboard; private bool _loading = true; private string? _error;
-    private static string GetInitial(string name) => string.IsNullOrWhiteSpace(name) ? "O" : char.ToUpperInvariant(name.Trim()[0]).ToString();
     protected override Task OnInitializedAsync() => LoadAsync();
     private async Task LoadAsync() { _loading = true; _error = null; try { _dashboard = await Service.GetDashboardAsync(); } catch { _error = "Não foi possível carregar o painel."; } finally { _loading = false; } }
+    private RenderFragment Metric(string label, int value, string icon, string css) => @<article><span class="metric-icon @css"><MudIcon Icon="@icon" Size="Size.Small" /></span><div><span>@label</span><strong>@value</strong></div></article>;
+    private static string GetInitial(string name) => string.IsNullOrWhiteSpace(name) ? "O" : char.ToUpperInvariant(name.Trim()[0]).ToString();
+    private int BarHeight(int count) { var max = Math.Max(1, _dashboard?.ServiceOrderVolume.Max(x => x.Count) ?? 1); return Math.Max(3, (int)Math.Round(count * 100d / max)); }
+    private static string FormatActivity(DateTimeOffset? value) => value is null ? "Sem atividade" : value.Value.LocalDateTime.ToString("dd/MM/yyyy HH:mm");
+    private static string StatusClass(SubscriptionStatus status) => status.ToString().ToLowerInvariant();
+    private static string StatusLabel(SubscriptionStatus status) => status switch { SubscriptionStatus.Trial => "Trial", SubscriptionStatus.Active => "Ativa", SubscriptionStatus.PastDue => "Pendente", SubscriptionStatus.Suspended => "Suspensa", _ => "Cancelada" };
 }

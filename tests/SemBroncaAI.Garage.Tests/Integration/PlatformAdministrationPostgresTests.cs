@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SemBroncaAI.Garage.Application.Abstractions.Security;
 using SemBroncaAI.Garage.Application.Features.PlatformAdministration;
 using SemBroncaAI.Garage.Application.Features.TeamManagement;
+using SemBroncaAI.Garage.Domain.Entities.Garage;
 using SemBroncaAI.Garage.Infrastructure;
 using SemBroncaAI.Garage.Infrastructure.Identity;
 using SemBroncaAI.Garage.Infrastructure.Persistence;
@@ -44,6 +45,14 @@ public sealed class PlatformAdministrationPostgresTests
             details.OwnerEmail.ShouldBe(ownerEmail);
             var listed = await administration.ListAsync(new(document, true, 1, 20));
             listed.Items.Single().Id.ShouldBe(garageId);
+            var dashboard = await administration.GetDashboardAsync();
+            dashboard.NewGaragesLast30Days.ShouldBeGreaterThanOrEqualTo(1);
+            dashboard.TrialsStartedLast30Days.ShouldBeGreaterThanOrEqualTo(1);
+            dashboard.GaragesWithoutServiceOrders.ShouldBeGreaterThanOrEqualTo(1);
+            var dashboardGarage = dashboard.RelevantGarages.Single(x => x.Id == garageId);
+            dashboardGarage.SubscriptionStatus.ShouldBe(SubscriptionStatus.Trial);
+            dashboardGarage.ServiceOrdersLast30Days.ShouldBe(0);
+            dashboardGarage.Situation.ShouldBe("Ainda sem ordem de serviço");
             (await administration.SetActiveAsync(garageId, false)).ShouldBeTrue();
             (await administration.ListAsync(new(document, false, 1, 20))).Items.Single().Active.ShouldBeFalse();
 

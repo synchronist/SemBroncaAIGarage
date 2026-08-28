@@ -2,3 +2,4 @@
 @media(max-width:900px){.metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.dashboard-grid{grid-template-columns:1fr}.chart-panel{grid-column:auto}}
 @media(max-width:600px){.dashboard-page>header{align-items:stretch;flex-direction:column}.dashboard-page header button{justify-content:center}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.metric-card{padding:12px}.panel{padding:15px}.monthly-grid{grid-template-columns:1fr 1fr}.attention-list button{grid-template-columns:7px minmax(0,1fr) 18px}.attention-list time{display:none}.activity-list button{grid-template-columns:30px minmax(0,1fr)}.activity-list time{grid-column:2}.mini-chart{gap:2px;height:120px}}
 @media(max-width:360px){.metric-grid,.monthly-grid{grid-template-columns:1fr}.metric-card{grid-template-columns:38px 1fr}.metric-card em{grid-column:2}}
+.attention-panel.is-clear{border-left-color:var(--sbg-success-text)}

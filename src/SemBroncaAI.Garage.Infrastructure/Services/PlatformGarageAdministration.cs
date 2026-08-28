@@ -25,18 +25,110 @@ public sealed class PlatformGarageAdministration(
 {
     public async Task<PlatformDashboardResponse> GetDashboardAsync(CancellationToken cancellationToken = default)
     {
+        var now = DateTime.UtcNow;
+        var today = now.Date;
+        var sevenDaysAgo = now.AddDays(-7);
+        var fourteenDaysAgo = now.AddDays(-14);
+        var thirtyDaysAgo = now.AddDays(-30);
         var total = await context.Garages.AsNoTracking().CountAsync(cancellationToken);
         var active = await context.Garages.AsNoTracking().CountAsync(x => x.Active, cancellationToken);
         var users = await context.Users.AsNoTracking().CountAsync(x => x.GarageId != null, cancellationToken);
         var trials = await context.GarageSubscriptions.AsNoTracking().CountAsync(x => x.Status == SubscriptionStatus.Trial, cancellationToken);
         var subscriptions = await context.GarageSubscriptions.AsNoTracking().CountAsync(x => x.Status == SubscriptionStatus.Active, cancellationToken);
         var suspended = await context.GarageSubscriptions.AsNoTracking().CountAsync(x => x.Status == SubscriptionStatus.Suspended, cancellationToken);
+        var pastDue = await context.GarageSubscriptions.AsNoTracking().CountAsync(x => x.Status == SubscriptionStatus.PastDue, cancellationToken);
+        var cancelled = await context.GarageSubscriptions.AsNoTracking().CountAsync(x => x.Status == SubscriptionStatus.Cancelled, cancellationToken);
         var recent = await context.Garages.AsNoTracking()
             .OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
             .Take(5)
             .Select(x => new PlatformRecentGarage(x.Id, x.Name, x.Active, x.CreatedAt))
             .ToArrayAsync(cancellationToken);
-        return new(total, active, total - active, users, trials, subscriptions, suspended, recent);
+        var orderSummary = await context.ServiceOrders.AsNoTracking().GroupBy(x => x.GarageId).Select(group => new
+        {
+            GarageId = group.Key,
+            LastAt = group.Max(x => x.CreatedAt),
+            Last30 = group.Count(x => x.CreatedAt >= thirtyDaysAgo)
+        }).ToArrayAsync(cancellationToken);
+        var historySummary = await context.ServiceOrderHistories.AsNoTracking().GroupBy(x => x.ServiceOrder.GarageId)
+            .Select(group => new { GarageId = group.Key, LastAt = group.Max(x => x.CreatedAt) })
+            .ToArrayAsync(cancellationToken);
+        var subscriptionsByGarage = await (
+            from garage in context.Garages.AsNoTracking()
+            join subscription in context.GarageSubscriptions.AsNoTracking() on garage.Id equals subscription.GarageId
+            select new
+            {
+                garage.Id, garage.Name, garage.Active, garage.CreatedAt,
+                subscription.Status, subscription.Plan, subscription.TrialEndsAt,
+                subscription.CurrentPeriodEnd, subscription.PastDueAt, subscription.SuspendedAt
+            }).ToArrayAsync(cancellationToken);
+        var ordersByGarage = orderSummary.ToDictionary(x => x.GarageId);
+        var historyByGarage = historySummary.ToDictionary(x => x.GarageId);
+        var garageFacts = subscriptionsByGarage.Select(x => new
+        {
+            x.Id, x.Name, x.Active, x.CreatedAt, x.Status, x.Plan, x.TrialEndsAt,
+            x.CurrentPeriodEnd, x.PastDueAt, x.SuspendedAt,
+            LastOrderAt = ordersByGarage.TryGetValue(x.Id, out var order) ? (DateTimeOffset?)order.LastAt : null,
+            LastHistoryAt = historyByGarage.TryGetValue(x.Id, out var history) ? (DateTimeOffset?)history.LastAt : null,
+            OrdersLast30 = ordersByGarage.TryGetValue(x.Id, out order) ? order.Last30 : 0
+        }).ToArray();
+
+        var facts = garageFacts.Select(x => new
+        {
+            Source = x,
+            LastActivity = x.LastOrderAt is null ? x.LastHistoryAt :
+                x.LastHistoryAt is null || x.LastOrderAt >= x.LastHistoryAt ? x.LastOrderAt : x.LastHistoryAt
+        }).ToArray();
+        var nextSevenDays = now.AddDays(7);
+        var relevant = facts.Select(x =>
+        {
+            var (situation, priority) = x.Source.Status switch
+            {
+                SubscriptionStatus.PastDue => ("Pagamento pendente", 1),
+                SubscriptionStatus.Suspended => ("Assinatura suspensa", 2),
+                SubscriptionStatus.Trial when x.Source.TrialEndsAt >= now && x.Source.TrialEndsAt <= nextSevenDays => ("Trial termina em breve", 3),
+                _ when x.LastActivity is null => ("Ainda sem ordem de serviço", 4),
+                _ when x.LastActivity < thirtyDaysAgo => ("Sem atividade há mais de 30 dias", 5),
+                _ when x.LastActivity < fourteenDaysAgo => ("Sem atividade há 14 dias", 6),
+                _ when x.LastActivity < sevenDaysAgo => ("Sem atividade há 7 dias", 7),
+                _ => ("Operação recente", 8)
+            };
+            var billingReference = x.Source.Status == SubscriptionStatus.Trial
+                ? x.Source.TrialEndsAt
+                : x.Source.CurrentPeriodEnd ?? x.Source.PastDueAt ?? x.Source.SuspendedAt;
+            return new PlatformRelevantGarage(x.Source.Id, x.Source.Name, x.Source.Active, x.Source.Status,
+                x.Source.Plan, billingReference, x.LastActivity, x.Source.OrdersLast30, situation, priority);
+        }).OrderBy(x => x.RiskPriority).ThenBy(x => x.LastOperationalActivityAt).ThenBy(x => x.Name).Take(12).ToArray();
+
+        var rawVolume = await context.ServiceOrders.AsNoTracking().Where(x => x.CreatedAt >= thirtyDaysAgo)
+            .GroupBy(x => x.CreatedAt.Date).Select(x => new { Date = x.Key, Count = x.Count() })
+            .ToArrayAsync(cancellationToken);
+        var volumeMap = rawVolume.ToDictionary(x => DateOnly.FromDateTime(x.Date), x => x.Count);
+        var volume = Enumerable.Range(0, 30).Select(offset => DateOnly.FromDateTime(today.AddDays(offset - 29)))
+            .Select(date => new PlatformDailyVolume(date, volumeMap.GetValueOrDefault(date))).ToArray();
+
+        return new(total, active, total - active, users, trials, subscriptions, suspended, recent)
+        {
+            PastDueSubscriptions = pastDue,
+            CancelledSubscriptions = cancelled,
+            NewGaragesLast30Days = facts.Count(x => x.Source.CreatedAt >= thirtyDaysAgo),
+            TrialsStartedLast30Days = await context.GarageSubscriptions.AsNoTracking().CountAsync(x => x.StartedAt >= thirtyDaysAgo, cancellationToken),
+            ActiveGaragesToday = facts.Count(x => x.LastActivity >= today),
+            ActiveGaragesLast7Days = facts.Count(x => x.LastActivity >= sevenDaysAgo),
+            ActiveGaragesLast30Days = facts.Count(x => x.LastActivity >= thirtyDaysAgo),
+            ServiceOrdersToday = await context.ServiceOrders.AsNoTracking().CountAsync(x => x.CreatedAt >= today, cancellationToken),
+            ServiceOrdersLast30Days = await context.ServiceOrders.AsNoTracking().CountAsync(x => x.CreatedAt >= thirtyDaysAgo, cancellationToken),
+            DigitalApprovalsLast30Days = await context.ServiceOrderEstimateApprovals.AsNoTracking()
+                .CountAsync(x => x.Status == Domain.Entities.ServiceOrder.EstimateApprovalStatus.Approved && x.RespondedAt >= thirtyDaysAgo, cancellationToken),
+            DigitalApprovalWaiversLast30Days = await context.ServiceOrders.AsNoTracking()
+                .CountAsync(x => x.DigitalApprovalWaivedAt >= thirtyDaysAgo, cancellationToken),
+            TrialsEndingNext7Days = facts.Count(x => x.Source.Status == SubscriptionStatus.Trial && x.Source.TrialEndsAt >= now && x.Source.TrialEndsAt <= nextSevenDays),
+            GaragesWithoutServiceOrders = facts.Count(x => x.LastActivity is null),
+            Inactive7Days = facts.Count(x => x.LastActivity >= fourteenDaysAgo && x.LastActivity < sevenDaysAgo),
+            Inactive14Days = facts.Count(x => x.LastActivity >= thirtyDaysAgo && x.LastActivity < fourteenDaysAgo),
+            Inactive30Days = facts.Count(x => x.LastActivity is not null && x.LastActivity < thirtyDaysAgo),
+            RelevantGarages = relevant,
+            ServiceOrderVolume = volume
+        };
     }
 
     public async Task<PlatformGarageListResponse> ListAsync(

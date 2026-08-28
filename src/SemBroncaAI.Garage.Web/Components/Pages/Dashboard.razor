@@ -25,7 +25,7 @@
         </section>
 
         <div class="dashboard-grid">
-            <section class="panel attention-panel">
+            <section class="panel attention-panel @(_dashboard.Attention.Count == 0 ? "is-clear" : "has-items")">
                 <div class="panel-title"><div><MudIcon Icon="@Icons.Material.Filled.PriorityHigh" /><span><b>Precisa de atenção</b><small>Prioridades operacionais</small></span></div><a href="/service-orders">Ver todas</a></div>
                 @if (_dashboard.Attention.Count == 0) { <div class="empty-small"><MudIcon Icon="@Icons.Material.Filled.CheckCircle" /><span>Nenhuma pendência relevante agora.</span></div> }
                 else { <div class="attention-list">@foreach (var item in _dashboard.Attention) { <button @onclick="() => OpenOrder(item.ServiceOrderId)"><span class="attention-dot"></span><span><b>OS #@item.Number.ToString("D4") · @item.Plate</b><small>@item.Reason</small></span><time>@RelativeTime(item.LastMovementAt)</time><MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" /></button> }</div> }
