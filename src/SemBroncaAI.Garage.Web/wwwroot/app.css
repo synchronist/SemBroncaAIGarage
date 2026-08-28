@@ -138,3 +138,17 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+@media (max-width: 600px) {
+    .mud-snackbar-location-bottom-right {
+        right: max(12px, env(safe-area-inset-right));
+        bottom: max(12px, env(safe-area-inset-bottom));
+        left: max(12px, env(safe-area-inset-left));
+    }
+
+    .mud-snackbar-location-bottom-right .mud-snackbar {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+    }
+}

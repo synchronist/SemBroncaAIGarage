@@ -14,9 +14,13 @@ public sealed class ServiceOrderApprovalActionsTests
             "wwwroot", "js", "downloads.js"));
 
         page.ShouldContain("InvokeAsync<bool>(\"sbgCopyText\", ApprovalLink)");
+        page.ShouldContain("value=\"@ApprovalLink\"");
+        page.ShouldContain("ShowManualApprovalLink()");
         page.ShouldContain("InvokeVoidAsync(\"sbgOpenUrl\", ApprovalLink)");
         script.ShouldContain("navigator.clipboard?.writeText");
+        script.ShouldContain("typeof document.execCommand !== \"function\"");
         script.ShouldContain("document.execCommand(\"copy\")");
+        script.ShouldNotContain("userAgent");
         script.ShouldContain("window.location.assign(url)");
     }
 

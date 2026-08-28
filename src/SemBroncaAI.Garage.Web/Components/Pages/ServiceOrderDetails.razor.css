@@ -310,10 +310,9 @@
     box-sizing: border-box;
 }
 
-.estimate-row ::deep .estimate-type-select .mud-input-root,
-.estimate-row ::deep .estimate-type-select .mud-input-slot {
-    display: flex;
-    align-items: center;
+.estimate-row ::deep .estimate-type-select .mud-input-slot.mud-input-root {
+    display: block;
+    box-sizing: content-box;
 }
 
 .estimate-line-total {
@@ -556,6 +555,54 @@
     gap: 10px;
 }
 
+.manual-copy-panel {
+    position: fixed;
+    right: 24px;
+    bottom: 88px;
+    z-index: 1300;
+    width: min(460px, calc(100vw - 48px));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 12px;
+    padding: 16px;
+    border: 1px solid var(--sbg-border);
+    border-radius: 12px;
+    background: var(--sbg-surface);
+    box-shadow: 0 16px 36px rgb(15 23 42 / 20%);
+}
+
+.manual-copy-panel div,
+.manual-copy-panel input {
+    grid-column: 1;
+}
+
+.manual-copy-panel div {
+    display: grid;
+    gap: 3px;
+}
+
+.manual-copy-panel small {
+    color: var(--sbg-text-secondary);
+}
+
+.manual-copy-panel input {
+    width: 100%;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid var(--sbg-field-border);
+    border-radius: 8px;
+    background: var(--sbg-surface-muted);
+    color: var(--sbg-text);
+}
+
+.manual-copy-panel button {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    color: var(--sbg-text-secondary);
+    font-size: 22px;
+}
+
 .approval-mobile-actions {
     display: none;
 }
@@ -666,4 +713,5 @@
 
 @media(max-width:430px){.order-header{grid-template-columns:minmax(0,1fr) auto}.order-header ::deep .mud-button-root{grid-column:1/-1!important;width:100%;min-width:0;height:44px;min-height:44px;box-sizing:border-box;margin:0;justify-content:center}.order-header ::deep .mud-button-label{width:100%;justify-content:center;font-size:12px}.action-buttons{grid-template-columns:1fr 1fr}.summary-card,.content-card,.action-card,.approval-office-card{border-radius:10px}.estimate-readonly-row{font-size:10px}}
 @media(max-width:430px){.technical-history-list header{align-items:flex-start;flex-direction:column;gap:3px}}
+@media(max-width:600px){.manual-copy-panel{right:max(12px,env(safe-area-inset-right));bottom:88px;left:max(12px,env(safe-area-inset-left));width:auto}}
 @media(max-width:390px){.action-buttons{grid-template-columns:1fr}.action-buttons>:deep(.mud-button-root){grid-column:auto!important}.customer-details span,.vehicle-summary-details span,.approval-office-card{overflow-wrap:anywhere}}

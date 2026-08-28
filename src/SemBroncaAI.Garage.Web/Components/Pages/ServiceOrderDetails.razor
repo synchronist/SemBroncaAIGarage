@@ -719,6 +719,18 @@ else
 
         </section>
 
+        @if (_showManualApprovalLink)
+        {
+            <aside class="manual-copy-panel" role="status" aria-label="Copiar link manualmente">
+                <div>
+                    <strong>Copie o link manualmente</strong>
+                    <small>Selecione o endereço abaixo e use a opção de copiar do navegador.</small>
+                </div>
+                <input value="@ApprovalLink" readonly aria-label="Link público para aprovação do orçamento" />
+                <button type="button" @onclick="HideManualApprovalLink" aria-label="Fechar">×</button>
+            </aside>
+        }
+
         @if (HasPermission(ApplicationPermissions.ArchiveServiceOrder) &&
              (_serviceOrder.ArchivedAt is not null || _serviceOrder.Status is "Delivered" or "Cancelled"))
         {
@@ -805,6 +817,7 @@ else
          _serviceOrder.DigitalApprovalWaivedAt is null);
 
     private bool ApprovalExpired => _serviceOrder?.Approval is { Status: "Pending" } approval && DateTimeOffset.UtcNow >= approval.ExpiresAt;
+    private bool _showManualApprovalLink;
     private string ApprovalStatusLabel => ApprovalExpired ? "Link expirado" : _serviceOrder?.Approval?.Status switch
     { "Pending" => "Aguardando aprovação", "Approved" => "✓ Aprovado pelo cliente", "Rejected" => "✕ Recusado", _ => "Link invalidado" };
     private string ApprovalLink => new Uri(new Uri(Navigation.BaseUri), $"approval/{_serviceOrder!.Approval!.Token}").ToString();
@@ -814,14 +827,28 @@ else
         try
         {
             var copied = await JS.InvokeAsync<bool>("sbgCopyText", ApprovalLink);
-            Snackbar.Add(copied ? "Link copiado." : "Não foi possível copiar o link. Copie-o manualmente.",
-                copied ? Severity.Success : Severity.Warning);
+            if (copied)
+            {
+                _showManualApprovalLink = false;
+                Snackbar.Add("Link copiado.", Severity.Success);
+                return;
+            }
+
+            ShowManualApprovalLink();
         }
         catch (JSException)
         {
-            Snackbar.Add("Não foi possível copiar o link. Copie-o manualmente.", Severity.Warning);
+            ShowManualApprovalLink();
         }
     }
+
+    private void ShowManualApprovalLink()
+    {
+        _showManualApprovalLink = true;
+        Snackbar.Add("A cópia automática não está disponível. O link foi exibido para cópia manual.", Severity.Info);
+    }
+
+    private void HideManualApprovalLink() => _showManualApprovalLink = false;
     private async Task OpenApprovalPage()
     {
         try
@@ -889,9 +916,7 @@ else
         }
         catch (Exception exception)
         {
-            Snackbar.Add(
-                exception.Message,
-                Severity.Error);
+            ShowError(exception.Message);
         }
         finally
         {
@@ -913,7 +938,7 @@ else
         }
         catch (Exception exception)
         {
-            Snackbar.Add($"Não foi possível carregar o histórico técnico: {exception.Message}", Severity.Error);
+            ShowError($"Não foi possível carregar o histórico técnico: {exception.Message}");
         }
         finally
         {
@@ -971,7 +996,7 @@ else
         }
         catch (HttpRequestException exception)
         {
-            Snackbar.Add($"Não foi possível salvar o orçamento: {exception.Message}", Severity.Error);
+            ShowError($"Não foi possível salvar o orçamento: {exception.Message}");
         }
         finally
         {
@@ -1038,9 +1063,7 @@ else
         }
         catch (HttpRequestException exception)
         {
-            Snackbar.Add(
-                $"Não foi possível salvar o diagnóstico: {exception.Message}",
-                Severity.Error);
+            ShowError($"Não foi possível salvar o diagnóstico: {exception.Message}");
         }
         finally
         {
@@ -1097,9 +1120,7 @@ else
         }
         catch (HttpRequestException exception)
         {
-            Snackbar.Add(
-                $"Não foi possível atualizar a OS: {exception.Message}",
-                Severity.Error);
+            ShowError($"Não foi possível atualizar a OS: {exception.Message}");
         }
         finally
         {
@@ -1367,7 +1388,7 @@ else
             var download = await ServiceOrderService.DownloadPdfAsync(Id, estimate);
             await JS.InvokeVoidAsync("sbgDownloadFile", download.FileName, "application/pdf", Convert.ToBase64String(download.Content));
         }
-        catch (Exception exception) { Snackbar.Add(exception.Message, Severity.Error); }
+        catch (Exception exception) { ShowError(exception.Message); }
         finally { _isDownloadingPdf = false; }
     }
 
@@ -1383,7 +1404,7 @@ else
         }
         catch (Exception)
         {
-            Snackbar.Add("Não foi possível gerar o PDF e dispensar o aceite digital.", Severity.Error);
+            ShowError("Não foi possível gerar o PDF e dispensar o aceite digital.");
         }
         finally
         {
@@ -1413,8 +1434,11 @@ else
             Snackbar.Add(archived ? "Ordem de serviço arquivada." : "Ordem de serviço restaurada.", Severity.Success);
             await LoadAsync();
         }
-        catch (Exception exception) { Snackbar.Add(exception.Message, Severity.Error); }
+        catch (Exception exception) { ShowError(exception.Message); }
     }
+
+    private void ShowError(string message) =>
+        Snackbar.Add(message, Severity.Error, options => options.VisibleStateDuration = 8000);
 
     private sealed class EstimateItemEditModel
     {
