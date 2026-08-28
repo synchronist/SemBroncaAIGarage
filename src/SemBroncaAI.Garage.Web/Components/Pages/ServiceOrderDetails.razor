@@ -374,8 +374,7 @@ else
                             <div class="estimate-row" @key="item.Key">
                                 <MudSelect T="int"
                                            @bind-Value="item.Type"
-                                           Variant="Variant.Outlined"
-                                           Dense="true">
+                                           Variant="Variant.Outlined">
                                     <MudSelectItem T="int" Value="1">Serviço</MudSelectItem>
                                     <MudSelectItem T="int" Value="2">Peça</MudSelectItem>
                                 </MudSelect>
@@ -663,6 +662,18 @@ else
 
                 @if (HasPrimaryAction)
                 {
+                    @if (_serviceOrder.Status == "Diagnosis" &&
+                         _serviceOrder.Estimate is not null &&
+                         HasPermission(ApplicationPermissions.SendEstimateForApproval))
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Disabled="@(_isTransitioning || _isDownloadingPdf)"
+                                   StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                                   OnClick="SendPdfOnlyAsync">
+                            @(_isDownloadingPdf ? "Gerando PDF..." : "Enviar apenas PDF")
+                        </MudButton>
+                    }
+
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
                                Disabled="@IsPrimaryActionDisabled"
@@ -767,7 +778,9 @@ else
         (_serviceOrder?.Status == "Diagnosis" &&
          (_serviceOrder.Diagnosis is null ||
           _serviceOrder.Estimate is null)) ||
-        (_serviceOrder?.Status == "WaitingApproval" && _serviceOrder.Approval?.Status != "Approved");
+        (_serviceOrder?.Status == "WaitingApproval" &&
+         _serviceOrder.Approval?.Status != "Approved" &&
+         _serviceOrder.DigitalApprovalWaivedAt is null);
 
     private bool ApprovalExpired => _serviceOrder?.Approval is { Status: "Pending" } approval && DateTimeOffset.UtcNow >= approval.ExpiresAt;
     private string ApprovalStatusLabel => ApprovalExpired ? "Link expirado" : _serviceOrder?.Approval?.Status switch
@@ -776,10 +789,28 @@ else
 
     private async Task CopyApprovalLinkAsync()
     {
-        await JS.InvokeVoidAsync("sbgCopyText", ApprovalLink);
-        Snackbar.Add("Link copiado.", Severity.Success);
+        try
+        {
+            var copied = await JS.InvokeAsync<bool>("sbgCopyText", ApprovalLink);
+            Snackbar.Add(copied ? "Link copiado." : "Não foi possível copiar o link. Copie-o manualmente.",
+                copied ? Severity.Success : Severity.Warning);
+        }
+        catch (JSException)
+        {
+            Snackbar.Add("Não foi possível copiar o link. Copie-o manualmente.", Severity.Warning);
+        }
     }
-    private void OpenApprovalPage() => Navigation.NavigateTo(ApprovalLink, true);
+    private async Task OpenApprovalPage()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("sbgOpenUrl", ApprovalLink);
+        }
+        catch (JSException)
+        {
+            Snackbar.Add("Não foi possível abrir a página do cliente.", Severity.Warning);
+        }
+    }
     private Task ReviseEstimateAsync() => ExecuteTransitionAsync("revise-estimate");
 
     protected override async Task OnParametersSetAsync()
@@ -1142,6 +1173,13 @@ else
             "WaitingApproval" when _serviceOrder.Approval?.Status == "Approved" =>
                 "Orçamento aprovado. Aguardando o Mecânico ou Proprietário iniciar o serviço.",
 
+            "WaitingApproval" when _serviceOrder.DigitalApprovalWaivedAt is not null &&
+                                   HasPermission(ApplicationPermissions.StartService) =>
+                "Aceite digital dispensado. O serviço pode ser iniciado.",
+
+            "WaitingApproval" when _serviceOrder.DigitalApprovalWaivedAt is not null =>
+                "Aceite digital dispensado. Aguardando o Mecânico ou Proprietário iniciar o serviço.",
+
             "WaitingApproval" when (_serviceOrder.Approval?.Status == "Rejected" || ApprovalExpired) &&
                                    HasPermission(ApplicationPermissions.ManageEstimates) =>
                 "O orçamento precisa ser revisado antes de um novo envio ao cliente.",
@@ -1309,6 +1347,31 @@ else
         }
         catch (Exception exception) { Snackbar.Add(exception.Message, Severity.Error); }
         finally { _isDownloadingPdf = false; }
+    }
+
+    private async Task SendPdfOnlyAsync()
+    {
+        if (_isTransitioning || _isDownloadingPdf) return;
+        try
+        {
+            _isTransitioning = true;
+            _isDownloadingPdf = true;
+            var download = await ServiceOrderService.DownloadPdfAsync(Id, true);
+            await ServiceOrderService.ExecuteTransitionAsync(Id, "waive-digital-approval");
+            await JS.InvokeVoidAsync("sbgDownloadFile", download.FileName, "application/pdf",
+                Convert.ToBase64String(download.Content));
+            Snackbar.Add("PDF gerado. Aceite digital dispensado pela oficina.", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Não foi possível gerar o PDF e dispensar o aceite digital.", Severity.Error);
+        }
+        finally
+        {
+            _isDownloadingPdf = false;
+            _isTransitioning = false;
+        }
     }
 
     private async Task ArchiveAsync()

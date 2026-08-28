@@ -57,14 +57,60 @@ public sealed class EstimateApprovalTests
         order.CurrentEstimateApproval.ShouldBe(replacement);
     }
 
+    [Fact]
+    public void Waiving_Digital_Approval_Should_Record_Actor_Without_Creating_Fake_Approval()
+    {
+        var actorId = Guid.NewGuid();
+        var order = DiagnosedOrder();
+        var now = DateTimeOffset.UtcNow;
+
+        order.WaiveDigitalApproval(now, actorId);
+
+        order.Status.ShouldBe(ServiceOrderStatus.WaitingApproval);
+        order.DigitalApprovalWaivedAt.ShouldBe(now);
+        order.EstimateApprovals.ShouldBeEmpty();
+        var history = order.History.Last();
+        history.Description.ShouldBe(ServiceOrderMessages.DigitalApprovalWaived);
+        history.ActorId.ShouldBe(actorId);
+        history.CreatedAt.ShouldBeInRange(now.AddSeconds(-1), now.AddSeconds(1));
+    }
+
+    [Fact]
+    public void Waived_Digital_Approval_Should_Allow_Service_To_Start()
+    {
+        var order = DiagnosedOrder();
+        order.WaiveDigitalApproval(DateTimeOffset.UtcNow, Guid.NewGuid());
+
+        order.StartService(Guid.NewGuid());
+
+        order.Status.ShouldBe(ServiceOrderStatus.InProgress);
+        order.CurrentEstimateApproval.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Waiving_Digital_Approval_Should_Require_Diagnosis_And_Valid_Estimate()
+    {
+        var order = new ServiceOrderEntity(Guid.NewGuid(), Guid.NewGuid(), 1, "Ruído", 1000);
+        order.StartDiagnosis();
+
+        Should.Throw<InvalidOperationException>(() =>
+            order.WaiveDigitalApproval(DateTimeOffset.UtcNow));
+    }
+
     private static (ServiceOrderEntity Order, ServiceOrderEstimateApprovalEntity Approval, DateTimeOffset Now) PendingOrder(TimeSpan? lifetime = null)
+    {
+        var order = DiagnosedOrder();
+        var now = DateTimeOffset.UtcNow;
+        var approval = order.SendForApproval("A".PadLeft(64, 'A'), "protected", now.Add(lifetime ?? TimeSpan.FromDays(7)), now);
+        return (order, approval, now);
+    }
+
+    private static ServiceOrderEntity DiagnosedOrder()
     {
         var order = new ServiceOrderEntity(Guid.NewGuid(), Guid.NewGuid(), 1, "Ruído", 1000);
         order.StartDiagnosis();
         order.SaveDiagnosis("Diagnóstico público", "Nota interna secreta");
         order.SaveEstimate([new("Serviço", EstimateItemType.Service, 1, 100m), new("Peça", EstimateItemType.Part, 2, 25m)]);
-        var now = DateTimeOffset.UtcNow;
-        var approval = order.SendForApproval("A".PadLeft(64, 'A'), "protected", now.Add(lifetime ?? TimeSpan.FromDays(7)), now);
-        return (order, approval, now);
+        return order;
     }
 }

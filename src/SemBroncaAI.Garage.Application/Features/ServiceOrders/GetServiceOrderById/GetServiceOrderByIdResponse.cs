@@ -47,7 +47,8 @@ public sealed record GetServiceOrderByIdResponse(
     IReadOnlyCollection<ApprovalHistoryResponse> ApprovalHistory,
     IReadOnlyCollection<ServiceOrderHistoryResponse> History,
     IReadOnlyCollection<ServiceOrderTechnicalHistoryResponse> TechnicalHistory,
-    DateTimeOffset? ArchivedAt);
+    DateTimeOffset? ArchivedAt,
+    DateTimeOffset? DigitalApprovalWaivedAt = null);
 
 public sealed record ServiceOrderTechnicalHistoryResponse(
     Guid Id,

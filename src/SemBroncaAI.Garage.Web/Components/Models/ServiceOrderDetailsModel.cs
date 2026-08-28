@@ -42,7 +42,8 @@ public sealed record ServiceOrderDetailsModel(
     ServiceOrderApprovalModel? Approval = null,
     IReadOnlyCollection<ServiceOrderApprovalHistoryModel>? ApprovalHistory = null,
     DateTimeOffset? ArchivedAt = null,
-    IReadOnlyCollection<ServiceOrderTechnicalHistoryModel>? TechnicalHistory = null);
+    IReadOnlyCollection<ServiceOrderTechnicalHistoryModel>? TechnicalHistory = null,
+    DateTimeOffset? DigitalApprovalWaivedAt = null);
 
 public sealed record ServiceOrderTechnicalHistoryModel(
     Guid Id,

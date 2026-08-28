@@ -67,6 +67,7 @@ public sealed class PermissionAuthorizationTests
     [InlineData(nameof(ServiceOrdersController.SaveDiagnosis), ApplicationPermissions.ManageDiagnosis)]
     [InlineData(nameof(ServiceOrdersController.SaveEstimate), ApplicationPermissions.ManageEstimates)]
     [InlineData(nameof(ServiceOrdersController.SendForApproval), ApplicationPermissions.SendEstimateForApproval)]
+    [InlineData(nameof(ServiceOrdersController.WaiveDigitalApproval), ApplicationPermissions.SendEstimateForApproval)]
     [InlineData(nameof(ServiceOrdersController.StartService), ApplicationPermissions.StartService)]
     [InlineData(nameof(ServiceOrdersController.Finish), ApplicationPermissions.FinishService)]
     [InlineData(nameof(ServiceOrdersController.Deliver), ApplicationPermissions.DeliverServiceOrder)]

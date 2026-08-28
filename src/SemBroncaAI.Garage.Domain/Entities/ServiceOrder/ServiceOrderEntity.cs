@@ -27,6 +27,8 @@ public sealed class ServiceOrderEntity : Entity
 
     public DateTimeOffset? ArchivedAt { get; private set; }
 
+    public DateTimeOffset? DigitalApprovalWaivedAt { get; private set; }
+
     public long Version { get; private set; }
 
     public GarageEntity Garage { get; private set; } = default!;
@@ -126,7 +128,8 @@ public sealed class ServiceOrderEntity : Entity
     {
         EnsureStatus(ServiceOrderStatus.WaitingApproval);
 
-        if (CurrentEstimateApproval?.Status != EstimateApprovalStatus.Approved)
+        if (CurrentEstimateApproval?.Status != EstimateApprovalStatus.Approved &&
+            DigitalApprovalWaivedAt is null)
             throw new InvalidOperationException("O serviço só pode ser iniciado após a aprovação do orçamento pelo cliente.");
 
         ChangeStatus(
@@ -289,7 +292,22 @@ public sealed class ServiceOrderEntity : Entity
         }
 
         foreach (var approval in _estimateApprovals) approval.Invalidate(DateTimeOffset.UtcNow);
+        DigitalApprovalWaivedAt = null;
         Estimate.Update(items);
+    }
+
+    public void WaiveDigitalApproval(DateTimeOffset now, Guid? actorId = null)
+    {
+        EnsureStatus(ServiceOrderStatus.Diagnosis);
+
+        if (Diagnosis is null)
+            throw new InvalidOperationException("Registre o diagnóstico antes de dispensar o aceite digital.");
+        if (Estimate is null || !Estimate.IsValid)
+            throw new InvalidOperationException("Registre um orçamento válido antes de dispensar o aceite digital.");
+
+        foreach (var approval in _estimateApprovals) approval.Invalidate(now);
+        DigitalApprovalWaivedAt = now;
+        ChangeStatus(ServiceOrderStatus.WaitingApproval, ServiceOrderMessages.DigitalApprovalWaived, actorId);
     }
 
     public void ApproveEstimate(Guid approvalId, string? customerName, DateTimeOffset now)
@@ -316,6 +334,7 @@ public sealed class ServiceOrderEntity : Entity
         if (current.Status != EstimateApprovalStatus.Rejected && !current.IsExpired(DateTimeOffset.UtcNow))
             throw new InvalidOperationException("Somente um orçamento recusado ou expirado pode ser revisado.");
         foreach (var approval in _estimateApprovals) approval.Invalidate(DateTimeOffset.UtcNow);
+        DigitalApprovalWaivedAt = null;
         ChangeStatus(ServiceOrderStatus.Diagnosis, "Orçamento reaberto para revisão.", actorId);
     }
 }

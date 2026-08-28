@@ -11,6 +11,9 @@ public static class ServiceOrderMessages
     public const string SentForApproval =
         "Orçamento enviado para aprovação do cliente.";
 
+    public const string DigitalApprovalWaived =
+        "Aceite digital dispensado pela oficina.";
+
     public const string ServiceStarted =
         "Serviço iniciado.";
 

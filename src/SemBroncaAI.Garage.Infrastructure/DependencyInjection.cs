@@ -142,6 +142,7 @@ public static class DependencyInjection
         services.AddScoped<SendEstimateForApprovalHandler>();
         services.AddScoped<PublicApprovalHandler>();
         services.AddScoped<ReviseEstimateHandler>();
+        services.AddScoped<WaiveDigitalApprovalHandler>();
         services.AddScoped<StartServiceHandler>();
         services.AddScoped<WaitForPartsHandler>();
         services.AddScoped<ResumeServiceHandler>();

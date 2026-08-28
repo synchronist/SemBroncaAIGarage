@@ -254,6 +254,16 @@ public sealed class ServiceOrdersController(
         ExecuteTransition(() =>
             TenantTransition(id, cancellationToken, () => handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
 
+    [HttpPost("{id:guid}/waive-digital-approval")]
+    [Authorize(Policy = ApplicationPermissions.SendEstimateForApproval)]
+    public Task<IActionResult> WaiveDigitalApproval(
+        Guid id,
+        [FromServices] WaiveDigitalApprovalHandler handler,
+        CancellationToken cancellationToken) =>
+        ExecuteTransition(() =>
+            TenantTransition(id, cancellationToken, () =>
+                handler.HandleAsync(id, currentUser.UserId, cancellationToken)));
+
     [HttpPost("{id:guid}/start-service")]
     [Authorize(Policy = ApplicationPermissions.StartService)]
     public Task<IActionResult> StartService(

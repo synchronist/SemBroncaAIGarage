@@ -37,6 +37,9 @@ public sealed class ServiceOrderConfiguration
         builder.Property(x => x.ArchivedAt)
             .IsRequired(false);
 
+        builder.Property(x => x.DigitalApprovalWaivedAt)
+            .IsRequired(false);
+
         builder.Property(x => x.Version)
             .IsConcurrencyToken()
             .IsRequired();
