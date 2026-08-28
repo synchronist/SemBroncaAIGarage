@@ -45,6 +45,7 @@ using Microsoft.AspNetCore.DataProtection;
 using SemBroncaAI.Garage.Application.Features.PlatformAdministration;
 using SemBroncaAI.Garage.Application.Features.TeamManagement;
 using SemBroncaAI.Garage.Application.Features.Subscriptions;
+using SemBroncaAI.Garage.Application.Features.ProductCapabilities;
 
 namespace SemBroncaAI.Garage.Infrastructure;
 
@@ -79,6 +80,9 @@ public static class DependencyInjection
         services.AddScoped<ApplicationIdentityRoleInitializer>();
         services.AddScoped<PlatformAdminBootstrapper>();
         services.AddScoped<IPlatformGarageAdministration, PlatformGarageAdministration>();
+        services.AddOptions<ProductFeaturesOptions>()
+            .Bind(configuration.GetSection(ProductFeaturesOptions.SectionName));
+        services.AddScoped<IProductCapabilityAvailability, ProductCapabilityAvailability>();
         services.AddOptions<SubscriptionOptions>()
             .Bind(configuration.GetSection(SubscriptionOptions.SectionName))
             .Validate(options => options.DefaultTrialDays > 0, "Subscription:DefaultTrialDays deve ser maior que zero.")
