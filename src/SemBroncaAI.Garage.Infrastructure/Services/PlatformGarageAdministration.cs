@@ -124,27 +124,26 @@ public sealed class PlatformGarageAdministration(
         CreatePlatformGarageCommand command, CancellationToken cancellationToken = default)
     {
         Validate(command);
-        var garage = new GarageEntity(command.Name, command.Document, command.Phone, command.Email);
-        if (await context.Garages.AnyAsync(x => x.Document == garage.Document, cancellationToken))
-            throw new PlatformGarageConflictException("document", "Já existe uma oficina cadastrada com este documento.");
-        if (await userManager.FindByEmailAsync(command.OwnerEmail.Trim()) is not null)
-            throw new PlatformGarageConflictException("ownerEmail", "Este e-mail de acesso já está em uso.");
-        if (await userManager.FindByNameAsync(command.OwnerUserName.Trim()) is not null)
-            throw new PlatformGarageConflictException("ownerUserName", "Este nome de usuário já está em uso.");
-
-        string token;
-        TeamInvitationEntity invitation;
-        ApplicationUser owner;
-        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-        try
+        var strategy = context.Database.CreateExecutionStrategy();
+        var result = await strategy.ExecuteAsync(async () =>
         {
+            context.ChangeTracker.Clear();
+            var garage = new GarageEntity(command.Name, command.Document, command.Phone, command.Email);
+            if (await context.Garages.AnyAsync(x => x.Document == garage.Document, cancellationToken))
+                throw new PlatformGarageConflictException("document", "Já existe uma oficina cadastrada com este documento.");
+            if (await userManager.FindByEmailAsync(command.OwnerEmail.Trim()) is not null)
+                throw new PlatformGarageConflictException("ownerEmail", "Este e-mail de acesso já está em uso.");
+            if (await userManager.FindByNameAsync(command.OwnerUserName.Trim()) is not null)
+                throw new PlatformGarageConflictException("ownerUserName", "Este nome de usuário já está em uso.");
+
+            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
             context.Garages.Add(garage);
             var now = DateTime.UtcNow;
             context.GarageSubscriptions.Add(new GarageSubscriptionEntity(
                 garage.Id, SubscriptionPlan.Standard, now, subscriptionOptions.Value.DefaultTrialDays));
             await context.SaveChangesAsync(cancellationToken);
 
-            owner = ApplicationUser.CreateGarageUser(
+            var owner = ApplicationUser.CreateGarageUser(
                 command.OwnerName, command.OwnerEmail, command.OwnerUserName, garage.Id);
             owner.Deactivate();
             owner.EmailConfirmed = false;
@@ -153,8 +152,8 @@ public sealed class PlatformGarageAdministration(
             if (!(await userManager.AddToRoleAsync(owner, ApplicationRoles.Owner)).Succeeded)
                 throw new InvalidOperationException("Não foi possível concluir o cadastro da oficina.");
 
-            token = InvitationTokens.Create();
-            invitation = new TeamInvitationEntity(garage.Id, owner.Id, currentUser.UserId,
+            var token = InvitationTokens.Create();
+            var invitation = new TeamInvitationEntity(garage.Id, owner.Id, currentUser.UserId,
                 InvitationTokens.Hash(token), DateTime.UtcNow.AddHours(24));
             context.TeamInvitations.Add(invitation);
 
@@ -166,15 +165,12 @@ public sealed class PlatformGarageAdministration(
                 "Convite inicial do proprietário gerado.");
             await context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-        }
-        catch
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            throw;
-        }
+            return (garage, owner, invitation, token);
+        });
 
-        var deliveryStatus = await DeliverOwnerInvitationAsync(garage.Name, owner, invitation, token, cancellationToken);
-        return new(garage.Id, garage.Name, garage.Active, deliveryStatus);
+        var deliveryStatus = await DeliverOwnerInvitationAsync(
+            result.garage.Name, result.owner, result.invitation, result.token, cancellationToken);
+        return new(result.garage.Id, result.garage.Name, result.garage.Active, deliveryStatus);
     }
 
     public async Task<OwnerInvitationOperationResponse?> ResendOwnerInvitationAsync(
@@ -251,10 +247,7 @@ public sealed class PlatformGarageAdministration(
         subscription.ChangePlan(command.Plan, now);
         subscription.ChangeStatus(command.Status, now);
 
-        var requiredActive = SubscriptionOperationalPolicy.RequiredGarageActive(command.Status);
-        if (requiredActive == true) garage.Activate();
-        else if (requiredActive == false) garage.Deactivate();
-        // PastDue returns no required state and remains operational without overriding an administrative block.
+        // Garage.Active remains an administrative control. Billing restrictions are enforced independently.
         auditWriter.Add(id, AuditActions.SubscriptionChanged, "GarageSubscription", subscription.Id.ToString("D"),
             $"Plano {previousPlan} → {command.Plan}; status {previousStatus} → {command.Status}.");
         await context.SaveChangesAsync(cancellationToken);

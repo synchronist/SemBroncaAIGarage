@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SemBroncaAI.Garage.Application.Abstractions.Email;
 using SemBroncaAI.Garage.Application.Abstractions.Security;
 using SemBroncaAI.Garage.Application.Features.Subscriptions;
 using SemBroncaAI.Garage.Domain.Entities.Garage;
@@ -17,6 +18,7 @@ public sealed class StripeBillingService(
     ICurrentUser currentUser,
     IOptions<StripeBillingOptions> options,
     IConfiguration configuration,
+    ITransactionalEmailSender emailSender,
     ILogger<StripeBillingService> logger) : IOwnerBillingService, IBillingWebhookProcessor
 {
     private readonly StripeBillingOptions _options = options.Value;
@@ -100,6 +102,7 @@ public sealed class StripeBillingService(
             return;
 
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        Guid? pastDueGarageId = null;
         switch (stripeEvent.Type)
         {
             case "checkout.session.completed" when stripeEvent.Data.Object is Session session:
@@ -109,18 +112,26 @@ public sealed class StripeBillingService(
             case "customer.subscription.updated":
             case "customer.subscription.deleted":
                 if (stripeEvent.Data.Object is Stripe.Subscription stripeSubscription)
-                    await SynchronizeSubscriptionAsync(stripeSubscription, cancellationToken);
+                {
+                    var transition = await SynchronizeSubscriptionAsync(stripeSubscription, cancellationToken);
+                    if (transition.BecamePastDue) pastDueGarageId = transition.Subscription.GarageId;
+                }
                 break;
             case "invoice.paid":
             case "invoice.payment_failed":
                 if (stripeEvent.Data.Object is Invoice invoice)
-                    await SynchronizeInvoiceSubscriptionAsync(invoice, cancellationToken);
+                {
+                    var transition = await SynchronizeInvoiceSubscriptionAsync(invoice, cancellationToken);
+                    if (transition?.BecamePastDue == true) pastDueGarageId = transition.Subscription.GarageId;
+                }
                 break;
         }
 
         context.ProcessedBillingEvents.Add(new ProcessedBillingEvent(stripeEvent.Id, stripeEvent.Type, DateTime.UtcNow));
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        if (pastDueGarageId.HasValue)
+            await NotifyPastDueAsync(pastDueGarageId.Value, cancellationToken);
     }
 
     private async Task LinkCheckoutAsync(Session session, CancellationToken cancellationToken)
@@ -132,9 +143,12 @@ public sealed class StripeBillingService(
             subscription.SetBillingCustomer(session.CustomerId, DateTime.UtcNow);
     }
 
-    private async Task SynchronizeSubscriptionAsync(Stripe.Subscription external, CancellationToken cancellationToken)
+    private async Task<BillingTransition> SynchronizeSubscriptionAsync(
+        Stripe.Subscription external,
+        CancellationToken cancellationToken)
     {
         var subscription = await FindSubscriptionAsync(external, cancellationToken);
+        var previousStatus = subscription.Status;
         var item = external.Items?.Data.FirstOrDefault();
         var priceId = item?.Price?.Id;
         if (string.IsNullOrWhiteSpace(external.CustomerId) || string.IsNullOrWhiteSpace(priceId))
@@ -149,20 +163,55 @@ public sealed class StripeBillingService(
             item?.CurrentPeriodEnd,
             external.CancelAtPeriodEnd,
             DateTime.UtcNow);
+        return new(subscription, previousStatus != SubscriptionStatus.PastDue &&
+                                 subscription.Status == SubscriptionStatus.PastDue);
     }
 
-    private async Task SynchronizeInvoiceSubscriptionAsync(Invoice invoice, CancellationToken cancellationToken)
+    private async Task<BillingTransition?> SynchronizeInvoiceSubscriptionAsync(
+        Invoice invoice,
+        CancellationToken cancellationToken)
     {
         var subscriptionId = invoice.Parent?.SubscriptionDetails?.SubscriptionId;
         if (string.IsNullOrWhiteSpace(subscriptionId))
         {
             logger.LogInformation("Fatura Stripe {StripeInvoiceId} não pertence a uma assinatura.", invoice.Id);
-            return;
+            return null;
         }
 
         var external = await new Stripe.SubscriptionService(CreateClient())
             .GetAsync(subscriptionId, cancellationToken: cancellationToken);
-        await SynchronizeSubscriptionAsync(external, cancellationToken);
+        return await SynchronizeSubscriptionAsync(external, cancellationToken);
+    }
+
+    private async Task NotifyPastDueAsync(Guid garageId, CancellationToken cancellationToken)
+    {
+        var ownerRoleId = await context.Roles.AsNoTracking()
+            .Where(role => role.NormalizedName == "OWNER")
+            .Select(role => (Guid?)role.Id)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (!ownerRoleId.HasValue) return;
+
+        var recipient = await (from user in context.Users.AsNoTracking()
+                               join userRole in context.UserRoles.AsNoTracking() on user.Id equals userRole.UserId
+                               where user.GarageId == garageId && userRole.RoleId == ownerRoleId && user.Active
+                               select user.Email).FirstOrDefaultAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(recipient)) return;
+
+        var billingUrl = $"{PublicBaseUrl()}/subscription";
+        try
+        {
+            await emailSender.SendAsync(new TransactionalEmailMessage(
+                "subscription-past-due",
+                recipient,
+                "Não foi possível renovar sua assinatura",
+                $"<p>Não foi possível processar a renovação do SemBroncaAI Garage.</p><p>Regularize o pagamento em até 3 dias pela página <a href=\"{billingUrl}\">Plano e assinatura</a>.</p>",
+                $"Não foi possível processar a renovação do SemBroncaAI Garage. Regularize o pagamento em até 3 dias: {billingUrl}"),
+                cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogError(exception, "Failed to send past-due notification for garage {GarageId}.", garageId);
+        }
     }
 
     private async Task<GarageSubscriptionEntity> FindSubscriptionAsync(
@@ -203,4 +252,6 @@ public sealed class StripeBillingService(
         if (!_options.Enabled)
             throw new InvalidOperationException("A cobrança online não está habilitada.");
     }
+
+    private sealed record BillingTransition(GarageSubscriptionEntity Subscription, bool BecamePastDue);
 }

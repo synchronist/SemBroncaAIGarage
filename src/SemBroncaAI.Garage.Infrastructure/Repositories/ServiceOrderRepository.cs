@@ -28,6 +28,7 @@ public sealed class ServiceOrderRepository : IServiceOrderRepository
         CancellationToken cancellationToken = default)
     {
         return await _context.ServiceOrders
+            .AsSplitQuery()
             .Include(x => x.Vehicle)
                 .ThenInclude(x => x.Customer)
             .Include(x => x.History)
@@ -46,6 +47,7 @@ public sealed class ServiceOrderRepository : IServiceOrderRepository
         CancellationToken cancellationToken = default)
     {
         return await _context.ServiceOrders
+            .AsSplitQuery()
             .Include(x => x.Vehicle)
                 .ThenInclude(x => x.Customer)
             .Include(x => x.History)
@@ -65,6 +67,7 @@ public sealed class ServiceOrderRepository : IServiceOrderRepository
         CancellationToken cancellationToken = default)
     {
         return await _context.ServiceOrders
+            .AsSplitQuery()
             .Include(x => x.Vehicle).ThenInclude(x => x.Customer)
             .Include(x => x.History)
             .Include(x => x.Diagnosis)
@@ -112,6 +115,7 @@ public sealed class ServiceOrderRepository : IServiceOrderRepository
         CancellationToken cancellationToken = default)
     {
         return await _context.ServiceOrders
+            .AsSplitQuery()
             .Include(x => x.Garage)
             .Include(x => x.Vehicle).ThenInclude(x => x.Customer)
             .Include(x => x.Diagnosis)

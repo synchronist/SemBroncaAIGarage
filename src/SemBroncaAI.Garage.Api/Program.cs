@@ -89,7 +89,11 @@ builder.Services
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), tags: ["live"])
-    .AddCheck<PostgreSqlReadinessCheck>("postgresql", tags: ["ready"]);
+    .AddCheck<PostgreSqlReadinessCheck>(
+        "postgresql",
+        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+        tags: ["ready"],
+        timeout: TimeSpan.FromSeconds(10));
 
 var app = builder.Build();
 if (args.Contains("--bootstrap-platform-admin", StringComparer.Ordinal))

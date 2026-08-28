@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SemBroncaAI.Garage.Application.Abstractions.Security;
 using SemBroncaAI.Garage.Application.Features.PlatformAdministration;
+using SemBroncaAI.Garage.Application.Features.TeamManagement;
 using SemBroncaAI.Garage.Infrastructure;
 using SemBroncaAI.Garage.Infrastructure.Identity;
 using SemBroncaAI.Garage.Infrastructure.Persistence;
@@ -71,7 +73,7 @@ public sealed class PlatformAdministrationPostgresTests
         await using (var scope = provider.CreateAsyncScope())
         {
             var administration = scope.ServiceProvider.GetRequiredService<IPlatformGarageAdministration>();
-            await Should.ThrowAsync<ArgumentException>(() => administration.CreateAsync(new(
+            await Should.ThrowAsync<PlatformGarageValidationException>(() => administration.CreateAsync(new(
                 "Rollback QA", document, "11999999999", $"rollback-{suffix}@test.local",
                 "", $"rollback-owner-{suffix}@test.local", $"rollback-{suffix}")));
         }
@@ -86,11 +88,17 @@ public sealed class PlatformAdministrationPostgresTests
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["ConnectionStrings:DefaultConnection"] = ConnectionString
+            ["ConnectionStrings:DefaultConnection"] = ConnectionString,
+            ["Subscription:DefaultTrialDays"] = "90",
+            ["App:PublicBaseUrl"] = "https://integration.test"
         }).Build();
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddDataProtection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddSingleton<IntegrationCurrentUser>();
+        services.AddSingleton<ICurrentUser>(provider => provider.GetRequiredService<IntegrationCurrentUser>());
+        services.AddSingleton<ITeamInvitationSender, NullInvitationSender>();
         services.AddInfrastructure(configuration);
         return services.BuildServiceProvider();
     }
@@ -101,13 +109,38 @@ public sealed class PlatformAdministrationPostgresTests
         var roles = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
         if (!await roles.RoleExistsAsync(ApplicationRoles.Owner))
             (await roles.CreateAsync(new IdentityRole<Guid>(ApplicationRoles.Owner))).Succeeded.ShouldBeTrue();
+
+        var context = scope.ServiceProvider.GetRequiredService<GarageDbContext>();
+        var currentUser = scope.ServiceProvider.GetRequiredService<IntegrationCurrentUser>();
+        currentUser.UserId = await context.Users.AsNoTracking()
+            .Where(x => x.GarageId == null)
+            .Select(x => x.Id)
+            .FirstOrDefaultAsync();
+        currentUser.UserId.ShouldNotBe(Guid.Empty,
+            "the integration database must contain the platform administrator seeded by the application");
     }
 
     private static async Task CleanupAsync(ServiceProvider provider, Guid garageId)
     {
         await using var scope = provider.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<GarageDbContext>();
+        await context.TeamInvitations.Where(x => x.GarageId == garageId).ExecuteDeleteAsync();
         await context.Users.Where(x => x.GarageId == garageId).ExecuteDeleteAsync();
         await context.Garages.Where(x => x.Id == garageId).ExecuteDeleteAsync();
+    }
+
+    private sealed class IntegrationCurrentUser : ICurrentUser
+    {
+        public Guid UserId { get; set; }
+        public Guid? GarageId => null;
+        public bool IsAuthenticated => true;
+        public bool IsPlatformAdmin => true;
+        public IReadOnlyCollection<string> Roles { get; } = [ApplicationRoles.PlatformAdmin];
+    }
+
+    private sealed class NullInvitationSender : ITeamInvitationSender
+    {
+        public Task SendAsync(TeamInvitationEmail invitation, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 }

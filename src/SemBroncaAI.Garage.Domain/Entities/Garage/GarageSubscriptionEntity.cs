@@ -13,6 +13,7 @@ public sealed class GarageSubscriptionEntity : Entity
     public DateTime? CurrentPeriodEnd { get; private set; }
     public DateTime? SuspendedAt { get; private set; }
     public DateTime? CancelledAt { get; private set; }
+    public DateTime? PastDueAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
     public string? BillingCustomerId { get; private set; }
@@ -47,12 +48,43 @@ public sealed class GarageSubscriptionEntity : Entity
     {
         if (status == SubscriptionStatus.Trial && Status != SubscriptionStatus.Trial)
             throw new InvalidOperationException("O Trial só pode ser iniciado no onboarding.");
+        var previousStatus = Status;
         Status = status;
         if (status == SubscriptionStatus.Trial)
             TrialEndsAt = trialEndsAt ?? TrialEndsAt ?? now;
         SuspendedAt = status == SubscriptionStatus.Suspended ? now : null;
+        PastDueAt = status == SubscriptionStatus.PastDue
+            ? previousStatus == SubscriptionStatus.PastDue ? PastDueAt ?? now : now
+            : null;
         if (status == SubscriptionStatus.Cancelled) CancelledAt = now;
         UpdatedAt = now;
+    }
+
+    public bool AdvanceLifecycle(DateTime now, TimeSpan pastDueGracePeriod)
+    {
+        if (pastDueGracePeriod < TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(pastDueGracePeriod));
+
+        if (Status == SubscriptionStatus.Trial && TrialEndsAt <= now)
+        {
+            ChangeStatus(SubscriptionStatus.Suspended, now);
+            return true;
+        }
+
+        if (Status == SubscriptionStatus.PastDue && PastDueAt.HasValue &&
+            PastDueAt.Value.Add(pastDueGracePeriod) <= now)
+        {
+            ChangeStatus(SubscriptionStatus.Suspended, now);
+            return true;
+        }
+
+        if (Status == SubscriptionStatus.Active && CancelAtPeriodEnd && CurrentPeriodEnd <= now)
+        {
+            ChangeStatus(SubscriptionStatus.Cancelled, now);
+            return true;
+        }
+
+        return false;
     }
 
     public void SetBillingCustomer(string customerId, DateTime now)

@@ -1,5 +1,8 @@
 using System.Net.Http.Headers;
+using System.Net;
+using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace SemBroncaAI.Garage.Web.Services;
@@ -25,8 +28,38 @@ public sealed class ApiAuthenticationHandler(
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         }
 
-        return await base.SendAsync(request, cancellationToken);
+        var response = await base.SendAsync(request, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.Forbidden)
+        {
+            ApiErrorResponse? error = null;
+            try
+            {
+                error = await response.Content.ReadFromJsonAsync<ApiErrorResponse>(cancellationToken);
+            }
+            catch (JsonException)
+            {
+                // Preserve unrelated forbidden responses that do not use the API error contract.
+            }
+            catch (NotSupportedException)
+            {
+                // Preserve unrelated forbidden responses with a non-JSON content type.
+            }
+
+            if (string.Equals(error?.Code, "subscription-restricted", StringComparison.Ordinal))
+            {
+                response.Dispose();
+                throw new HttpRequestException(
+                    error?.Message ?? "A assinatura da oficina precisa ser regularizada para continuar.",
+                    inner: null,
+                    HttpStatusCode.Forbidden);
+            }
+        }
+
+        return response;
     }
+
+    private sealed record ApiErrorResponse(string? Code, string? Message);
 }
 
 public static class AuthConstants

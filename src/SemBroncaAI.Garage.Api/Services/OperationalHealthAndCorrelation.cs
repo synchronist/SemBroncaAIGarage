@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using SemBroncaAI.Garage.Infrastructure.Persistence;
+using SemBroncaAI.Garage.Domain.Entities.Garage;
 
 namespace SemBroncaAI.Garage.Api.Services;
 
@@ -28,7 +29,7 @@ public sealed class ApiOperationalMiddleware(RequestDelegate next, ILogger<ApiOp
 {
     public const string HeaderName = "X-Correlation-ID";
 
-    public async Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(HttpContext context, GarageDbContext dbContext)
     {
         var correlationId = Resolve(context.Request.Headers[HeaderName].FirstOrDefault(), context.TraceIdentifier);
         context.TraceIdentifier = correlationId;
@@ -41,6 +42,8 @@ public sealed class ApiOperationalMiddleware(RequestDelegate next, ILogger<ApiOp
         });
         try
         {
+            if (!await AuthorizeSubscriptionOperationAsync(context, dbContext))
+                return;
             await next(context);
         }
         catch (Exception exception)
@@ -49,6 +52,40 @@ public sealed class ApiOperationalMiddleware(RequestDelegate next, ILogger<ApiOp
             throw;
         }
     }
+
+    private static async Task<bool> AuthorizeSubscriptionOperationAsync(
+        HttpContext context,
+        GarageDbContext dbContext)
+    {
+        var garageClaim = context.User.FindFirst("garage_id")?.Value;
+        if (!Guid.TryParse(garageClaim, out var garageId)) return true;
+
+        var subscription = await dbContext.GarageSubscriptions
+            .SingleOrDefaultAsync(x => x.GarageId == garageId, context.RequestAborted);
+        if (subscription is null) return true;
+
+        if (subscription.AdvanceLifecycle(DateTime.UtcNow, SubscriptionOperationalPolicy.PastDueGracePeriod))
+            await dbContext.SaveChangesAsync(context.RequestAborted);
+
+        if (HttpMethods.IsGet(context.Request.Method) ||
+            HttpMethods.IsHead(context.Request.Method) ||
+            HttpMethods.IsOptions(context.Request.Method) ||
+            IsBillingRecoveryPath(context.Request.Path) ||
+            SubscriptionOperationalPolicy.CanWrite(subscription.Status))
+            return true;
+
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        await context.Response.WriteAsJsonAsync(new
+        {
+            code = "subscription-restricted",
+            message = "A assinatura da oficina precisa ser regularizada para realizar esta operação."
+        }, context.RequestAborted);
+        return false;
+    }
+
+    private static bool IsBillingRecoveryPath(PathString path) =>
+        path.StartsWithSegments("/api/subscription") ||
+        path.StartsWithSegments("/api/billing/stripe/webhook");
 
     public static string Resolve(string? requested, string fallback) =>
         !string.IsNullOrWhiteSpace(requested) && requested.Length <= 64 && requested.All(c => char.IsLetterOrDigit(c) || c is '-' or '_')

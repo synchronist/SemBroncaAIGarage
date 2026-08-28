@@ -60,7 +60,11 @@ public static class DependencyInjection
                 "A connection string 'DefaultConnection' não foi encontrada.");
 
         services.AddDbContext<GarageDbContext>(options =>
-            options.UseNpgsql(connectionString));
+            options.UseNpgsql(connectionString, npgsql =>
+                npgsql.EnableRetryOnFailure(
+                    maxRetryCount: 3,
+                    maxRetryDelay: TimeSpan.FromSeconds(5),
+                    errorCodesToAdd: null)));
 
         services.AddIdentityCore<ApplicationUser>(ConfigureIdentity)
             .AddRoles<IdentityRole<Guid>>()

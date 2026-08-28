@@ -269,6 +269,9 @@
 
 .estimate-editor,
 .estimate-readonly {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     margin-top: 18px;
 }
 
@@ -288,8 +291,23 @@
 }
 
 .estimate-row {
+    min-width: 0;
     padding: 10px 0;
     border-top: 1px solid var(--sbg-surface-subtle);
+}
+
+.estimate-row > * {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.estimate-row ::deep .mud-input-control,
+.estimate-row ::deep .mud-input-root,
+.estimate-row ::deep .mud-select,
+.estimate-row ::deep input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .estimate-line-total {
@@ -603,16 +621,17 @@
     }
 
     .estimate-row {
-        grid-template-columns: 1fr 40px;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 10px;
     }
 
-    .estimate-row > :not(:last-child) {
+    .estimate-row > * {
         grid-column: 1;
+        grid-row: auto;
     }
 
     .estimate-row > :last-child {
-        grid-column: 2;
-        grid-row: 1;
+        justify-self: end;
     }
 
     .estimate-readonly-row {

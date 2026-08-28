@@ -113,5 +113,64 @@ public sealed class OwnerSubscriptionTests
         properties.ShouldNotContain(property => property.Name.Contains("Price", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public void Trial_should_suspend_immediately_after_expiration()
+    {
+        var now = new DateTime(2026, 8, 27, 12, 0, 0, DateTimeKind.Utc);
+        var subscription = new GarageSubscriptionEntity(Guid.NewGuid(), SubscriptionPlan.Standard, now, 90);
+
+        subscription.AdvanceLifecycle(now.AddDays(90), SubscriptionOperationalPolicy.PastDueGracePeriod)
+            .ShouldBeTrue();
+        subscription.Status.ShouldBe(SubscriptionStatus.Suspended);
+    }
+
+    [Fact]
+    public void Past_due_should_remain_operational_for_three_days_then_suspend()
+    {
+        var now = new DateTime(2026, 8, 27, 12, 0, 0, DateTimeKind.Utc);
+        var subscription = new GarageSubscriptionEntity(Guid.NewGuid(), SubscriptionPlan.Standard, now, 90);
+        subscription.ChangeStatus(SubscriptionStatus.Active, now.AddMinutes(1));
+        subscription.ChangeStatus(SubscriptionStatus.PastDue, now.AddDays(30));
+
+        subscription.AdvanceLifecycle(now.AddDays(33).AddTicks(-1), SubscriptionOperationalPolicy.PastDueGracePeriod)
+            .ShouldBeFalse();
+        SubscriptionOperationalPolicy.CanWrite(subscription.Status).ShouldBeTrue();
+        subscription.AdvanceLifecycle(now.AddDays(33), SubscriptionOperationalPolicy.PastDueGracePeriod)
+            .ShouldBeTrue();
+        subscription.Status.ShouldBe(SubscriptionStatus.Suspended);
+        SubscriptionOperationalPolicy.CanWrite(subscription.Status).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Successful_payment_should_reactivate_without_platform_admin()
+    {
+        var now = new DateTime(2026, 8, 27, 12, 0, 0, DateTimeKind.Utc);
+        var subscription = new GarageSubscriptionEntity(Guid.NewGuid(), SubscriptionPlan.Standard, now, 90);
+        subscription.ChangeStatus(SubscriptionStatus.PastDue, now.AddDays(30));
+
+        subscription.SynchronizeBilling("cus", "sub", "price", SubscriptionStatus.Active,
+            now.AddDays(30), now.AddDays(60), false, now.AddDays(31));
+
+        subscription.Status.ShouldBe(SubscriptionStatus.Active);
+        subscription.PastDueAt.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Cancellation_at_period_end_should_preserve_access_until_period_end()
+    {
+        var now = new DateTime(2026, 8, 27, 12, 0, 0, DateTimeKind.Utc);
+        var periodEnd = now.AddDays(30);
+        var subscription = new GarageSubscriptionEntity(Guid.NewGuid(), SubscriptionPlan.Standard, now, 90);
+        subscription.SynchronizeBilling("cus", "sub", "price", SubscriptionStatus.Active,
+            now, periodEnd, true, now.AddMinutes(1));
+
+        subscription.AdvanceLifecycle(periodEnd.AddTicks(-1), SubscriptionOperationalPolicy.PastDueGracePeriod)
+            .ShouldBeFalse();
+        subscription.Status.ShouldBe(SubscriptionStatus.Active);
+        subscription.AdvanceLifecycle(periodEnd, SubscriptionOperationalPolicy.PastDueGracePeriod)
+            .ShouldBeTrue();
+        subscription.Status.ShouldBe(SubscriptionStatus.Cancelled);
+    }
+
     private static string RepositoryRoot() => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
 }

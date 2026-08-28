@@ -43,59 +43,83 @@ public static class WebAuthenticationEndpoints
             return Results.LocalRedirect("/login?error=invalid");
 
         var client = httpClientFactory.CreateClient("AuthenticationApi");
-        using var loginResponse = await client.PostAsJsonAsync(
-            "api/auth/login",
-            new { identifier, password },
-            context.RequestAborted);
-
-        if (!loginResponse.IsSuccessStatusCode)
+        HttpResponseMessage loginResponse;
+        try
         {
-            var error = await ResolveLoginErrorAsync(loginResponse, context.RequestAborted);
-            return Results.LocalRedirect($"/login?error={error}");
+            loginResponse = await client.PostAsJsonAsync(
+                "api/auth/login",
+                new { identifier, password },
+                context.RequestAborted);
+        }
+        catch (Exception exception) when ((exception is HttpRequestException or TaskCanceledException) &&
+                                          !context.RequestAborted.IsCancellationRequested)
+        {
+            return Results.LocalRedirect("/login?error=unavailable");
         }
 
-        var token = await TryReadJsonAsync<ApiTokenResponse>(loginResponse.Content, context.RequestAborted);
-        if (token is null || string.IsNullOrWhiteSpace(token.AccessToken))
-            return Results.LocalRedirect("/login?error=unavailable");
-
-        using var meRequest = new HttpRequestMessage(HttpMethod.Get, "api/auth/me");
-        meRequest.Headers.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.AccessToken);
-        using var meResponse = await client.SendAsync(meRequest, context.RequestAborted);
-        if (!meResponse.IsSuccessStatusCode)
-            return Results.LocalRedirect("/login?error=invalid");
-
-        var user = await TryReadJsonAsync<CurrentUserModel>(meResponse.Content, context.RequestAborted);
-        if (user is null)
-            return Results.LocalRedirect("/login?error=unavailable");
-
-        var sessionId = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
-        var expiresAt = DateTimeOffset.UtcNow.AddSeconds(token.ExpiresIn);
-        sessionStore.Set(sessionId, new ApiSession(token.AccessToken, expiresAt, user));
-
-        var claims = new List<Claim>
+        using (loginResponse)
         {
-            new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-            new(ClaimTypes.Name, user.Name),
-            new(AuthConstants.SessionIdClaim, sessionId)
-        };
-        if (!string.IsNullOrWhiteSpace(user.Email))
-            claims.Add(new Claim(ClaimTypes.Email, user.Email));
-        if (user.GarageId is not null)
-            claims.Add(new Claim("garage_id", user.GarageId.Value.ToString()));
-        claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
-        claims.AddRange(user.EffectivePermissions.Select(permission =>
-            new Claim(ApplicationPermissions.ClaimType, permission)));
+            if (!loginResponse.IsSuccessStatusCode)
+            {
+                var error = await ResolveLoginErrorAsync(loginResponse, context.RequestAborted);
+                return Results.LocalRedirect($"/login?error={error}");
+            }
 
-        var properties = CreateCookieProperties(rememberMe, expiresAt);
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, AuthConstants.CookieScheme));
-        await context.SignInAsync(
-            AuthConstants.CookieScheme,
-            principal,
-            properties);
+            var token = await TryReadJsonAsync<ApiTokenResponse>(loginResponse.Content, context.RequestAborted);
+            if (token is null || string.IsNullOrWhiteSpace(token.AccessToken))
+                return Results.LocalRedirect("/login?error=unavailable");
 
-        var destination = AuthorizedLandingPage.Resolve(principal, returnUrl);
-        return Results.LocalRedirect(destination);
+            using var meRequest = new HttpRequestMessage(HttpMethod.Get, "api/auth/me");
+            meRequest.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.AccessToken);
+            HttpResponseMessage meResponse;
+            try
+            {
+                meResponse = await client.SendAsync(meRequest, context.RequestAborted);
+            }
+            catch (Exception exception) when ((exception is HttpRequestException or TaskCanceledException) &&
+                                              !context.RequestAborted.IsCancellationRequested)
+            {
+                return Results.LocalRedirect("/login?error=unavailable");
+            }
+            using (meResponse)
+            {
+            if (!meResponse.IsSuccessStatusCode)
+                return Results.LocalRedirect("/login?error=invalid");
+
+            var user = await TryReadJsonAsync<CurrentUserModel>(meResponse.Content, context.RequestAborted);
+            if (user is null)
+                return Results.LocalRedirect("/login?error=unavailable");
+
+            var sessionId = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+            var expiresAt = DateTimeOffset.UtcNow.AddSeconds(token.ExpiresIn);
+            sessionStore.Set(sessionId, new ApiSession(token.AccessToken, expiresAt, user));
+
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                new(ClaimTypes.Name, user.Name),
+                new(AuthConstants.SessionIdClaim, sessionId)
+            };
+            if (!string.IsNullOrWhiteSpace(user.Email))
+                claims.Add(new Claim(ClaimTypes.Email, user.Email));
+            if (user.GarageId is not null)
+                claims.Add(new Claim("garage_id", user.GarageId.Value.ToString()));
+            claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
+            claims.AddRange(user.EffectivePermissions.Select(permission =>
+                new Claim(ApplicationPermissions.ClaimType, permission)));
+
+            var properties = CreateCookieProperties(rememberMe, expiresAt);
+            var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, AuthConstants.CookieScheme));
+            await context.SignInAsync(
+                AuthConstants.CookieScheme,
+                principal,
+                properties);
+
+            var destination = AuthorizedLandingPage.Resolve(principal, returnUrl);
+            return Results.LocalRedirect(destination);
+            }
+        }
     }
 
     public static AuthenticationProperties CreateCookieProperties(
