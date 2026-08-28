@@ -21,7 +21,7 @@ public sealed class ServiceOrderApprovalActionsTests
     }
 
     [Fact]
-    public void Pdf_Only_Action_Should_Download_Existing_Estimate_And_Explicitly_Waive_Digital_Approval()
+    public void Pdf_Only_Action_Should_Open_Existing_Estimate_Print_Flow_And_Explicitly_Waive_Digital_Approval()
     {
         var root = FindRepositoryRoot();
         var page = File.ReadAllText(Path.Combine(root, "src", "SemBroncaAI.Garage.Web",
@@ -30,7 +30,8 @@ public sealed class ServiceOrderApprovalActionsTests
         page.ShouldContain("Enviar apenas PDF");
         page.ShouldContain("_serviceOrder.Status == \"Diagnosis\" || _serviceOrder.Status == \"WaitingApproval\"");
         page.ShouldContain("approval-mobile-actions");
-        page.ShouldContain("DownloadPdfAsync(Id, true)");
+        page.ShouldContain("EstimatePrintUrl");
+        page.ShouldContain("Navigation.NavigateTo(EstimatePrintUrl)");
         page.ShouldContain("ExecuteTransitionAsync(Id, \"waive-digital-approval\")");
     }
 

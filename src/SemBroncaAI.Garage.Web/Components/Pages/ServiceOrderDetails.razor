@@ -374,6 +374,7 @@ else
                             <div class="estimate-row" @key="item.Key">
                                 <MudSelect T="int"
                                            @bind-Value="item.Type"
+                                           Class="estimate-type-select"
                                            Variant="Variant.Outlined">
                                     <MudSelectItem T="int" Value="1">Serviço</MudSelectItem>
                                     <MudSelectItem T="int" Value="2">Peça</MudSelectItem>
@@ -1354,7 +1355,7 @@ else
 
     private void OpenEstimatePrintView()
     {
-        Navigation.NavigateTo($"/service-orders/{Id}/estimate/print");
+        Navigation.NavigateTo(EstimatePrintUrl);
     }
 
     private async Task DownloadPdfAsync(bool estimate)
@@ -1376,13 +1377,9 @@ else
         try
         {
             _isTransitioning = true;
-            _isDownloadingPdf = true;
-            var download = await ServiceOrderService.DownloadPdfAsync(Id, true);
             await ServiceOrderService.ExecuteTransitionAsync(Id, "waive-digital-approval");
-            await JS.InvokeVoidAsync("sbgDownloadFile", download.FileName, "application/pdf",
-                Convert.ToBase64String(download.Content));
             Snackbar.Add("PDF gerado. Aceite digital dispensado pela oficina.", Severity.Success);
-            await LoadAsync();
+            Navigation.NavigateTo(EstimatePrintUrl);
         }
         catch (Exception)
         {
@@ -1390,10 +1387,11 @@ else
         }
         finally
         {
-            _isDownloadingPdf = false;
             _isTransitioning = false;
         }
     }
+
+    private string EstimatePrintUrl => $"/service-orders/{Id}/estimate/print";
 
     private async Task ArchiveAsync()
     {
