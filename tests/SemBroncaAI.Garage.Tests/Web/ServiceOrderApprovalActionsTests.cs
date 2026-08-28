@@ -28,6 +28,8 @@ public sealed class ServiceOrderApprovalActionsTests
             "Components", "Pages", "ServiceOrderDetails.razor"));
 
         page.ShouldContain("Enviar apenas PDF");
+        page.ShouldContain("_serviceOrder.Status == \"Diagnosis\" || _serviceOrder.Status == \"WaitingApproval\"");
+        page.ShouldContain("approval-mobile-actions");
         page.ShouldContain("DownloadPdfAsync(Id, true)");
         page.ShouldContain("ExecuteTransitionAsync(Id, \"waive-digital-approval\")");
     }

@@ -88,6 +88,24 @@ public sealed class EstimateApprovalTests
     }
 
     [Fact]
+    public void Pending_Digital_Approval_Should_Be_Waivable_Without_Creating_A_Fake_Approval()
+    {
+        var (order, approval, now) = PendingOrder();
+        var actorId = Guid.NewGuid();
+
+        order.WaiveDigitalApproval(now.AddMinutes(1), actorId);
+
+        order.Status.ShouldBe(ServiceOrderStatus.WaitingApproval);
+        order.DigitalApprovalWaivedAt.ShouldBe(now.AddMinutes(1));
+        approval.Status.ShouldBe(EstimateApprovalStatus.Pending);
+        approval.IsActive.ShouldBeFalse();
+        order.History.Last().ActorId.ShouldBe(actorId);
+
+        order.StartService(actorId);
+        order.Status.ShouldBe(ServiceOrderStatus.InProgress);
+    }
+
+    [Fact]
     public void Waiving_Digital_Approval_Should_Require_Diagnosis_And_Valid_Estimate()
     {
         var order = new ServiceOrderEntity(Guid.NewGuid(), Guid.NewGuid(), 1, "Ruído", 1000);

@@ -298,7 +298,7 @@ public sealed class ServiceOrderEntity : Entity
 
     public void WaiveDigitalApproval(DateTimeOffset now, Guid? actorId = null)
     {
-        EnsureStatus(ServiceOrderStatus.Diagnosis);
+        EnsureStatus(ServiceOrderStatus.Diagnosis, ServiceOrderStatus.WaitingApproval);
 
         if (Diagnosis is null)
             throw new InvalidOperationException("Registre o diagnóstico antes de dispensar o aceite digital.");
