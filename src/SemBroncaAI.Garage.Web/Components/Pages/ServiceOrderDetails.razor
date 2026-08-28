@@ -640,25 +640,6 @@ else
 
             <div class="action-buttons">
 
-                @if (_serviceOrder.Status == "WaitingApproval" &&
-                     _serviceOrder.Approval?.Token is not null &&
-                     _serviceOrder.DigitalApprovalWaivedAt is null &&
-                     HasPermission(ApplicationPermissions.SendEstimateForApproval))
-                {
-                    <div class="approval-mobile-actions">
-                        <MudButton Variant="Variant.Outlined"
-                                   StartIcon="@Icons.Material.Filled.ContentCopy"
-                                   OnClick="CopyApprovalLinkAsync">
-                            Copiar link
-                        </MudButton>
-                        <MudButton Variant="Variant.Outlined"
-                                   StartIcon="@Icons.Material.Filled.OpenInNew"
-                                   OnClick="OpenApprovalPage">
-                            Abrir página do cliente
-                        </MudButton>
-                    </div>
-                }
-
                 @if (CanCancel)
                 {
                     <MudButton Variant="Variant.Outlined"

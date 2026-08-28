@@ -33,7 +33,7 @@ public sealed class ServiceOrderApprovalActionsTests
 
         page.ShouldContain("Enviar apenas PDF");
         page.ShouldContain("_serviceOrder.Status == \"Diagnosis\" || _serviceOrder.Status == \"WaitingApproval\"");
-        page.ShouldContain("approval-mobile-actions");
+        page.ShouldNotContain("approval-mobile-actions");
         page.ShouldContain("EstimatePrintUrl");
         page.ShouldContain("Navigation.NavigateTo(EstimatePrintUrl)");
         page.ShouldContain("ExecuteTransitionAsync(Id, \"waive-digital-approval\")");
