@@ -17,7 +17,7 @@ builder.Services
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddMudServices(configuration =>
 {
-    configuration.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
+    configuration.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.TopRight;
     configuration.SnackbarConfiguration.ShowCloseIcon = true;
     configuration.SnackbarConfiguration.VisibleStateDuration = 4500;
 });
