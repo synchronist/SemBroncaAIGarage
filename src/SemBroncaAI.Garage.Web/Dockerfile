@@ -2,6 +2,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS restore
 WORKDIR /src
 COPY src/SemBroncaAI.Garage.Domain/SemBroncaAI.Garage.Domain.csproj src/SemBroncaAI.Garage.Domain/
 COPY src/SemBroncaAI.Garage.Application/SemBroncaAI.Garage.Application.csproj src/SemBroncaAI.Garage.Application/
+COPY src/SemBroncaAI.Garage.DataProtection/SemBroncaAI.Garage.DataProtection.csproj src/SemBroncaAI.Garage.DataProtection/
 COPY src/SemBroncaAI.Garage.Web/SemBroncaAI.Garage.Web.csproj src/SemBroncaAI.Garage.Web/
 RUN dotnet restore src/SemBroncaAI.Garage.Web/SemBroncaAI.Garage.Web.csproj
 
