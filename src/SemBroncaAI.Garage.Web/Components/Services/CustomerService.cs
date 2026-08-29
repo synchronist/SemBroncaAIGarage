@@ -37,14 +37,9 @@ public sealed class CustomerService
         }, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
-        {
-            var error = await response.Content.ReadFromJsonAsync<ApiError>(cancellationToken: cancellationToken);
-            throw new InvalidOperationException(error?.Message ?? "Não foi possível salvar o cliente.");
-        }
+            await ApiResponseError.ThrowAsync(response, "Não foi possível salvar o cliente.", cancellationToken);
 
         return await response.Content.ReadFromJsonAsync<SaveCustomerResponse>(cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException("A API não retornou os dados do cliente.");
     }
-
-    private sealed record ApiError(string Message);
 }

@@ -1,6 +1,6 @@
 using System.Net;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using SemBroncaAI.Garage.DataProtection;
 
 namespace SemBroncaAI.Garage.Web.Services;
 
@@ -27,13 +27,11 @@ public static class WebDeploymentConfiguration
             builder.Logging.ClearProviders();
             builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
         }
-        var dataProtection = builder.Services.AddDataProtection().SetApplicationName(DataProtectionApplicationName);
-        if (builder.Environment.IsProduction())
-        {
-            var path = builder.Configuration["DataProtection:KeysPath"]!;
-            Directory.CreateDirectory(path);
-            dataProtection.PersistKeysToFileSystem(new DirectoryInfo(path));
-        }
+        DurableDataProtectionConfiguration.Configure(
+            builder.Services,
+            builder.Configuration,
+            builder.Environment,
+            DataProtectionApplicationName);
 
         var proxies = builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [];
         var trustRenderProxy = builder.Configuration.GetValue<bool>("ReverseProxy:TrustRenderProxy");
@@ -56,8 +54,7 @@ public static class WebDeploymentConfiguration
         var apiBaseUrl = configuration["Api:BaseUrl"];
         if (string.IsNullOrWhiteSpace(apiBaseUrl) || apiBaseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Configure Api:BaseUrl de Production.");
-        if (string.IsNullOrWhiteSpace(configuration["DataProtection:KeysPath"]))
-            throw new InvalidOperationException("Configure DataProtection:KeysPath em Production.");
+        DurableDataProtectionConfiguration.ValidateProduction(configuration, environment);
         var trustRenderProxy = configuration.GetValue<bool>("ReverseProxy:TrustRenderProxy");
         var runningOnRender = string.Equals(configuration["RENDER"], "true", StringComparison.OrdinalIgnoreCase);
         if (trustRenderProxy && !runningOnRender)

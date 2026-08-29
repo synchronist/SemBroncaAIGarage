@@ -25,8 +25,14 @@ services:
         value: https://sembronca-garage.onrender.com/
       - key: BrandAssets__RootPath
         value: /tmp/sbgarage/brand-assets
-      - key: DataProtection__KeysPath
-        value: /tmp/sbgarage/data-protection
+      - key: DataProtection__Provider
+        value: PostgreSql
+      - key: DataProtection__ConnectionString
+        sync: false
+      - key: DataProtection__CertificateBase64
+        sync: false
+      - key: DataProtection__CertificatePassword
+        sync: false
       - key: ReverseProxy__TrustRenderProxy
         value: "true"
       - key: IdentitySeed__Enabled
@@ -84,7 +90,13 @@ services:
         value: https://sembronca-garage-api.onrender.com/
       - key: PublicAppBaseUrl
         value: https://sembronca-garage.onrender.com
-      - key: DataProtection__KeysPath
-        value: /tmp/sbgarage/data-protection
+      - key: DataProtection__Provider
+        value: PostgreSql
+      - key: DataProtection__ConnectionString
+        sync: false
+      - key: DataProtection__CertificateBase64
+        sync: false
+      - key: DataProtection__CertificatePassword
+        sync: false
       - key: ReverseProxy__TrustRenderProxy
         value: "true"

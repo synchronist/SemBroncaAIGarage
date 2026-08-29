@@ -18,17 +18,30 @@ public sealed class ApiAuthenticationHandler(
         var authenticationState = await authenticationStateProvider.GetAuthenticationStateAsync();
         var sessionId = authenticationState.User.FindFirstValue(AuthConstants.SessionIdClaim);
 
-        if (sessionId is not null && sessionStore.TryGet(sessionId, out var session))
+        if (sessionId is not null && !sessionStore.IsRevoked(sessionId) && sessionStore.TryGet(sessionId, out var session))
         {
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", session!.AccessToken);
         }
-        else if (authenticationState.User.FindFirstValue(AuthConstants.ApiAccessTokenClaim) is { } accessToken)
+        else if ((sessionId is null || !sessionStore.IsRevoked(sessionId)) &&
+                 authenticationState.User.FindFirstValue(AuthConstants.ApiAccessTokenClaim) is { } accessToken)
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         }
 
         var response = await base.SendAsync(request, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            if (sessionId is not null)
+                sessionStore.Revoke(sessionId);
+
+            response.Dispose();
+            throw new HttpRequestException(
+                "Sua sessão expirou. Entre novamente para continuar.",
+                inner: null,
+                HttpStatusCode.Unauthorized);
+        }
 
         if (response.StatusCode == HttpStatusCode.Forbidden)
         {

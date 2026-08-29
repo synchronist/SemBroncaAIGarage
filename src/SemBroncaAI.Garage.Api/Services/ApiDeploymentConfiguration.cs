@@ -1,6 +1,6 @@
 using System.Net;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using SemBroncaAI.Garage.DataProtection;
 
 namespace SemBroncaAI.Garage.Api.Services;
 
@@ -17,13 +17,11 @@ public static class ApiDeploymentConfiguration
             builder.Logging.ClearProviders();
             builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
         }
-        var dataProtection = builder.Services.AddDataProtection().SetApplicationName(DataProtectionApplicationName);
-        if (builder.Environment.IsProduction())
-        {
-            var path = builder.Configuration["DataProtection:KeysPath"]!;
-            Directory.CreateDirectory(path);
-            dataProtection.PersistKeysToFileSystem(new DirectoryInfo(path));
-        }
+        DurableDataProtectionConfiguration.Configure(
+            builder.Services,
+            builder.Configuration,
+            builder.Environment,
+            DataProtectionApplicationName);
 
         var proxies = builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [];
         var trustRenderProxy = builder.Configuration.GetValue<bool>("ReverseProxy:TrustRenderProxy");
@@ -68,8 +66,7 @@ public static class ApiDeploymentConfiguration
         var webBaseUrl = configuration["Web:BaseUrl"];
         if (string.IsNullOrWhiteSpace(webBaseUrl) || webBaseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Configure Web:BaseUrl de Production para geração de documentos.");
-        if (string.IsNullOrWhiteSpace(configuration["DataProtection:KeysPath"]))
-            throw new InvalidOperationException("Configure DataProtection:KeysPath em Production.");
+        DurableDataProtectionConfiguration.ValidateProduction(configuration, environment);
         ValidateReverseProxy(configuration);
     }
 

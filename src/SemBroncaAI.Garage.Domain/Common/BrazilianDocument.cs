@@ -3,10 +3,44 @@ namespace SemBroncaAI.Garage.Domain.Common;
 public static class BrazilianDocument
 {
     public static string Normalize(string? value) => string.Concat((value ?? string.Empty).Where(char.IsDigit));
-    public static bool IsValid(string? value)
+
+    public static string Format(string? value)
     {
         var digits = Normalize(value);
+        if (digits.Length > 14)
+            digits = digits[..14];
+
+        return digits.Length <= 11
+            ? ApplyMask(digits, [3, 3, 3, 2], [".", ".", "-"])
+            : ApplyMask(digits, [2, 3, 3, 4, 2], [".", ".", "/", "-"]);
+    }
+
+    public static bool IsValid(string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value) &&
+            value.Any(character => !char.IsDigit(character) && character is not ('.' or '-' or '/') && !char.IsWhiteSpace(character)))
+            return false;
+
+        var digits = Normalize(value);
         return digits.Length switch { 0 => true, 11 => IsValidCpf(digits), 14 => IsValidCnpj(digits), _ => false };
+    }
+
+    private static string ApplyMask(string digits, int[] groups, string[] separators)
+    {
+        var result = new System.Text.StringBuilder();
+        var offset = 0;
+
+        for (var index = 0; index < groups.Length && offset < digits.Length; index++)
+        {
+            var length = Math.Min(groups[index], digits.Length - offset);
+            result.Append(digits, offset, length);
+            offset += length;
+
+            if (offset < digits.Length && index < separators.Length)
+                result.Append(separators[index]);
+        }
+
+        return result.ToString();
     }
     private static bool IsValidCpf(string value)
     {

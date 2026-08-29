@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SemBroncaAI.Garage.Application\SemBroncaAI.Garage.Application.csproj" />
+    <ProjectReference Include="..\SemBroncaAI.Garage.DataProtection\SemBroncaAI.Garage.DataProtection.csproj" />
     <ProjectReference Include="..\SemBroncaAI.Garage.Infrastructure\SemBroncaAI.Garage.Infrastructure.csproj" />
   </ItemGroup>
 

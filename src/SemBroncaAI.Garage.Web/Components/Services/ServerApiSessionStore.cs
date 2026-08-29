@@ -8,15 +8,19 @@ public interface IServerApiSessionStore
     void Set(string sessionId, ApiSession session);
     bool TryGet(string sessionId, out ApiSession? session);
     void Remove(string sessionId);
+    void Revoke(string sessionId);
+    bool IsRevoked(string sessionId);
 }
 
 public sealed class ServerApiSessionStore : IServerApiSessionStore
 {
     private readonly ConcurrentDictionary<string, ApiSession> _sessions = new();
+    private readonly ConcurrentDictionary<string, byte> _revokedSessions = new();
 
     public void Set(string sessionId, ApiSession session)
     {
         RemoveExpiredSessions(DateTimeOffset.UtcNow);
+        _revokedSessions.TryRemove(sessionId, out _);
         _sessions[sessionId] = session;
     }
 
@@ -34,6 +38,14 @@ public sealed class ServerApiSessionStore : IServerApiSessionStore
     }
 
     public void Remove(string sessionId) => _sessions.TryRemove(sessionId, out _);
+
+    public void Revoke(string sessionId)
+    {
+        _sessions.TryRemove(sessionId, out _);
+        _revokedSessions[sessionId] = 0;
+    }
+
+    public bool IsRevoked(string sessionId) => _revokedSessions.ContainsKey(sessionId);
 
     private void RemoveExpiredSessions(DateTimeOffset now)
     {

@@ -15,13 +15,27 @@ public sealed class RenderDeploymentConfigurationTests
         var web = Configuration(new Dictionary<string, string?>
         {
             ["Api:BaseUrl"] = "https://sembronca-garage-api.onrender.com/",
-            ["DataProtection:KeysPath"] = "/tmp/sbgarage/data-protection",
+            ["DataProtection:Provider"] = "PostgreSql",
+            ["DataProtection:ConnectionString"] = "Host=db.internal;Username=app;Password=strong-secret",
+            ["DataProtection:CertificateBase64"] = "certificate-secret",
+            ["DataProtection:CertificatePassword"] = "certificate-password",
             ["ReverseProxy:TrustRenderProxy"] = "true",
             ["RENDER"] = "true"
         });
 
         Should.NotThrow(() => ApiDeploymentConfiguration.ValidateProduction(api, Production()));
         Should.NotThrow(() => WebDeploymentConfiguration.ValidateProduction(web, Production()));
+    }
+
+    [Fact]
+    public void Production_should_reject_ephemeral_render_key_directory()
+    {
+        var values = SafeApiValues();
+        values["DataProtection:Provider"] = "FileSystem";
+        values["DataProtection:KeysPath"] = "/tmp/sbgarage/data-protection";
+
+        Should.Throw<InvalidOperationException>(() =>
+            ApiDeploymentConfiguration.ValidateProduction(Configuration(values), Production()));
     }
 
     [Fact]
@@ -48,7 +62,10 @@ public sealed class RenderDeploymentConfigurationTests
         ["Email:Password"] = "secret",
         ["Email:FromAddress"] = "no-reply@example.com",
         ["Email:TimeoutSeconds"] = "15",
-        ["DataProtection:KeysPath"] = "/tmp/sbgarage/data-protection",
+        ["DataProtection:Provider"] = "PostgreSql",
+        ["DataProtection:ConnectionString"] = "Host=db.internal;Username=dp_user;Password=strong-secret",
+        ["DataProtection:CertificateBase64"] = "certificate-secret",
+        ["DataProtection:CertificatePassword"] = "certificate-password",
         ["ReverseProxy:TrustRenderProxy"] = "true",
         ["RENDER"] = "true"
     };

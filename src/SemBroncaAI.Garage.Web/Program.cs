@@ -58,12 +58,11 @@ builder.Services.AddAuthentication(options =>
             : CookieSecurePolicy.Always;
         options.LoginPath = "/login";
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
-        options.SlidingExpiration = true;
+        options.SlidingExpiration = false;
         options.Events.OnValidatePrincipal = context =>
         {
-            var sessionId = context.Principal?.FindFirst(AuthConstants.SessionIdClaim)?.Value;
             var store = context.HttpContext.RequestServices.GetRequiredService<IServerApiSessionStore>();
-            if (sessionId is null || !store.TryGet(sessionId, out _))
+            if (!WebAuthenticationEndpoints.HasApiCredential(context.Principal, store))
                 context.RejectPrincipal();
             return Task.CompletedTask;
         };

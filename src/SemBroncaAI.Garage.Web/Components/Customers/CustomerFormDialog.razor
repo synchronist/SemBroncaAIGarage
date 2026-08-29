@@ -9,7 +9,7 @@
         <MudForm @ref="_form">
             <div class="customer-form">
                 <MudTextField T="string" @bind-Value="_name" Label="Nome" Variant="Variant.Outlined" Required="true" RequiredError="Informe o nome." MaxLength="150" />
-                <MudTextField T="string" @bind-Value="_document" Label="CPF ou CNPJ (opcional)" Variant="Variant.Outlined" Validation="@(new Func<string, string?>(ValidateDocument))" MaxLength="20" />
+                <MudTextField T="string" Value="_document" ValueChanged="DocumentChanged" Label="CPF ou CNPJ (opcional)" Variant="Variant.Outlined" Validation="@(new Func<string, string?>(ValidateDocument))" MaxLength="18" InputMode="InputMode.numeric" />
                 <MudTextField T="string" @bind-Value="_phone" Label="Telefone" Variant="Variant.Outlined" Required="true" RequiredError="Informe o telefone." MaxLength="20" />
                 <MudTextField T="string" @bind-Value="_email" Label="E-mail" Variant="Variant.Outlined" Required="true" RequiredError="Informe o e-mail." Validation="@(new Func<string, string?>(ValidateEmail))" MaxLength="150" />
 
@@ -44,7 +44,7 @@
     {
         if (Customer is null) return;
         _name = Customer.Name;
-        _document = Customer.Document;
+        _document = BrazilianDocument.Format(Customer.Document);
         _phone = Customer.Phone;
         _email = Customer.Email;
     }
@@ -58,7 +58,7 @@
         {
             _isSaving = true;
             _error = null;
-            var request = new SaveCustomerRequest(_name, _document, _phone, _email);
+            var request = new SaveCustomerRequest(_name, BrazilianDocument.Normalize(_document), _phone, _email);
             if (Customer is null)
                 await CustomerService.CreateAsync(request);
             else
@@ -81,6 +81,9 @@
 
     private static string? ValidateDocument(string document) =>
         BrazilianDocument.IsValid(document) ? null : "Informe um CPF ou CNPJ válido.";
+
+    private void DocumentChanged(string value) =>
+        _document = BrazilianDocument.Format(value);
 
     private void Cancel() => MudDialog.Cancel();
 }

@@ -99,7 +99,8 @@ public static class WebAuthenticationEndpoints
             {
                 new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
                 new(ClaimTypes.Name, user.Name),
-                new(AuthConstants.SessionIdClaim, sessionId)
+                new(AuthConstants.SessionIdClaim, sessionId),
+                new(AuthConstants.ApiAccessTokenClaim, token.AccessToken)
             };
             if (!string.IsNullOrWhiteSpace(user.Email))
                 claims.Add(new Claim(ClaimTypes.Email, user.Email));
@@ -127,7 +128,7 @@ public static class WebAuthenticationEndpoints
         DateTimeOffset expiresAt) => new()
     {
         IsPersistent = rememberMe,
-        AllowRefresh = true,
+        AllowRefresh = false,
         ExpiresUtc = expiresAt
     };
 
@@ -136,14 +137,14 @@ public static class WebAuthenticationEndpoints
         IHttpClientFactory httpClientFactory,
         IServerApiSessionStore sessionStore)
     {
-        var sessionId = context.User.FindFirstValue(AuthConstants.SessionIdClaim);
-        if (sessionId is null || !sessionStore.TryGet(sessionId, out var session))
+        var accessToken = ResolveApiAccessToken(context.User, sessionStore);
+        if (accessToken is null)
             return Results.Unauthorized();
 
         var client = httpClientFactory.CreateClient("AuthenticationApi");
         using var request = new HttpRequestMessage(HttpMethod.Get, "api/auth/me");
         request.Headers.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", session!.AccessToken);
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
         using var response = await client.SendAsync(request, context.RequestAborted);
         if (!response.IsSuccessStatusCode)
             return Results.Unauthorized();
@@ -180,14 +181,22 @@ public static class WebAuthenticationEndpoints
         ClaimsPrincipal principal,
         IServerApiSessionStore sessionStore)
     {
+        var sessionId = principal.FindFirstValue(AuthConstants.SessionIdClaim);
+        if (sessionId is not null && sessionStore.IsRevoked(sessionId))
+            return null;
+
         var accessToken = principal.FindFirstValue(AuthConstants.ApiAccessTokenClaim);
         if (accessToken is not null) return accessToken;
 
-        var sessionId = principal.FindFirstValue(AuthConstants.SessionIdClaim);
         return sessionId is not null && sessionStore.TryGet(sessionId, out var session)
             ? session!.AccessToken
             : null;
     }
+
+    public static bool HasApiCredential(
+        ClaimsPrincipal? principal,
+        IServerApiSessionStore sessionStore) =>
+        principal is not null && ResolveApiAccessToken(principal, sessionStore) is not null;
 
     private static async Task<IResult> LogoutAsync(
         HttpContext context,
@@ -197,7 +206,7 @@ public static class WebAuthenticationEndpoints
         await antiforgery.ValidateRequestAsync(context);
         var sessionId = context.User.FindFirstValue(AuthConstants.SessionIdClaim);
         if (sessionId is not null)
-            sessionStore.Remove(sessionId);
+            sessionStore.Revoke(sessionId);
 
         await context.SignOutAsync(AuthConstants.CookieScheme);
         return Results.LocalRedirect("/login");

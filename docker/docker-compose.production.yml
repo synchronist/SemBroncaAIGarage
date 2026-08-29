@@ -9,6 +9,7 @@ x-api-environment: &api-environment
   Web__BaseUrl: http://web:8080/
   BrandAssets__RootPath: /var/lib/sbgarage/brand-assets
   DataProtection__KeysPath: /var/lib/sbgarage/data-protection
+  DataProtection__Provider: FileSystem
   ReverseProxy__KnownProxies__0: 172.30.0.1
   IdentitySeed__Enabled: "false"
   PasswordRecovery__Enabled: ${PASSWORD_RECOVERY_ENABLED:-false}
@@ -90,6 +91,7 @@ services:
       Api__BaseUrl: http://api:8080/
       PublicAppBaseUrl: ${APP_PUBLIC_BASE_URL:?configure APP_PUBLIC_BASE_URL}
       DataProtection__KeysPath: /var/lib/sbgarage/data-protection
+      DataProtection__Provider: FileSystem
       ReverseProxy__KnownProxies__0: 172.30.0.1
     ports:
       - "8080:8080"

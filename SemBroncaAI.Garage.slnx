@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/SemBroncaAI.Garage.Api/SemBroncaAI.Garage.Api.csproj" />
     <Project Path="src/SemBroncaAI.Garage.Application/SemBroncaAI.Garage.Application.csproj" />
+    <Project Path="src/SemBroncaAI.Garage.DataProtection/SemBroncaAI.Garage.DataProtection.csproj" />
     <Project Path="src/SemBroncaAI.Garage.Domain/SemBroncaAI.Garage.Domain.csproj" />
     <Project Path="src/SemBroncaAI.Garage.Infrastructure/SemBroncaAI.Garage.Infrastructure.csproj" />
     <Project Path="src/SemBroncaAI.Garage.Web/SemBroncaAI.Garage.Web.csproj" />

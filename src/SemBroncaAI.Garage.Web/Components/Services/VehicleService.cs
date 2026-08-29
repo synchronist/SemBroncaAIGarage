@@ -17,8 +17,8 @@ public sealed class VehicleService(HttpClient client)
     private async Task<SaveVehicleResponse> SendAsync(HttpMethod method, string url, SaveVehicleRequest request, CancellationToken token)
     {
         var response = await client.SendAsync(new HttpRequestMessage(method, url) { Content = JsonContent.Create(request) }, token);
-        if (!response.IsSuccessStatusCode) { var error = await response.Content.ReadFromJsonAsync<ApiError>(cancellationToken: token); throw new InvalidOperationException(error?.Message ?? "Não foi possível salvar o veículo."); }
+        if (!response.IsSuccessStatusCode)
+            await ApiResponseError.ThrowAsync(response, "Não foi possível salvar o veículo.", token);
         return await response.Content.ReadFromJsonAsync<SaveVehicleResponse>(cancellationToken: token) ?? throw new InvalidOperationException("A API não retornou o veículo.");
     }
-    private sealed record ApiError(string Message);
 }

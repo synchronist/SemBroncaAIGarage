@@ -1,3 +1,4 @@
+using SemBroncaAI.Garage.Domain.Common;
 using SemBroncaAI.Garage.Domain.Entities.Customer;
 using Shouldly;
 
@@ -56,6 +57,18 @@ public sealed class CustomerEntityTests
     [Fact]
     public void Should_Reject_Invalid_Brazilian_Document() =>
         Should.Throw<ArgumentException>(() => new CustomerEntity(Guid.CreateVersion7(), "Maria", "12345678900", "11999999999", "maria@email.com"));
+
+    [Theory]
+    [InlineData("CPF 529.982.247-25")]
+    [InlineData("529A982B247C25")]
+    public void Should_Reject_Alphabetic_Or_Alphanumeric_Document(string document) =>
+        Should.Throw<ArgumentException>(() => new CustomerEntity(Guid.CreateVersion7(), "Maria", document, "11999999999", "maria@email.com"));
+
+    [Theory]
+    [InlineData("52998224725", "529.982.247-25")]
+    [InlineData("11222333000181", "11.222.333/0001-81")]
+    public void Should_Format_Brazilian_Document(string document, string expected) =>
+        BrazilianDocument.Format(document).ShouldBe(expected);
 
     [Fact]
     public void Should_Reject_Invalid_Email()

@@ -21,7 +21,7 @@ public sealed class WebAuthenticationTests
     {
         var properties = WebAuthenticationEndpoints.CreateCookieProperties(false, DateTimeOffset.UtcNow.AddDays(7));
         properties.IsPersistent.ShouldBeFalse();
-        properties.AllowRefresh.ShouldBe(true);
+        properties.AllowRefresh.ShouldBe(false);
     }
 
     [Fact]
@@ -43,6 +43,21 @@ public sealed class WebAuthenticationTests
         store.TryGet("session", out _).ShouldBeTrue();
         store.Remove("session");
         store.TryGet("session", out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Revoked_cookie_credential_should_not_be_reused()
+    {
+        var store = new ServerApiSessionStore();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(AuthConstants.SessionIdClaim, "revoked-session"),
+            new Claim(AuthConstants.ApiAccessTokenClaim, "protected-token")
+        ], "cookie"));
+
+        WebAuthenticationEndpoints.HasApiCredential(principal, store).ShouldBeTrue();
+        store.Revoke("revoked-session");
+        WebAuthenticationEndpoints.HasApiCredential(principal, store).ShouldBeFalse();
     }
 
     [Fact]
