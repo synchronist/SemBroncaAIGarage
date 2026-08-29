@@ -27,12 +27,14 @@ public sealed class PublicApprovalsController : ControllerBase
     [HttpPost("{token}/approve")]
     public Task<IActionResult> Approve(string token, [FromBody] ApprovalDecisionRequest request,
         [FromServices] PublicApprovalHandler handler, CancellationToken cancellationToken) =>
-        Respond(() => handler.RespondAsync(token, true, request, cancellationToken));
+        Respond(() => handler.RespondAsync(token, true, request,
+            HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers.UserAgent.ToString(), cancellationToken));
 
     [HttpPost("{token}/reject")]
     public Task<IActionResult> Reject(string token, [FromBody] ApprovalDecisionRequest request,
         [FromServices] PublicApprovalHandler handler, CancellationToken cancellationToken) =>
-        Respond(() => handler.RespondAsync(token, false, request, cancellationToken));
+        Respond(() => handler.RespondAsync(token, false, request,
+            HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers.UserAgent.ToString(), cancellationToken));
 
     [HttpGet("{token}/logo")]
     public async Task<IActionResult> Logo(string token, [FromServices] IApprovalTokenService tokenService,

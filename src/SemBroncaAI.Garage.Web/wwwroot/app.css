@@ -140,14 +140,15 @@ h1:focus {
 }
 
 @media (max-width: 600px) {
-    .mud-snackbar-location-top-right {
-        top: max(12px, env(safe-area-inset-top)) !important;
+    .mud-snackbar-location-bottom-right {
+        top: auto !important;
         right: max(12px, env(safe-area-inset-right)) !important;
-        bottom: auto !important;
+        bottom: max(12px, env(safe-area-inset-bottom)) !important;
         left: max(12px, env(safe-area-inset-left)) !important;
+        z-index: 1400 !important;
     }
 
-    .mud-snackbar-location-top-right .mud-snackbar {
+    .mud-snackbar-location-bottom-right .mud-snackbar {
         width: 100%;
         min-width: 0;
         max-width: none;

@@ -1,6 +1,7 @@
 ﻿using SemBroncaAI.Garage.Application.Abstractions.Persistence;
 using SemBroncaAI.Garage.Domain.Entities.Customer;
 using SemBroncaAI.Garage.Domain.Interfaces;
+using SemBroncaAI.Garage.Domain.Common;
 
 namespace SemBroncaAI.Garage.Application.Features.Customers.CreateCustomer;
 
@@ -34,10 +35,11 @@ public sealed class CreateCustomerHandler
                 "Oficina não encontrada.");
         }
 
-        var documentAlreadyExists =
+        var normalizedDocument = BrazilianDocument.Normalize(command.Document);
+        var documentAlreadyExists = normalizedDocument.Length > 0 &&
             await _customerRepository.ExistsByDocumentAsync(
                 command.GarageId,
-                command.Document.Trim(),
+                normalizedDocument,
                 null,
                 cancellationToken);
 

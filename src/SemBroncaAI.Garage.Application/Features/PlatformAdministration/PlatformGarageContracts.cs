@@ -110,6 +110,16 @@ public sealed record CreatePlatformGarageCommand(
 public sealed record CreatePlatformGarageResponse(
     Guid GarageId, string Name, bool Active, InvitationDeliveryStatus OwnerInvitationDeliveryStatus);
 
+public sealed record PublicGarageSignupCommand(
+    string Name, string Document, string Phone, string Email,
+    string OwnerName, string OwnerEmail, bool AcceptedTerms);
+
+public interface IPublicGarageSignup
+{
+    Task<CreatePlatformGarageResponse> SignupAsync(PublicGarageSignupCommand command,
+        CancellationToken cancellationToken = default);
+}
+
 public sealed record OwnerInvitationOperationResponse(InvitationDeliveryStatus DeliveryStatus);
 
 public interface IPlatformGarageAdministration

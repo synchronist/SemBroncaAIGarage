@@ -39,6 +39,41 @@ public sealed class ServiceOrderEstimatePrintBuilderTests
         document.Garage.LogoUrl.ShouldBeNull();
     }
 
+    [Fact]
+    public void Build_Should_Carry_Partial_Approval_Evidence_To_The_Document()
+    {
+        var order = Order(withEstimate: true);
+        var selectedId = order.Estimate!.Items.First().Id;
+        order = order with
+        {
+            Estimate = order.Estimate with
+            {
+                Items =
+                [
+                    order.Estimate.Items.First() with { AuthorizationStatus = "CustomerAuthorized" },
+                    order.Estimate.Items.Last() with { AuthorizationStatus = "CustomerNotAuthorized" }
+                ]
+            }
+        };
+        order = order with
+        {
+            Approval = new ServiceOrderApprovalModel("PartiallyApproved", DateTimeOffset.UtcNow.AddDays(-1),
+                DateTimeOffset.UtcNow.AddDays(6), DateTimeOffset.UtcNow, "Cliente da Silva", "Sem as peças", null)
+            {
+                ApprovedTotal = 200m,
+                CustomerDocumentMasked = "***.982.247-**",
+                ApprovedItemIds = [selectedId]
+            }
+        };
+
+        var document = ServiceOrderEstimatePrintBuilder.Build(order, Garage());
+
+        document!.Approval!.Status.ShouldBe("PartiallyApproved");
+        document.Approval.ApprovedItemIds.ShouldContain(selectedId);
+        document.Estimate.Items.First().AuthorizationStatus.ShouldBe("CustomerAuthorized");
+        document.Estimate.Items.Last().AuthorizationStatus.ShouldBe("CustomerNotAuthorized");
+    }
+
     [Theory]
     [InlineData("horizontal")]
     [InlineData("square")]

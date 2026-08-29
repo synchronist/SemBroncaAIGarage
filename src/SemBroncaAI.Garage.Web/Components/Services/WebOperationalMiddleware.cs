@@ -6,6 +6,7 @@ public sealed class WebOperationalMiddleware(RequestDelegate next, ILogger<WebOp
 
     public async Task InvokeAsync(HttpContext context)
     {
+        var startedAt = System.Diagnostics.Stopwatch.GetTimestamp();
         var requested = context.Request.Headers[HeaderName].FirstOrDefault();
         var correlationId = !string.IsNullOrWhiteSpace(requested) && requested.Length <= 64 &&
                             requested.All(c => char.IsLetterOrDigit(c) || c is '-' or '_')
@@ -22,10 +23,19 @@ public sealed class WebOperationalMiddleware(RequestDelegate next, ILogger<WebOp
         try { await next(context); }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Unexpected Web error for {Method} {Path}", context.Request.Method, context.Request.Path);
+            logger.LogError(exception, "Unexpected Web error for {Method} {Route}", context.Request.Method, ResolveRoute(context));
             throw;
         }
+        finally
+        {
+            logger.LogInformation("Web request {Method} {Route} returned {StatusCode} in {ElapsedMs:F1} ms",
+                context.Request.Method, ResolveRoute(context), context.Response.StatusCode,
+                System.Diagnostics.Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
+        }
     }
+
+    private static string ResolveRoute(HttpContext context) =>
+        (context.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText ?? "unmatched";
 }
 
 public sealed class CorrelationIdHandler(IHttpContextAccessor accessor) : DelegatingHandler

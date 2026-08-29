@@ -80,6 +80,8 @@ public static class DependencyInjection
         services.AddScoped<ApplicationIdentityRoleInitializer>();
         services.AddScoped<PlatformAdminBootstrapper>();
         services.AddScoped<IPlatformGarageAdministration, PlatformGarageAdministration>();
+        services.AddScoped<IPublicGarageSignup>(provider =>
+            (PlatformGarageAdministration)provider.GetRequiredService<IPlatformGarageAdministration>());
         services.AddOptions<ProductFeaturesOptions>()
             .Bind(configuration.GetSection(ProductFeaturesOptions.SectionName));
         services.AddScoped<IProductCapabilityAvailability, ProductCapabilityAvailability>();
@@ -117,6 +119,12 @@ public static class DependencyInjection
         services.AddScoped<IVehicleQueryRepository, VehicleQueryRepository>();
         services.AddScoped<IServiceOrderRepository, ServiceOrderRepository>();
         services.AddScoped<IApprovalRequestPersistence, ApprovalRequestPersistence>();
+        services.AddOptions<ApprovalOptions>()
+            .Bind(configuration.GetSection(ApprovalOptions.SectionName))
+            .Validate(options => options.DefaultValidityDays is >= 1 and <= 90,
+                "Approval:DefaultValidityDays deve estar entre 1 e 90.")
+            .ValidateOnStart();
+        services.AddSingleton<IApprovalValidityProvider, ApprovalValidityProvider>();
         services.AddScoped<IEstimateQueryRepository, EstimateQueryRepository>();
         services.AddScoped<ILookupRepository, LookupRepository>();
         services.AddScoped<

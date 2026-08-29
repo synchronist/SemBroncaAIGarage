@@ -5,6 +5,7 @@ public enum EstimateCommercialStatus
     NotSent,
     Pending,
     Approved,
+    PartiallyApproved,
     Rejected,
     Expired
 }

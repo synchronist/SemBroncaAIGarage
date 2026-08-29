@@ -9,6 +9,7 @@ public sealed class ServiceOrderEstimateItemEntity : Entity
     public EstimateItemType Type { get; private set; }
     public decimal Quantity { get; private set; }
     public decimal UnitPrice { get; private set; }
+    public EstimateItemAuthorizationStatus AuthorizationStatus { get; private set; }
     public decimal Total => Quantity * UnitPrice;
 
     private ServiceOrderEstimateItemEntity()
@@ -43,5 +44,13 @@ public sealed class ServiceOrderEstimateItemEntity : Entity
         Type = type;
         Quantity = quantity;
         UnitPrice = unitPrice;
+        AuthorizationStatus = EstimateItemAuthorizationStatus.Pending;
     }
+
+    internal void SetCustomerAuthorization(bool authorized) => AuthorizationStatus = authorized
+        ? EstimateItemAuthorizationStatus.CustomerAuthorized
+        : EstimateItemAuthorizationStatus.CustomerNotAuthorized;
+
+    internal void WaiveDigitalApproval() =>
+        AuthorizationStatus = EstimateItemAuthorizationStatus.DigitalApprovalWaived;
 }

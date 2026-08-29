@@ -40,7 +40,8 @@ public sealed class CustomerConfiguration
             customer.GarageId,
             customer.Document
         })
-        .IsUnique();
+        .IsUnique()
+        .HasFilter("\"Document\" <> ''");
 
         builder.HasOne(customer => customer.Garage)
             .WithMany()

@@ -1,5 +1,6 @@
 using SemBroncaAI.Garage.Application.Abstractions.Persistence;
 using SemBroncaAI.Garage.Domain.Interfaces;
+using SemBroncaAI.Garage.Domain.Common;
 
 namespace SemBroncaAI.Garage.Application.Features.Customers.UpdateCustomer;
 
@@ -18,7 +19,8 @@ public sealed class UpdateCustomerHandler
         var customer = await _repository.GetByIdAsync(id, command.GarageId, cancellationToken)
             ?? throw new InvalidOperationException("Cliente não encontrado.");
 
-        if (await _repository.ExistsByDocumentAsync(command.GarageId, command.Document.Trim(), id, cancellationToken))
+        var document = BrazilianDocument.Normalize(command.Document);
+        if (document.Length > 0 && await _repository.ExistsByDocumentAsync(command.GarageId, document, id, cancellationToken))
         {
             throw new InvalidOperationException("Já existe um cliente com esse documento nesta oficina.");
         }

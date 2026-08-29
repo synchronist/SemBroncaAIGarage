@@ -83,11 +83,12 @@ public sealed class OperationalDashboardQuery(GarageDbContext context) : IOperat
             var tenantOrderIds = orders.Select(order => order.Id);
             var decisions = await context.ServiceOrderEstimateApprovals.AsNoTracking()
                 .Where(approval => tenantOrderIds.Contains(approval.ServiceOrderId) && approval.RespondedAt >= monthStart &&
-                                   (approval.Status == EstimateApprovalStatus.Approved || approval.Status == EstimateApprovalStatus.Rejected))
-                .Select(approval => new { approval.Status, approval.EstimateTotal }).ToArrayAsync(cancellationToken);
-            var approved = decisions.Where(x => x.Status == EstimateApprovalStatus.Approved).ToArray();
-            monthly = new DashboardMonthlySummary(completedRows.Length, approved.Sum(x => x.EstimateTotal),
-                approved.Length == 0 ? 0 : approved.Average(x => x.EstimateTotal),
+                                   (approval.Status == EstimateApprovalStatus.Approved || approval.Status == EstimateApprovalStatus.PartiallyApproved || approval.Status == EstimateApprovalStatus.Rejected))
+                .Select(approval => new { approval.Status, approval.EstimateTotal, approval.ApprovedTotal }).ToArrayAsync(cancellationToken);
+            var approved = decisions.Where(x => x.Status is EstimateApprovalStatus.Approved or EstimateApprovalStatus.PartiallyApproved)
+                .Select(x => x.Status == EstimateApprovalStatus.PartiallyApproved ? x.ApprovedTotal ?? 0 : x.EstimateTotal).ToArray();
+            monthly = new DashboardMonthlySummary(completedRows.Length, approved.Sum(),
+                approved.Length == 0 ? 0 : approved.Average(),
                 decisions.Length == 0 ? 0 : decimal.Round(approved.Length * 100m / decisions.Length, 1),
                 completedRows.Length == 0 ? null : completedRows.Average(x => (x.FinishedAt - x.CreatedAt).TotalHours));
         }

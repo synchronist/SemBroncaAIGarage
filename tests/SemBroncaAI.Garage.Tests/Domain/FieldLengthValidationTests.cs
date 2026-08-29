@@ -12,7 +12,7 @@ public sealed class FieldLengthValidationTests
     public void Customer_should_accept_limits_and_reject_value_above_limit()
     {
         Should.NotThrow(() => new CustomerEntity(Guid.NewGuid(), new string('N', FieldLengthLimits.PersonName),
-            new string('1', FieldLengthLimits.Document), new string('2', FieldLengthLimits.Phone),
+            "52998224725", new string('2', FieldLengthLimits.Phone),
             new string('a', FieldLengthLimits.Email - 6) + "@x.com"));
         Should.Throw<ArgumentException>(() => new CustomerEntity(Guid.NewGuid(),
             new string('N', FieldLengthLimits.PersonName + 1), "doc", "phone", "a@b.co"));

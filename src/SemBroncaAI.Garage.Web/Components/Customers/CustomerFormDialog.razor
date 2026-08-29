@@ -1,5 +1,6 @@
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
+@using SemBroncaAI.Garage.Domain.Common
 
 @inject CustomerService CustomerService
 
@@ -8,7 +9,7 @@
         <MudForm @ref="_form">
             <div class="customer-form">
                 <MudTextField T="string" @bind-Value="_name" Label="Nome" Variant="Variant.Outlined" Required="true" RequiredError="Informe o nome." MaxLength="150" />
-                <MudTextField T="string" @bind-Value="_document" Label="Documento" Variant="Variant.Outlined" Required="true" RequiredError="Informe o documento." MaxLength="20" />
+                <MudTextField T="string" @bind-Value="_document" Label="CPF ou CNPJ (opcional)" Variant="Variant.Outlined" Validation="@(new Func<string, string?>(ValidateDocument))" MaxLength="20" />
                 <MudTextField T="string" @bind-Value="_phone" Label="Telefone" Variant="Variant.Outlined" Required="true" RequiredError="Informe o telefone." MaxLength="20" />
                 <MudTextField T="string" @bind-Value="_email" Label="E-mail" Variant="Variant.Outlined" Required="true" RequiredError="Informe o e-mail." Validation="@(new Func<string, string?>(ValidateEmail))" MaxLength="150" />
 
@@ -77,6 +78,9 @@
     private static string? ValidateEmail(string email) =>
         !string.IsNullOrWhiteSpace(email) && email.Contains('@') && !email.StartsWith('@') && !email.EndsWith('@')
             ? null : "Informe um e-mail válido.";
+
+    private static string? ValidateDocument(string document) =>
+        BrazilianDocument.IsValid(document) ? null : "Informe um CPF ou CNPJ válido.";
 
     private void Cancel() => MudDialog.Cancel();
 }

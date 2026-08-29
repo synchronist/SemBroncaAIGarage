@@ -238,7 +238,8 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("GarageId", "Document")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"Document\" <> ''");
 
                     b.ToTable("Customers", (string)null);
                 });
@@ -485,6 +486,17 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ApprovedItemIdsJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<decimal?>("ApprovedTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("ClientIp")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -492,9 +504,21 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<string>("CustomerDocument")
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)");
+
                     b.Property<string>("CustomerName")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("CustomerPhone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("EstimateSnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
 
                     b.Property<decimal>("EstimateTotal")
                         .HasPrecision(18, 2)
@@ -528,6 +552,10 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.HasKey("Id");
 
@@ -573,6 +601,9 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
+
+                    b.Property<int>("AuthorizationStatus")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("EstimateId")
                         .HasColumnType("uuid");

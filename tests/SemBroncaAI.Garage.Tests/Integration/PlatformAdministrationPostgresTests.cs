@@ -93,6 +93,38 @@ public sealed class PlatformAdministrationPostgresTests
         (await context.Users.AnyAsync(x => x.Email == $"rollback-owner-{suffix}@test.local")).ShouldBeFalse();
     }
 
+    [PostgresFact]
+    [Trait("Category", "PostgreSQLIntegration")]
+    public async Task Public_signup_should_reuse_trial_owner_and_invitation_onboarding()
+    {
+        await using var provider = CreateProvider();
+        await EnsureOwnerRoleAsync(provider);
+        var suffix = Guid.NewGuid().ToString("N");
+        Guid garageId = default;
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var signup = scope.ServiceProvider.GetRequiredService<IPublicGarageSignup>();
+            var result = await signup.SignupAsync(new($"Signup {suffix[..6]}", "11222333000181",
+                "11999999999", $"signup-{suffix}@test.local", "Owner Signup",
+                $"signup-owner-{suffix}@test.local", true));
+            garageId = result.GarageId;
+
+            var context = scope.ServiceProvider.GetRequiredService<GarageDbContext>();
+            var subscription = await context.GarageSubscriptions.SingleAsync(x => x.GarageId == garageId);
+            subscription.Status.ShouldBe(SubscriptionStatus.Trial);
+            (subscription.TrialEndsAt!.Value - subscription.StartedAt).TotalDays.ShouldBe(90, 0.01);
+            var owner = await context.Users.SingleAsync(x => x.GarageId == garageId);
+            owner.Active.ShouldBeFalse();
+            owner.EmailConfirmed.ShouldBeFalse();
+            (await context.TeamInvitations.AnyAsync(x => x.GarageId == garageId && x.UserId == owner.Id)).ShouldBeTrue();
+        }
+        finally
+        {
+            if (garageId != Guid.Empty) await CleanupAsync(provider, garageId);
+        }
+    }
+
     private static ServiceProvider CreateProvider()
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>

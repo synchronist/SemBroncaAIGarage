@@ -82,20 +82,14 @@ else
 
             @if (HasPermission(ApplicationPermissions.ViewEstimateValues))
             {
-                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Print" OnClick="OpenPrintView">
-                    Imprimir OS
-                </MudButton>
-                <MudButton Variant="Variant.Outlined" Disabled="_isDownloadingPdf" StartIcon="@Icons.Material.Filled.Download" OnClick="@(() => DownloadPdfAsync(false))">
-                    @(_isDownloadingPdf ? "Gerando PDF..." : "Baixar OS em PDF")
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Description" OnClick="OpenPrintView">
+                    Visualizar OS
                 </MudButton>
 
                 @if (_serviceOrder.Estimate is not null)
                 {
                     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.RequestQuote" OnClick="OpenEstimatePrintView">
-                        Imprimir orçamento
-                    </MudButton>
-                    <MudButton Variant="Variant.Outlined" Disabled="_isDownloadingPdf" StartIcon="@Icons.Material.Filled.Download" OnClick="@(() => DownloadPdfAsync(true))">
-                        @(_isDownloadingPdf ? "Gerando PDF..." : "Baixar orçamento em PDF")
+                        Visualizar orçamento
                     </MudButton>
                 }
             }
@@ -446,6 +440,10 @@ else
                                 <span>
                                     <strong>@item.Description</strong>
                                     <small>@FormatQuantity(item.Quantity) × @FormatCurrency(item.UnitPrice)</small>
+                                    @if (GetApprovalItemDecision(item) is { } decision)
+                                    {
+                                        <small><b>@decision</b></small>
+                                    }
                                 </span>
                                 <strong>@FormatCurrency(item.Total)</strong>
                             </div>
@@ -591,6 +589,8 @@ else
                 <div><span class="action-caption">Aprovação do cliente</span><strong>@ApprovalStatusLabel</strong>
                     <small>Enviado em @_serviceOrder.Approval.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy 'às' HH:mm")</small>
                     @if (_serviceOrder.Approval.RespondedAt is not null) { <small>Respondido em @_serviceOrder.Approval.RespondedAt.Value.ToLocalTime().ToString("dd/MM/yyyy 'às' HH:mm")</small> }
+                    @if (!string.IsNullOrWhiteSpace(_serviceOrder.Approval.CustomerName)) { <small>Declarado por @_serviceOrder.Approval.CustomerName @(_serviceOrder.Approval.CustomerDocumentMasked is null ? null : $"({_serviceOrder.Approval.CustomerDocumentMasked})")</small> }
+                    @if (_serviceOrder.Approval.ApprovedTotal is not null) { <small>Valor aprovado: @_serviceOrder.Approval.ApprovedTotal.Value.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</small> }
                     @if (!string.IsNullOrWhiteSpace(_serviceOrder.Approval.CustomerComment)) { <p><b>Motivo:</b> @_serviceOrder.Approval.CustomerComment</p> }
                 </div>
                 <div class="action-buttons">
@@ -615,6 +615,8 @@ else
                                     <span>@(_serviceOrder.ApprovalHistory.Count - approval.index)º envio</span>
                                     <strong>@GetApprovalHistoryStatus(approval.value)</strong>
                                     <small>@approval.value.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy 'às' HH:mm")</small>
+                                    @if (!string.IsNullOrWhiteSpace(approval.value.CustomerName)) { <small>@approval.value.CustomerName @approval.value.CustomerDocumentMasked</small> }
+                                    @if (approval.value.ApprovedTotal is not null) { <small>Valor aprovado: @approval.value.ApprovedTotal.Value.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</small> }
                                     @if (!string.IsNullOrWhiteSpace(approval.value.CustomerComment)) { <p>“@approval.value.CustomerComment”</p> }
                                 </article>
                             }
@@ -665,7 +667,7 @@ else
                 {
                     @if ((_serviceOrder.Status == "Diagnosis" || _serviceOrder.Status == "WaitingApproval") &&
                          _serviceOrder.Estimate is not null &&
-                         _serviceOrder.Approval?.Status != "Approved" &&
+                         !ApprovalAccepted &&
                          _serviceOrder.DigitalApprovalWaivedAt is null &&
                          HasPermission(ApplicationPermissions.SendEstimateForApproval))
                     {
@@ -794,13 +796,14 @@ else
          (_serviceOrder.Diagnosis is null ||
           _serviceOrder.Estimate is null)) ||
         (_serviceOrder?.Status == "WaitingApproval" &&
-         _serviceOrder.Approval?.Status != "Approved" &&
+         !ApprovalAccepted &&
          _serviceOrder.DigitalApprovalWaivedAt is null);
 
+    private bool ApprovalAccepted => _serviceOrder?.Approval?.Status is "Approved" or "PartiallyApproved";
     private bool ApprovalExpired => _serviceOrder?.Approval is { Status: "Pending" } approval && DateTimeOffset.UtcNow >= approval.ExpiresAt;
     private bool _showManualApprovalLink;
     private string ApprovalStatusLabel => ApprovalExpired ? "Link expirado" : _serviceOrder?.Approval?.Status switch
-    { "Pending" => "Aguardando aprovação", "Approved" => "✓ Aprovado pelo cliente", "Rejected" => "✕ Recusado", _ => "Link invalidado" };
+    { "Pending" => "Aguardando aprovação", "Approved" => "✓ Aprovado pelo cliente", "PartiallyApproved" => "✓ Aprovado parcialmente", "Rejected" => "✕ Recusado", _ => "Link invalidado" };
     private string ApprovalLink => new Uri(new Uri(Navigation.BaseUri), $"approval/{_serviceOrder!.Approval!.Token}").ToString();
 
     private async Task CopyApprovalLinkAsync()
@@ -1007,8 +1010,16 @@ else
     {
         if (approval.InvalidatedAt is not null && approval.Status == "Pending") return "Substituído por novo envio";
         if (approval.Status == "Pending" && approval.ExpiresAt <= DateTimeOffset.UtcNow) return "Expirado";
-        return approval.Status switch { "Pending" => "Aguardando aprovação", "Approved" => "Aprovado", "Rejected" => "Recusado", _ => approval.Status };
+        return approval.Status switch { "Pending" => "Aguardando aprovação", "Approved" => "Aprovado", "PartiallyApproved" => "Aprovado parcialmente", "Rejected" => "Recusado", _ => approval.Status };
     }
+
+    private static string? GetApprovalItemDecision(ServiceOrderEstimateItemModel item) => item.AuthorizationStatus switch
+    {
+        "CustomerAuthorized" => "Autorizado pelo cliente",
+        "CustomerNotAuthorized" => "Não autorizado pelo cliente",
+        "DigitalApprovalWaived" => "Aceite digital dispensado pela oficina",
+        _ => null
+    };
 
     private async Task SaveDiagnosisAsync()
     {
@@ -1190,12 +1201,12 @@ else
             "Diagnosis" =>
                 "Orçamento preparado. Aguardando a equipe administrativa enviar para aprovação.",
 
-            "WaitingApproval" when _serviceOrder.Approval?.Status == "Approved" &&
+            "WaitingApproval" when ApprovalAccepted &&
                                    HasPermission(ApplicationPermissions.StartService) =>
-                "Orçamento aprovado. O serviço pode ser iniciado.",
+                _serviceOrder.Approval?.Status == "PartiallyApproved" ? "Itens aprovados parcialmente. O serviço pode ser iniciado." : "Orçamento aprovado. O serviço pode ser iniciado.",
 
-            "WaitingApproval" when _serviceOrder.Approval?.Status == "Approved" =>
-                "Orçamento aprovado. Aguardando o Mecânico ou Proprietário iniciar o serviço.",
+            "WaitingApproval" when ApprovalAccepted =>
+                _serviceOrder.Approval?.Status == "PartiallyApproved" ? "Itens aprovados parcialmente. Aguardando o Mecânico ou Proprietário iniciar o serviço." : "Orçamento aprovado. Aguardando o Mecânico ou Proprietário iniciar o serviço.",
 
             "WaitingApproval" when _serviceOrder.DigitalApprovalWaivedAt is not null &&
                                    HasPermission(ApplicationPermissions.StartService) =>

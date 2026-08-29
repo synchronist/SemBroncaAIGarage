@@ -57,8 +57,8 @@ public sealed class PostgresConcurrencyTests
     public async Task Concurrent_approval_sends_should_converge_to_one_active_link()
     {
         var garage = new GarageEntity("QA B03", $"QC{Guid.NewGuid():N}"[..20], "11999999999", "qa-b03@local.test");
-        var customer = new CustomerEntity(garage.Id, "QA B03", $"QD{Guid.NewGuid():N}"[..20], "11999999999", "qa-b03@local.test");
-        var vehicle = new VehicleEntity(garage.Id, customer.Id, $"Q{Random.Shared.Next(100000, 999999)}A", "QA", "B03", "Test", 2026, "Preto", "Flex", 1);
+        var customer = new CustomerEntity(garage.Id, "QA B03", "", "11999999999", "qa-b03@local.test");
+        var vehicle = new VehicleEntity(garage.Id, customer.Id, "QAB1C23", "QA", "B03", "Test", 2026, "Preto", "Flex", 1);
         var order = new ServiceOrderEntity(garage.Id, vehicle.Id, 1, "QA B03", 1);
         order.StartDiagnosis();
         order.SaveDiagnosis("Diagnóstico QA");
@@ -80,7 +80,8 @@ public sealed class PostgresConcurrencyTests
                 var handler = new SendEstimateForApprovalHandler(
                     repository,
                     new Tokens(index),
-                    new ApprovalRequestPersistence(context));
+                    new ApprovalRequestPersistence(context),
+                    new ApprovalValidity());
                 return await handler.HandleAsync(order.Id);
             }));
 
@@ -103,6 +104,11 @@ public sealed class PostgresConcurrencyTests
             await cleanup.Customers.Where(x => x.GarageId == garage.Id).ExecuteDeleteAsync();
             await cleanup.Garages.Where(x => x.Id == garage.Id).ExecuteDeleteAsync();
         }
+    }
+
+    private sealed class ApprovalValidity : IApprovalValidityProvider
+    {
+        public int DefaultValidityDays => 7;
     }
 
     private static async Task<int[]> ReserveAsync(Guid garageId, int count) =>

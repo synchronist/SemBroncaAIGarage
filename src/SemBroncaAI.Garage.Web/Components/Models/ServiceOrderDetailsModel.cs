@@ -62,11 +62,21 @@ public sealed record ServiceOrderTechnicalHistoryPageModel(
 
 public sealed record ServiceOrderApprovalModel(string Status, DateTimeOffset CreatedAt,
     DateTimeOffset ExpiresAt, DateTimeOffset? RespondedAt, string? CustomerName,
-    string? CustomerComment, string? Token);
+    string? CustomerComment, string? Token)
+{
+    public decimal? ApprovedTotal { get; init; }
+    public string? CustomerDocumentMasked { get; init; }
+    public IReadOnlyCollection<Guid> ApprovedItemIds { get; init; } = [];
+}
 
 public sealed record ServiceOrderApprovalHistoryModel(string Status, DateTimeOffset CreatedAt,
-    DateTimeOffset ExpiresAt, DateTimeOffset? RespondedAt, DateTimeOffset? InvalidatedAt,
-    string? CustomerName, string? CustomerComment);
+      DateTimeOffset ExpiresAt, DateTimeOffset? RespondedAt, DateTimeOffset? InvalidatedAt,
+      string? CustomerName, string? CustomerComment)
+{
+    public decimal? ApprovedTotal { get; init; }
+    public string? CustomerDocumentMasked { get; init; }
+    public IReadOnlyCollection<Guid> ApprovedItemIds { get; init; } = [];
+}
 
 public sealed record ServiceOrderDiagnosisModel(
     Guid Id,
@@ -91,4 +101,5 @@ public sealed record ServiceOrderEstimateItemModel(
     string Type,
     decimal Quantity,
     decimal UnitPrice,
-    decimal Total);
+    decimal Total,
+    string AuthorizationStatus = "Pending");

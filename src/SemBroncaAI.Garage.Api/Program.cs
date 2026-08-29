@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using SemBroncaAI.Garage.Application.Features.TeamManagement;
 using SemBroncaAI.Garage.Application.Abstractions.Email;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,6 +74,7 @@ builder.Services.AddRateLimiter(options =>
 {
     ApprovalRateLimiting.Configure(options);
     AuthenticationRateLimiting.AddLoginPolicy(options);
+    PublicSignupRateLimiting.Configure(options);
 });
 builder.Services.AddHostedService<ApplicationIdentityRoleHostedService>();
 if (builder.Environment.IsDevelopment())

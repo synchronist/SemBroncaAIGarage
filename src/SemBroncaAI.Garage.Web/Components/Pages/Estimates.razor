@@ -108,7 +108,7 @@
 
 @code {
     private static readonly System.Globalization.CultureInfo _ptBr = System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
-    private static readonly (string Label, string? Value)[] Filters = [("Todos", null), ("Não enviados", "NotSent"), ("Aguardando", "Pending"), ("Aprovados", "Approved"), ("Recusados", "Rejected"), ("Expirados", "Expired")];
+    private static readonly (string Label, string? Value)[] Filters = [("Todos", null), ("Não enviados", "NotSent"), ("Aguardando", "Pending"), ("Aprovados", "Approved"), ("Aprovados parcialmente", "PartiallyApproved"), ("Recusados", "Rejected"), ("Expirados", "Expired")];
     private EstimateListModel? _data; private CancellationTokenSource? _searchCts;
     private string _search = string.Empty; private string? _status; private int _page = 1; private bool _loading;
     private string _garageName = "Oficina"; private string? _garagePhone;
@@ -131,6 +131,6 @@
     private async Task CopyLinkAsync(EstimateListItemModel item) { await JS.InvokeVoidAsync("sbgCopyText", Link(item)); Snackbar.Add("Link copiado.", Severity.Success); }
     private async Task ShareAsync(EstimateListItemModel item) { var parameters = new DialogParameters { ["Model"] = ShareBuilder.Build(item, _garageName, _garagePhone, Navigation.BaseUri) }; await DialogService.ShowAsync<WhatsAppShareDialog>("Compartilhar orçamento", parameters, new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseButton = true }); }
     private async Task DownloadPdfAsync(EstimateListItemModel item) { try { var file = await ServiceOrderService.DownloadPdfAsync(item.ServiceOrderId, true); await JS.InvokeVoidAsync("sbgDownloadFile", file.FileName, "application/pdf", Convert.ToBase64String(file.Content)); } catch (Exception e) { Snackbar.Add(e.Message, Severity.Error); } }
-    private static string CommercialLabel(string value) => value switch { "NotSent" => "Não enviado", "Pending" => "Aguardando aprovação", "Approved" => "Aprovado", "Rejected" => "Recusado", "Expired" => "Expirado", _ => value };
+    private static string CommercialLabel(string value) => value switch { "NotSent" => "Não enviado", "Pending" => "Aguardando aprovação", "Approved" => "Aprovado", "PartiallyApproved" => "Aprovado parcialmente", "Rejected" => "Recusado", "Expired" => "Expirado", _ => value };
     private static string OperationalLabel(string value) => value switch { "Received" => "Recebido", "Diagnosis" => "Em diagnóstico", "WaitingApproval" => "Aguardando aprovação", "InProgress" => "Em serviço", "WaitingParts" => "Aguardando peças", "Finished" => "Finalizado", "Delivered" => "Entregue", "Cancelled" => "Cancelado", _ => value };
 }

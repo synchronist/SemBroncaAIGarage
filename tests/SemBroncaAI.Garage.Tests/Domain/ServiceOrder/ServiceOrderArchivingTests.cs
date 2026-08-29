@@ -92,7 +92,8 @@ public sealed class ServiceOrderArchivingTests
         var now = DateTimeOffset.UtcNow;
         var approval = order.SendForApproval(Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"), "protected", now.AddDays(1), now);
         if (target == ServiceOrderStatus.WaitingApproval) return order;
-        order.ApproveEstimate(approval.Id, "Cliente", now.AddMinutes(1)); order.StartService();
+        order.ApproveEstimate(approval.Id, "Cliente da Silva", "52998224725", "11999999999",
+            order.Estimate!.Items.Select(item => item.Id).ToArray(), null, null, null, now.AddMinutes(1)); order.StartService();
         if (target == ServiceOrderStatus.InProgress) return order;
         if (target == ServiceOrderStatus.WaitingParts) { order.WaitForParts(); return order; }
         order.Finish(); return order;

@@ -11,6 +11,7 @@ public static class EstimateCommercialStatusResolver
         return status switch
         {
             EstimateApprovalStatus.Approved => EstimateCommercialStatus.Approved,
+            EstimateApprovalStatus.PartiallyApproved => EstimateCommercialStatus.PartiallyApproved,
             EstimateApprovalStatus.Rejected => EstimateCommercialStatus.Rejected,
             EstimateApprovalStatus.Pending when expiresAt <= now => EstimateCommercialStatus.Expired,
             EstimateApprovalStatus.Pending => EstimateCommercialStatus.Pending,

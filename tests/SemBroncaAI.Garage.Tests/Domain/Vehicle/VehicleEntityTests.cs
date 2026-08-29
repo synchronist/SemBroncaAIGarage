@@ -8,6 +8,8 @@ public sealed class VehicleEntityTests
     [Fact] public void Should_Reject_Empty_Garage(){Should.Throw<ArgumentException>(()=>new VehicleEntity(Guid.Empty,Guid.CreateVersion7(),"ABC1234","Fiat","Uno","",2020,"","",0));}
     [Fact] public void Should_Reject_Empty_Customer(){Should.Throw<ArgumentException>(()=>new VehicleEntity(Guid.CreateVersion7(),Guid.Empty,"ABC1234","Fiat","Uno","",2020,"","",0));}
     [Fact] public void Should_Reject_Empty_Plate(){Should.Throw<ArgumentException>(()=>Create(""));}
+    [Theory][InlineData("ABC12D3")][InlineData("1234ABC")][InlineData("AAAA123")]
+    public void Should_Reject_Invalid_Brazilian_Plate(string plate){Should.Throw<ArgumentException>(()=>Create(plate));}
     [Fact] public void Should_Reject_Negative_Mileage(){Should.Throw<ArgumentOutOfRangeException>(()=>Create(mileage:-1));}
     [Fact] public void Should_Update_Mileage(){var v=Create();v.UpdateMileage(12345);v.Mileage.ShouldBe(12345);}
     private static VehicleEntity Create(string plate="ABC1234",int mileage=0)=>new(Guid.CreateVersion7(),Guid.CreateVersion7(),plate,"Fiat","Uno","Mille",2020,"Prata","Flex",mileage);

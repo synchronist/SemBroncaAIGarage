@@ -31,6 +31,7 @@ public sealed class ApiOperationalMiddleware(RequestDelegate next, ILogger<ApiOp
 
     public async Task InvokeAsync(HttpContext context, GarageDbContext dbContext)
     {
+        var startedAt = System.Diagnostics.Stopwatch.GetTimestamp();
         var correlationId = Resolve(context.Request.Headers[HeaderName].FirstOrDefault(), context.TraceIdentifier);
         context.TraceIdentifier = correlationId;
         context.Response.Headers[HeaderName] = correlationId;
@@ -48,10 +49,19 @@ public sealed class ApiOperationalMiddleware(RequestDelegate next, ILogger<ApiOp
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Unexpected API error for {Method} {Path}", context.Request.Method, context.Request.Path);
+            logger.LogError(exception, "Unexpected API error for {Method} {Route}", context.Request.Method, ResolveRoute(context));
             throw;
         }
+        finally
+        {
+            logger.LogInformation("API request {Method} {Route} returned {StatusCode} in {ElapsedMs:F1} ms",
+                context.Request.Method, ResolveRoute(context), context.Response.StatusCode,
+                System.Diagnostics.Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
+        }
     }
+
+    private static string ResolveRoute(HttpContext context) =>
+        (context.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText ?? "unmatched";
 
     private static async Task<bool> AuthorizeSubscriptionOperationAsync(
         HttpContext context,

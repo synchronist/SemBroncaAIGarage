@@ -21,6 +21,13 @@ public sealed class ServiceOrderEstimateApprovalConfiguration : IEntityTypeConfi
             .HasFilter("\"Status\" = 1 AND \"InvalidatedAt\" IS NULL");
         builder.Property(x => x.CustomerName).HasMaxLength(200);
         builder.Property(x => x.CustomerComment).HasMaxLength(1000);
+        builder.Property(x => x.CustomerDocument).HasMaxLength(14);
+        builder.Property(x => x.CustomerPhone).HasMaxLength(20);
+        builder.Property(x => x.ClientIp).HasMaxLength(64);
+        builder.Property(x => x.UserAgent).HasMaxLength(500);
+        builder.Property(x => x.EstimateSnapshotJson).HasColumnType("jsonb").IsRequired();
+        builder.Property(x => x.ApprovedItemIdsJson).HasColumnType("jsonb");
+        builder.Property(x => x.ApprovedTotal).HasPrecision(18, 2);
         builder.Property(x => x.RespondedAt).IsConcurrencyToken();
         builder.Property(x => x.EstimateTotal).HasPrecision(18, 2);
         builder.HasOne<ServiceOrderEntity>().WithMany(x => x.EstimateApprovals)

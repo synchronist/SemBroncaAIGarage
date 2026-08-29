@@ -2,6 +2,7 @@
 
 using SemBroncaAI.Garage.Application.Abstractions.Security;
 using SemBroncaAI.Garage.Application.Features.ServiceOrders.Approval;
+using System.Text.Json;
 
 namespace SemBroncaAI.Garage.Application.Features.ServiceOrders.GetServiceOrderById;
 
@@ -99,7 +100,8 @@ public sealed class GetServiceOrderByIdHandler
                     item.Type,
                     item.Quantity,
                     item.UnitPrice,
-                    item.Total)).ToArray());
+                    item.Total,
+                    item.AuthorizationStatus)).ToArray());
         }
 
         ApprovalSummaryResponse? approvalResponse = null;
@@ -111,14 +113,27 @@ public sealed class GetServiceOrderByIdHandler
                 try { token = _tokenService.Unprotect(approval.ProtectedToken); }
                 catch { token = null; }
             }
-            approvalResponse = new(approval.Status, approval.CreatedAt, approval.ExpiresAt,
-                approval.RespondedAt, approval.CustomerName, approval.CustomerComment, token);
+            approvalResponse = new ApprovalSummaryResponse(approval.Status, approval.CreatedAt, approval.ExpiresAt,
+                approval.RespondedAt, approval.CustomerName, approval.CustomerComment, token)
+            {
+                ApprovedTotal = approval.ApprovedTotal,
+                CustomerDocumentMasked = approval.CustomerDocument is { Length: 11 } document
+                    ? $"***.{document.Substring(3, 3)}.{document.Substring(6, 3)}-**"
+                    : null,
+                ApprovedItemIds = JsonSerializer.Deserialize<Guid[]>(approval.ApprovedItemIdsJson ?? "[]") ?? []
+            };
         }
 
         var approvalHistory = serviceOrder.EstimateApprovals
             .OrderByDescending(item => item.CreatedAt)
             .Select(item => new ApprovalHistoryResponse(item.Status, item.CreatedAt, item.ExpiresAt,
-                item.RespondedAt, item.InvalidatedAt, item.CustomerName, item.CustomerComment))
+                item.RespondedAt, item.InvalidatedAt, item.CustomerName, item.CustomerComment)
+            {
+                ApprovedTotal = item.ApprovedTotal,
+                CustomerDocumentMasked = item.CustomerDocument is { Length: 11 } document
+                    ? $"***.{document.Substring(3, 3)}.{document.Substring(6, 3)}-**" : null,
+                ApprovedItemIds = JsonSerializer.Deserialize<Guid[]>(item.ApprovedItemIdsJson ?? "[]") ?? []
+            })
             .ToArray();
 
         return new GetServiceOrderByIdResponse(

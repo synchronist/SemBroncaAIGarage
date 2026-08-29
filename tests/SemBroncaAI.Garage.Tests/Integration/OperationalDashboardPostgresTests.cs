@@ -70,8 +70,8 @@ public sealed class OperationalDashboardPostgresTests
     {
         var suffix = Guid.NewGuid().ToString("N");
         var garage = new GarageEntity($"Dashboard {prefix}", $"{prefix}{suffix}"[..20], "11999999999", $"{prefix}-{suffix}@test.local");
-        var customer = new CustomerEntity(garage.Id, $"Cliente {prefix}", $"C{suffix}"[..20], "11999999999", $"c-{suffix}@test.local");
-        var vehicle = new VehicleEntity(garage.Id, customer.Id, $"{prefix}{suffix[..5]}".ToUpperInvariant(), "Marca", "Modelo", "V1", 2026, "Preto", "Flex", 10);
+        var customer = new CustomerEntity(garage.Id, $"Cliente {prefix}", "", "11999999999", $"c-{suffix}@test.local");
+        var vehicle = new VehicleEntity(garage.Id, customer.Id, "ABC1D23", "Marca", "Modelo", "V1", 2026, "Preto", "Flex", 10);
         return (garage, customer, vehicle);
     }
 
@@ -85,7 +85,8 @@ public sealed class OperationalDashboardPostgresTests
         order.StartDiagnosis(); order.SaveDiagnosis("Diagnóstico");
         order.SaveEstimate([new("Serviço", EstimateItemType.Service, 1, total)]);
         var approval = order.SendForApproval(token.PadLeft(64, token[0]), $"token-{token}", now.AddDays(7), now);
-        order.ApproveEstimate(approval.Id, "Cliente", now.AddSeconds(1));
+        order.ApproveEstimate(approval.Id, "Cliente da Silva", "52998224725", "11999999999",
+            order.Estimate!.Items.Select(item => item.Id).ToArray(), null, null, null, now.AddSeconds(1));
         order.StartService(); order.Finish();
         return order;
     }

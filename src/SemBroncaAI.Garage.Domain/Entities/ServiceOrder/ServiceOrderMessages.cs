@@ -17,6 +17,9 @@ public static class ServiceOrderMessages
     public const string ServiceStarted =
         "Serviço iniciado.";
 
+    public const string PartiallyApprovedServiceStarted =
+        "Serviço iniciado somente para os itens aprovados pelo cliente.";
+
     public const string WaitingParts =
         "Ordem aguardando peças.";
 

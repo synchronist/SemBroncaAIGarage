@@ -11,6 +11,7 @@ using SemBroncaAI.Garage.Application.Abstractions.Persistence;
 using SemBroncaAI.Garage.Application.Abstractions.Security;
 using SemBroncaAI.Garage.Application.Features.TeamManagement;
 using SemBroncaAI.Garage.Domain.Entities;
+using SemBroncaAI.Garage.Domain.Common;
 
 namespace SemBroncaAI.Garage.Infrastructure.Services;
 
@@ -21,7 +22,7 @@ public sealed class PlatformGarageAdministration(
     IAuditWriter auditWriter,
     ICurrentUser currentUser,
     ITeamInvitationSender invitationSender,
-    IConfiguration configuration) : IPlatformGarageAdministration
+    IConfiguration configuration) : IPlatformGarageAdministration, IPublicGarageSignup
 {
     public async Task<PlatformDashboardResponse> GetDashboardAsync(CancellationToken cancellationToken = default)
     {
@@ -118,7 +119,9 @@ public sealed class PlatformGarageAdministration(
             ServiceOrdersToday = await context.ServiceOrders.AsNoTracking().CountAsync(x => x.CreatedAt >= today, cancellationToken),
             ServiceOrdersLast30Days = await context.ServiceOrders.AsNoTracking().CountAsync(x => x.CreatedAt >= thirtyDaysAgo, cancellationToken),
             DigitalApprovalsLast30Days = await context.ServiceOrderEstimateApprovals.AsNoTracking()
-                .CountAsync(x => x.Status == Domain.Entities.ServiceOrder.EstimateApprovalStatus.Approved && x.RespondedAt >= thirtyDaysAgo, cancellationToken),
+                .CountAsync(x => (x.Status == Domain.Entities.ServiceOrder.EstimateApprovalStatus.Approved ||
+                                  x.Status == Domain.Entities.ServiceOrder.EstimateApprovalStatus.PartiallyApproved) &&
+                                 x.RespondedAt >= thirtyDaysAgo, cancellationToken),
             DigitalApprovalWaiversLast30Days = await context.ServiceOrders.AsNoTracking()
                 .CountAsync(x => x.DigitalApprovalWaivedAt >= thirtyDaysAgo, cancellationToken),
             TrialsEndingNext7Days = facts.Count(x => x.Source.Status == SubscriptionStatus.Trial && x.Source.TrialEndsAt >= now && x.Source.TrialEndsAt <= nextSevenDays),
@@ -214,6 +217,37 @@ public sealed class PlatformGarageAdministration(
 
     public async Task<CreatePlatformGarageResponse> CreateAsync(
         CreatePlatformGarageCommand command, CancellationToken cancellationToken = default)
+        => await CreateCoreAsync(command, currentUser.UserId, "PlatformAdmin", cancellationToken);
+
+    public async Task<CreatePlatformGarageResponse> SignupAsync(
+        PublicGarageSignupCommand command, CancellationToken cancellationToken = default)
+    {
+        var signupErrors = new Dictionary<string, string[]>();
+        var normalizedDocument = BrazilianDocument.Normalize(command.Document);
+        if (!BrazilianDocument.IsValid(normalizedDocument))
+            signupErrors["document"] = ["Informe um CPF ou CNPJ válido."];
+        if (!BrazilianPhone.IsValid(command.Phone))
+            signupErrors["phone"] = ["Informe um telefone válido."];
+        if (!command.AcceptedTerms)
+            signupErrors["acceptedTerms"] = ["É necessário aceitar os Termos de Uso e a Política de Privacidade."];
+        if (signupErrors.Count > 0) throw new PlatformGarageValidationException(signupErrors);
+        var platformAdminRoleId = await context.Roles.AsNoTracking()
+            .Where(role => role.NormalizedName == ApplicationRoles.PlatformAdmin.ToUpperInvariant())
+            .Select(role => (Guid?)role.Id).SingleOrDefaultAsync(cancellationToken);
+        var systemActorId = platformAdminRoleId is null ? null : await context.UserRoles.AsNoTracking()
+            .Where(userRole => userRole.RoleId == platformAdminRoleId)
+            .Select(userRole => (Guid?)userRole.UserId).FirstOrDefaultAsync(cancellationToken);
+        if (systemActorId is null)
+            throw new InvalidOperationException("O cadastro público não está disponível no momento.");
+        var platformCommand = new CreatePlatformGarageCommand(command.Name, normalizedDocument,
+            BrazilianPhone.Normalize(command.Phone),
+            command.Email, command.OwnerName, command.OwnerEmail, command.OwnerEmail);
+        return await CreateCoreAsync(platformCommand, systemActorId.Value, "PublicSignup", cancellationToken);
+    }
+
+    private async Task<CreatePlatformGarageResponse> CreateCoreAsync(
+        CreatePlatformGarageCommand command, Guid actorUserId, string actorContext,
+        CancellationToken cancellationToken)
     {
         Validate(command);
         var strategy = context.Database.CreateExecutionStrategy();
@@ -245,16 +279,16 @@ public sealed class PlatformGarageAdministration(
                 throw new InvalidOperationException("Não foi possível concluir o cadastro da oficina.");
 
             var token = InvitationTokens.Create();
-            var invitation = new TeamInvitationEntity(garage.Id, owner.Id, currentUser.UserId,
+            var invitation = new TeamInvitationEntity(garage.Id, owner.Id, actorUserId,
                 InvitationTokens.Hash(token), DateTime.UtcNow.AddHours(24));
             context.TeamInvitations.Add(invitation);
 
-            auditWriter.Add(garage.Id, AuditActions.GarageCreated, "Garage", garage.Id.ToString("D"),
-                "Oficina criada com assinatura inicial.");
-            auditWriter.Add(garage.Id, AuditActions.OwnerPendingCreated, "ApplicationUser", owner.Id.ToString("D"),
-                "Proprietário criado aguardando ativação.");
-            auditWriter.Add(garage.Id, AuditActions.OwnerInvitationCreated, "TeamInvitation", invitation.Id.ToString("D"),
-                "Convite inicial do proprietário gerado.");
+            AddOnboardingAudit(garage.Id, actorUserId, actorContext, AuditActions.GarageCreated,
+                "Garage", garage.Id, "Oficina criada com assinatura inicial.");
+            AddOnboardingAudit(garage.Id, actorUserId, actorContext, AuditActions.OwnerPendingCreated,
+                "ApplicationUser", owner.Id, "Proprietário criado aguardando ativação.");
+            AddOnboardingAudit(garage.Id, actorUserId, actorContext, AuditActions.OwnerInvitationCreated,
+                "TeamInvitation", invitation.Id, "Convite inicial do proprietário gerado.");
             await context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return (garage, owner, invitation, token);
@@ -263,6 +297,18 @@ public sealed class PlatformGarageAdministration(
         var deliveryStatus = await DeliverOwnerInvitationAsync(
             result.garage.Name, result.owner, result.invitation, result.token, cancellationToken);
         return new(result.garage.Id, result.garage.Name, result.garage.Active, deliveryStatus);
+    }
+
+    private void AddOnboardingAudit(Guid garageId, Guid actorUserId, string actorContext,
+        string action, string entityType, Guid entityId, string summary)
+    {
+        if (actorContext == "PlatformAdmin")
+        {
+            auditWriter.Add(garageId, action, entityType, entityId.ToString("D"), summary);
+            return;
+        }
+        context.AuditEntries.Add(new AuditEntryEntity(DateTime.UtcNow, actorUserId, actorContext,
+            garageId, action, entityType, entityId.ToString("D"), summary));
     }
 
     public async Task<OwnerInvitationOperationResponse?> ResendOwnerInvitationAsync(

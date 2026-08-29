@@ -16,6 +16,7 @@ public sealed class ServiceOrderEstimateItemConfiguration : IEntityTypeConfigura
         builder.Property(x => x.Type).HasConversion<int>().IsRequired();
         builder.Property(x => x.Quantity).HasPrecision(12, 3).IsRequired();
         builder.Property(x => x.UnitPrice).HasPrecision(12, 2).IsRequired();
+        builder.Property(x => x.AuthorizationStatus).HasConversion<int>().IsRequired();
         builder.Ignore(x => x.Total);
 
         builder.HasOne<ServiceOrderEstimateEntity>()

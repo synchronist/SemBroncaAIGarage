@@ -74,7 +74,8 @@ public sealed class ServiceOrderConcurrencyModelTests
         var approval = order.SendForApproval("A".PadLeft(64, 'A'), "protected", now.AddDays(7), now);
         context.Attach(order);
 
-        order.ApproveEstimate(approval.Id, "Cliente", now.AddMinutes(1));
+        order.ApproveEstimate(approval.Id, "Cliente da Silva", "52998224725", "11999999999",
+            order.Estimate!.Items.Select(item => item.Id).ToArray(), null, null, null, now.AddMinutes(1));
         typeof(GarageDbContext).GetMethod(
             "IncrementServiceOrderVersions",
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!

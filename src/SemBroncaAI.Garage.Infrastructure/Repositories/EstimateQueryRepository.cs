@@ -43,6 +43,7 @@ public sealed class EstimateQueryRepository(GarageDbContext context, IApprovalTo
                 EstimateCommercialStatus.NotSent => shaped.Where(x => x.Approval == null || x.Approval.InvalidatedAt != null),
                 EstimateCommercialStatus.Pending => shaped.Where(x => x.Approval != null && x.Approval.InvalidatedAt == null && x.Approval.Status == EstimateApprovalStatus.Pending && x.Approval.ExpiresAt > now),
                 EstimateCommercialStatus.Approved => shaped.Where(x => x.Approval != null && x.Approval.InvalidatedAt == null && x.Approval.Status == EstimateApprovalStatus.Approved),
+                EstimateCommercialStatus.PartiallyApproved => shaped.Where(x => x.Approval != null && x.Approval.InvalidatedAt == null && x.Approval.Status == EstimateApprovalStatus.PartiallyApproved),
                 EstimateCommercialStatus.Rejected => shaped.Where(x => x.Approval != null && x.Approval.InvalidatedAt == null && x.Approval.Status == EstimateApprovalStatus.Rejected),
                 EstimateCommercialStatus.Expired => shaped.Where(x => x.Approval != null && x.Approval.InvalidatedAt == null && x.Approval.Status == EstimateApprovalStatus.Pending && x.Approval.ExpiresAt <= now),
                 _ => shaped
@@ -54,7 +55,7 @@ public sealed class EstimateQueryRepository(GarageDbContext context, IApprovalTo
             .GroupBy(_ => 1)
             .Select(group => new EstimateIndicators(
                 group.Count(a => a != null && a.InvalidatedAt == null && a.Status == EstimateApprovalStatus.Pending && a.ExpiresAt > now),
-                group.Count(a => a != null && a.InvalidatedAt == null && a.Status == EstimateApprovalStatus.Approved),
+                group.Count(a => a != null && a.InvalidatedAt == null && (a.Status == EstimateApprovalStatus.Approved || a.Status == EstimateApprovalStatus.PartiallyApproved)),
                 group.Count(a => a != null && a.InvalidatedAt == null && a.Status == EstimateApprovalStatus.Rejected),
                 group.Where(a => a != null && a.InvalidatedAt == null && a.Status == EstimateApprovalStatus.Pending && a.ExpiresAt > now).Sum(a => a!.EstimateTotal)))
             .FirstOrDefaultAsync(cancellationToken) ?? new EstimateIndicators(0, 0, 0, 0);

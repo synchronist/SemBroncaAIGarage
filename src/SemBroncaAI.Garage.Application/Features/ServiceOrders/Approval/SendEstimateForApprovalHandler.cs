@@ -5,7 +5,8 @@ using SemBroncaAI.Garage.Domain.Interfaces;
 namespace SemBroncaAI.Garage.Application.Features.ServiceOrders.Approval;
 
 public sealed class SendEstimateForApprovalHandler(IServiceOrderRepository repository,
-    IApprovalTokenService tokenService, IApprovalRequestPersistence persistence)
+    IApprovalTokenService tokenService, IApprovalRequestPersistence persistence,
+    IApprovalValidityProvider validityProvider)
 {
     public async Task<ApprovalSummaryResponse> HandleAsync(Guid id, Guid? actorId = null, CancellationToken cancellationToken = default)
     {
@@ -13,7 +14,8 @@ public sealed class SendEstimateForApprovalHandler(IServiceOrderRepository repos
             ?? throw new InvalidOperationException("Ordem de serviço não encontrada.");
         var token = tokenService.Create();
         var now = DateTimeOffset.UtcNow;
-        var approval = order.SendForApproval(token.Hash, token.ProtectedValue, now.AddDays(7), now, actorId);
+        var approval = order.SendForApproval(token.Hash, token.ProtectedValue,
+            now.AddDays(validityProvider.DefaultValidityDays), now, actorId);
         var persistedApproval = await persistence.SaveAsync(approval, cancellationToken);
         var publicToken = persistedApproval.Id == approval.Id
             ? token.Value

@@ -1,0 +1,45 @@
+@page "/signup"
+@layout AuthLayout
+<PageTitle>Começar teste | SemBroncaAI Garage</PageTitle>
+<main class="signup-page">
+    <a class="signup-brand" href="/"><img src="/brand/sembronca-symbol.svg" alt="" /><strong>SemBroncaAI Garage</strong></a>
+    <section class="signup-card">
+        <header><span>PERÍODO GRATUITO</span><h1>Crie sua oficina</h1><p>Cadastre os dados essenciais. Você receberá um convite por e-mail para definir a senha do Owner.</p></header>
+        @if (Created)
+        {
+            <div class="signup-success" role="status"><strong>Cadastro recebido.</strong><span>Confira o e-mail do proprietário para ativar o acesso.</span></div>
+        }
+        else
+        {
+            @if (ErrorMessage is not null) { <div class="signup-error" role="alert">@ErrorMessage</div> }
+            <form method="post" action="/auth/signup" class="signup-form">
+                <AntiforgeryToken />
+                <label>Nome da oficina<input name="name" required maxlength="150" /></label>
+                <div class="signup-grid">
+                    <label>CPF/CNPJ da oficina<input name="document" required maxlength="20" /></label>
+                    <label>Telefone<input name="phone" required maxlength="20" /></label>
+                </div>
+                <label>E-mail administrativo<input name="email" type="email" required maxlength="150" /></label>
+                <label>Nome completo do proprietário<input name="ownerName" required maxlength="256" /></label>
+                <label>E-mail de acesso do proprietário<input name="ownerEmail" type="email" required maxlength="256" /></label>
+                <label class="signup-consent"><input name="acceptedTerms" type="checkbox" value="true" required /> <span>Li e aceito os <a href="/terms" target="_blank">Termos de Uso</a> e a <a href="/privacy" target="_blank">Política de Privacidade</a>.</span></label>
+                <button type="submit">Criar oficina e iniciar trial</button>
+            </form>
+        }
+        <footer>Já possui acesso? <a href="/login">Entrar</a></footer>
+    </section>
+</main>
+
+@code {
+    [SupplyParameterFromQuery] public bool Created { get; set; }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+
+    private string? ErrorMessage => Error switch
+    {
+        "validation" => "Revise os dados informados e tente novamente.",
+        "invalid" => "Não foi possível concluir o cadastro com os dados informados.",
+        "limited" => "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
+        "unavailable" => "O cadastro está temporariamente indisponível.",
+        _ => null
+    };
+}

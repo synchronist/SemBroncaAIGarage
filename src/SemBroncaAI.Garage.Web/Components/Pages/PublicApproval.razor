@@ -32,18 +32,24 @@ else
         @if (!string.IsNullOrWhiteSpace(_model.Diagnosis)) { <section><h2>Diagnóstico</h2><p>@_model.Diagnosis</p></section> }
         <section><h2>Itens do orçamento</h2>
             <div class="items">
-            @foreach (var item in _model.Items) { <div class="item"><div><strong>@item.Description</strong><small>@(item.Type == "Service" ? "Serviço" : "Peça") · @item.Quantity.ToString("N2") × @Money(item.UnitPrice)</small></div><strong>@Money(item.Total)</strong></div> }
+            @foreach (var item in _model.Items) { <div class="item">@if (_model.Status == "Pending" && !IsExpired) { <input type="checkbox" checked="@_selectedItems.Contains(item.Id)" @onchange="eventArgs => ToggleItem(item.Id, Convert.ToBoolean(eventArgs.Value))" aria-label="Selecionar @item.Description" /> }<div><strong>@item.Description</strong><small>@(item.Type == "Service" ? "Serviço" : "Peça") · @item.Quantity.ToString("N2") × @Money(item.UnitPrice)</small>@if (item.Approved is not null) { <small><b>@(item.Approved.Value ? "Aprovado" : "Não aprovado")</b></small> }</div><strong>@Money(item.Total)</strong></div> }
             </div>
             <div class="totals"><span>Serviços <b>@Money(_model.ServicesSubtotal)</b></span><span>Peças <b>@Money(_model.PartsSubtotal)</b></span><strong>Total <b>@Money(_model.Total)</b></strong></div>
+            <p><strong>Orçamento válido até @_model.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy 'às' HH:mm").</strong></p>
+            @if (_model.Status == "Pending" && !IsExpired) { <div class="totals"><strong>Total selecionado <b>@Money(SelectedTotal)</b></strong></div> }
         </section>
 
         @if (_model.Status == "Pending" && !IsExpired)
         {
             <section class="decision-form">
-                <MudTextField @bind-Value="_customerName" Label="Seu nome (opcional)" Variant="Variant.Outlined" />
-                @if (_showReject) { <MudTextField @bind-Value="_comment" Label="Motivo ou observação (opcional)" Lines="3" Variant="Variant.Outlined" /> }
+                <h2>Identificação de quem está decidindo</h2>
+                <MudTextField @bind-Value="_customerName" Label="Nome completo" Variant="Variant.Outlined" Required="true" />
+                <MudTextField @bind-Value="_customerDocument" Label="CPF" Variant="Variant.Outlined" Required="true" />
+                <MudTextField @bind-Value="_customerPhone" Label="Telefone" Variant="Variant.Outlined" Required="true" />
+                @if (_showReject || IsPartial) { <MudTextField @bind-Value="_comment" Label="Motivo ou observação" Lines="3" Variant="Variant.Outlined" Required="@IsPartial" /> }
+                <p>Ao confirmar, declaro que revisei os itens, valores e validade apresentados e registro minha decisão sobre este orçamento.</p>
                 @if (!string.IsNullOrWhiteSpace(_error)) { <p class="error">@_error</p> }
-                <button class="approve" disabled="@_submitting" @onclick="ApproveAsync">APROVAR ORÇAMENTO</button>
+                <button class="approve" disabled="@(_submitting || _selectedItems.Count == 0)" @onclick="ApproveAsync">@(IsPartial ? "CONFIRMAR APROVAÇÃO PARCIAL" : "CONFIRMAR APROVAÇÃO DO ORÇAMENTO")</button>
                 <button class="reject" disabled="@_submitting" @onclick="RejectAsync">@(_showReject ? "CONFIRMAR RECUSA" : "RECUSAR")</button>
             </section>
         }
@@ -55,14 +61,18 @@ else
 @code {
     [Parameter] public string Token { get; set; } = string.Empty;
     private PublicApprovalModel? _model; private bool _loading = true; private bool _submitting;
-    private bool _showReject; private string? _customerName; private string? _comment; private string? _error;
+    private bool _showReject; private string? _customerName; private string? _customerDocument; private string? _customerPhone; private string? _comment; private string? _error;
+    private readonly HashSet<Guid> _selectedItems = [];
     private bool IsExpired => _model is not null && DateTimeOffset.UtcNow >= _model.ExpiresAt;
     private string DecisionClass => IsExpired && _model?.Status == "Pending" ? "expired" : _model?.Status.ToLowerInvariant() ?? "";
-    private string DecisionTitle => IsExpired && _model?.Status == "Pending" ? "Link expirado" : _model?.Status == "Approved" ? "Orçamento aprovado" : "Orçamento recusado";
-    private string DecisionDescription => _model?.Status == "Approved" ? "Este orçamento já foi aprovado." : _model?.Status == "Rejected" ? "Este orçamento já foi recusado." : "Solicite um novo link à oficina.";
-    protected override async Task OnParametersSetAsync() { _loading = true; _model = await ApprovalService.GetAsync(Token); _loading = false; }
-    private async Task ApproveAsync() { if (!await JS.InvokeAsync<bool>("confirm", "Confirma a aprovação deste orçamento?")) return; await RespondAsync(true); }
+    private string DecisionTitle => IsExpired && _model?.Status == "Pending" ? "Link expirado" : _model?.Status == "Approved" ? "Orçamento aprovado" : _model?.Status == "PartiallyApproved" ? "Orçamento aprovado parcialmente" : "Orçamento recusado";
+    private string DecisionDescription => _model?.Status == "Approved" ? "Este orçamento foi aprovado integralmente." : _model?.Status == "PartiallyApproved" ? $"Aprovação parcial registrada no valor de {Money(_model.ApprovedTotal ?? 0)}." : _model?.Status == "Rejected" ? "Este orçamento já foi recusado." : "Solicite um novo link à oficina.";
+    private decimal SelectedTotal => _model?.Items.Where(item => _selectedItems.Contains(item.Id)).Sum(item => item.Total) ?? 0;
+    private bool IsPartial => _model is not null && _selectedItems.Count < _model.Items.Count;
+    protected override async Task OnParametersSetAsync() { _loading = true; _model = await ApprovalService.GetAsync(Token); _selectedItems.Clear(); if (_model?.Status == "Pending") foreach (var item in _model.Items) _selectedItems.Add(item.Id); _loading = false; }
+    private void ToggleItem(Guid id, bool selected) { if (selected) _selectedItems.Add(id); else _selectedItems.Remove(id); }
+    private async Task ApproveAsync() { if (IsPartial && string.IsNullOrWhiteSpace(_comment)) { _error="Informe o motivo da aprovação parcial."; return; } var message=$"Confirme os dados e a decisão:\n\nNome: {_customerName}\nCPF: {_customerDocument}\nTelefone: {_customerPhone}\nItens aprovados: {_selectedItems.Count} de {_model?.Items.Count}\nTotal original: {Money(_model?.Total ?? 0)}\nTotal aprovado: {Money(SelectedTotal)}\nValidade: {_model?.ExpiresAt.ToLocalTime():dd/MM/yyyy HH:mm}"; if (!await JS.InvokeAsync<bool>("confirm", message)) return; await RespondAsync(true); }
     private async Task RejectAsync() { if (!_showReject) { _showReject = true; return; } if (!await JS.InvokeAsync<bool>("confirm", "Confirma a recusa deste orçamento?")) return; await RespondAsync(false); }
-    private async Task RespondAsync(bool approve) { try { _submitting = true; _error = null; await ApprovalService.RespondAsync(Token, approve, new(_customerName, _comment)); _model = await ApprovalService.GetAsync(Token); } catch (Exception ex) { _error = ex.Message; } finally { _submitting = false; } }
+    private async Task RespondAsync(bool approve) { try { _submitting = true; _error = null; await ApprovalService.RespondAsync(Token, approve, new(_customerName ?? "", _customerDocument ?? "", _customerPhone ?? "", approve ? _selectedItems.ToArray() : [], _comment)); _model = await ApprovalService.GetAsync(Token); } catch (Exception ex) { _error = ex.Message; } finally { _submitting = false; } }
     private static string Money(decimal value) => value.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"));
 }

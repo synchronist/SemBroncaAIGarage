@@ -1,6 +1,7 @@
 ﻿using SemBroncaAI.Garage.Domain.Common;
 using SemBroncaAI.Garage.Domain.Entities.Garage;
 using SemBroncaAI.Garage.Domain.Entities.Vehicle;
+using System.Text.Json;
 
 namespace SemBroncaAI.Garage.Domain.Entities.ServiceOrder;
 
@@ -113,8 +114,10 @@ public sealed class ServiceOrderEntity : Entity
         }
 
         foreach (var approval in _estimateApprovals) approval.Invalidate(now);
+        var snapshot = JsonSerializer.Serialize(Estimate.Items.Select(item => new EstimateApprovalSnapshotItem(
+            item.Id, item.Description, item.Type, item.Quantity, item.UnitPrice, item.Total)));
         var request = new ServiceOrderEstimateApprovalEntity(Id, tokenHash, protectedToken,
-            expiresAt, Estimate.UpdatedAt, Estimate.Total, now);
+            expiresAt, Estimate.UpdatedAt, Estimate.Total, snapshot, now);
         _estimateApprovals.Add(request);
 
         ChangeStatus(
@@ -128,13 +131,32 @@ public sealed class ServiceOrderEntity : Entity
     {
         EnsureStatus(ServiceOrderStatus.WaitingApproval);
 
-        if (CurrentEstimateApproval?.Status != EstimateApprovalStatus.Approved &&
+        if (CurrentEstimateApproval?.Status is not (EstimateApprovalStatus.Approved or EstimateApprovalStatus.PartiallyApproved) &&
             DigitalApprovalWaivedAt is null)
             throw new InvalidOperationException("O serviço só pode ser iniciado após a aprovação do orçamento pelo cliente.");
 
+        var items = Estimate?.Items ?? [];
+        if (DigitalApprovalWaivedAt is not null)
+        {
+            if (items.Any(item => item.AuthorizationStatus != EstimateItemAuthorizationStatus.DigitalApprovalWaived))
+                throw new InvalidOperationException("O escopo dispensado do aceite digital está inconsistente.");
+        }
+        else if (CurrentEstimateApproval?.Status == EstimateApprovalStatus.Approved)
+        {
+            if (items.Any(item => item.AuthorizationStatus != EstimateItemAuthorizationStatus.CustomerAuthorized))
+                throw new InvalidOperationException("A autorização integral dos itens está inconsistente.");
+        }
+        else if (!items.Any(item => item.AuthorizationStatus == EstimateItemAuthorizationStatus.CustomerAuthorized) ||
+                 items.Any(item => item.AuthorizationStatus is not (EstimateItemAuthorizationStatus.CustomerAuthorized or EstimateItemAuthorizationStatus.CustomerNotAuthorized)))
+        {
+            throw new InvalidOperationException("A autorização parcial dos itens está inconsistente.");
+        }
+
         ChangeStatus(
             ServiceOrderStatus.InProgress,
-            ServiceOrderMessages.ServiceStarted,
+            CurrentEstimateApproval?.Status == EstimateApprovalStatus.PartiallyApproved
+                ? ServiceOrderMessages.PartiallyApprovedServiceStarted
+                : ServiceOrderMessages.ServiceStarted,
             actorId);
     }
 
@@ -300,30 +322,50 @@ public sealed class ServiceOrderEntity : Entity
     {
         EnsureStatus(ServiceOrderStatus.Diagnosis, ServiceOrderStatus.WaitingApproval);
 
+        if (CurrentEstimateApproval is { IsActive: true, Status: not EstimateApprovalStatus.Pending })
+            throw new InvalidOperationException("Uma decisão do cliente já foi registrada para este orçamento.");
+
         if (Diagnosis is null)
             throw new InvalidOperationException("Registre o diagnóstico antes de dispensar o aceite digital.");
         if (Estimate is null || !Estimate.IsValid)
             throw new InvalidOperationException("Registre um orçamento válido antes de dispensar o aceite digital.");
 
         foreach (var approval in _estimateApprovals) approval.Invalidate(now);
+        foreach (var item in Estimate.Items) item.WaiveDigitalApproval();
         DigitalApprovalWaivedAt = now;
         ChangeStatus(ServiceOrderStatus.WaitingApproval, ServiceOrderMessages.DigitalApprovalWaived, actorId);
     }
 
-    public void ApproveEstimate(Guid approvalId, string? customerName, DateTimeOffset now)
+    public void ApproveEstimate(Guid approvalId, string customerName, string customerDocument,
+        string customerPhone, IReadOnlyCollection<Guid> approvedItemIds, string? comment,
+        string? clientIp, string? userAgent, DateTimeOffset now)
     {
         EnsureStatus(ServiceOrderStatus.WaitingApproval);
         var approval = _estimateApprovals.SingleOrDefault(x => x.Id == approvalId)
             ?? throw new InvalidOperationException("Solicitação de aprovação não encontrada.");
-        approval.Approve(customerName, now);
+        var items = JsonSerializer.Deserialize<EstimateApprovalSnapshotItem[]>(approval.EstimateSnapshotJson) ?? [];
+        var selected = approvedItemIds.Distinct().ToHashSet();
+        if (selected.Count == 0 || selected.Any(id => items.All(item => item.Id != id)))
+            throw new InvalidOperationException("Selecione ao menos um item válido para aprovação.");
+        var approvedTotal = items.Where(item => selected.Contains(item.Id)).Sum(item => item.Total);
+        if (Estimate is null || Estimate.UpdatedAt != approval.EstimateUpdatedAt)
+            throw new InvalidOperationException("O orçamento foi alterado e esta aprovação não pode ser aplicada.");
+        foreach (var item in Estimate.Items) item.SetCustomerAuthorization(selected.Contains(item.Id));
+        approval.Approve(customerName, customerDocument, customerPhone,
+            JsonSerializer.Serialize(selected), approvedTotal, selected.Count < items.Length,
+            comment, clientIp, userAgent, now);
     }
 
-    public void RejectEstimate(Guid approvalId, string? customerName, string? comment, DateTimeOffset now)
+    public void RejectEstimate(Guid approvalId, string customerName, string customerDocument,
+        string customerPhone, string? comment, string? clientIp, string? userAgent, DateTimeOffset now)
     {
         EnsureStatus(ServiceOrderStatus.WaitingApproval);
         var approval = _estimateApprovals.SingleOrDefault(x => x.Id == approvalId)
             ?? throw new InvalidOperationException("Solicitação de aprovação não encontrada.");
-        approval.Reject(customerName, comment, now);
+        if (Estimate is null || Estimate.UpdatedAt != approval.EstimateUpdatedAt)
+            throw new InvalidOperationException("O orçamento foi alterado e esta decisão não pode ser aplicada.");
+        foreach (var item in Estimate.Items) item.SetCustomerAuthorization(false);
+        approval.Reject(customerName, customerDocument, customerPhone, comment, clientIp, userAgent, now);
     }
 
     public void ReviseRejectedEstimate(Guid? actorId = null)

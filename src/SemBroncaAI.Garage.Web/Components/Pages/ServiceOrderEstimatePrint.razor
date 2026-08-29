@@ -43,14 +43,24 @@ else
 
         <section class="budget-section"><h2>Itens do orçamento</h2>
             <table><thead><tr><th>Tipo</th><th>Descrição</th><th class="number">Qtd.</th><th class="number">Unitário</th><th class="number">Total</th></tr></thead>
-                <tbody>@foreach(var item in _document.Estimate.Items){<tr><td>@TypeLabel(item.Type)</td><td>@item.Description</td><td class="number">@item.Quantity.ToString("N2")</td><td class="number">@Currency(item.UnitPrice)</td><td class="number">@Currency(item.Total)</td></tr>}</tbody>
+                <tbody>@foreach(var item in _document.Estimate.Items){<tr><td>@TypeLabel(item.Type)</td><td>@item.Description @if (ItemDecision(item.AuthorizationStatus) is { } decision) { <small>— @decision</small> }</td><td class="number">@item.Quantity.ToString("N2")</td><td class="number">@Currency(item.UnitPrice)</td><td class="number">@Currency(item.Total)</td></tr>}</tbody>
             </table>
             <div class="totals"><span>Subtotal serviços <strong>@Currency(_document.Estimate.ServicesSubtotal)</strong></span><span>Subtotal peças <strong>@Currency(_document.Estimate.PartsSubtotal)</strong></span><span class="grand-total">Total geral <strong>@Currency(_document.Estimate.Total)</strong></span></div>
         </section>
 
-        <section class="acceptance avoid-break"><h2>Aceite do orçamento</h2><div class="accepted-total">Valor total: <strong>@Currency(_document.Estimate.Total)</strong></div>
-            <div class="choices"><span>☐ Aprovo o orçamento</span><span>☐ Não aprovo o orçamento</span></div>
-            <div class="signature"><span></span><strong>Cliente</strong></div><div class="date">Data: ____/____/________</div>
+        <section class="acceptance avoid-break"><h2>Aceite do orçamento</h2>
+            @if (_document.Approval?.Status is "Approved" or "PartiallyApproved")
+            {
+                <div class="accepted-total">@(_document.Approval.Status == "PartiallyApproved" ? "Aprovado parcialmente" : "Aprovado integralmente") — <strong>@Currency(_document.Approval.ApprovedTotal ?? _document.Estimate.Total)</strong></div>
+                <p>Declarado por @_document.Approval.CustomerName @(_document.Approval.CustomerDocumentMasked is null ? null : $"({_document.Approval.CustomerDocumentMasked})") em @_document.Approval.RespondedAt?.ToLocalTime().ToString("dd/MM/yyyy 'às' HH:mm").</p>
+                @if (!string.IsNullOrWhiteSpace(_document.Approval.CustomerComment)) { <p><strong>Observação:</strong> @_document.Approval.CustomerComment</p> }
+            }
+            else
+            {
+                <div class="accepted-total">Valor total: <strong>@Currency(_document.Estimate.Total)</strong></div>
+                <div class="choices"><span>☐ Aprovo o orçamento</span><span>☐ Não aprovo o orçamento</span></div>
+                <div class="signature"><span></span><strong>Cliente</strong></div><div class="date">Data: ____/____/________</div>
+            }
         </section>
         <div class="document-footer">Orçamento emitido pelo SemBroncaAI Garage</div>
     </article>
@@ -76,4 +86,11 @@ else
     private void GoBack() => Navigation.NavigateTo($"/service-orders/{Id}");
     private static string Currency(decimal value) => value.ToString("C2", new System.Globalization.CultureInfo("pt-BR"));
     private static string TypeLabel(string type) => type == "Service" ? "Serviço" : type == "Part" ? "Peça" : type;
+    private static string? ItemDecision(string authorizationStatus) => authorizationStatus switch
+    {
+        "CustomerAuthorized" => "Autorizado pelo cliente",
+        "CustomerNotAuthorized" => "Não autorizado pelo cliente",
+        "DigitalApprovalWaived" => "Aceite digital dispensado pela oficina",
+        _ => null
+    };
 }

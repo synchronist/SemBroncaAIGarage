@@ -13,6 +13,7 @@ public sealed class EstimateCommercialStatusResolverTests
     [InlineData(EstimateApprovalStatus.Pending, false, false, EstimateCommercialStatus.Pending)]
     [InlineData(EstimateApprovalStatus.Pending, true, false, EstimateCommercialStatus.Expired)]
     [InlineData(EstimateApprovalStatus.Approved, false, false, EstimateCommercialStatus.Approved)]
+    [InlineData(EstimateApprovalStatus.PartiallyApproved, false, false, EstimateCommercialStatus.PartiallyApproved)]
     [InlineData(EstimateApprovalStatus.Rejected, false, false, EstimateCommercialStatus.Rejected)]
     [InlineData(EstimateApprovalStatus.Pending, false, true, EstimateCommercialStatus.NotSent)]
     [InlineData(EstimateApprovalStatus.Rejected, false, true, EstimateCommercialStatus.NotSent)]

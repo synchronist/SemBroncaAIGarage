@@ -15,7 +15,7 @@ public sealed class SendEstimateForApprovalHandlerTests
         var order = ReadyOrder();
         var tokens = new Tokens();
         var persistence = new CandidatePersistence();
-        var handler = new SendEstimateForApprovalHandler(new Repository(order), tokens, persistence);
+        var handler = new SendEstimateForApprovalHandler(new Repository(order), tokens, persistence, new Validity());
 
         var response = await handler.HandleAsync(order.Id);
 
@@ -34,7 +34,7 @@ public sealed class SendEstimateForApprovalHandlerTests
         var persistence = new Persistence(winner);
         var tokens = new Tokens();
         var handler = new SendEstimateForApprovalHandler(
-            new Repository(candidateOrder), tokens, persistence);
+            new Repository(candidateOrder), tokens, persistence, new Validity());
 
         var response = await handler.HandleAsync(candidateOrder.Id);
 
@@ -94,5 +94,10 @@ public sealed class SendEstimateForApprovalHandlerTests
             UnprotectedValue = protectedToken;
             return "winning-public-token";
         }
+    }
+
+    private sealed class Validity : IApprovalValidityProvider
+    {
+        public int DefaultValidityDays => 7;
     }
 }

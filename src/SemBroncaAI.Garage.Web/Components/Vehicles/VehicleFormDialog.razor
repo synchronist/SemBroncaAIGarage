@@ -1,5 +1,6 @@
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
+@using SemBroncaAI.Garage.Domain.Common
 @inject VehicleService VehicleService
 @inject CustomerService CustomerService
 <MudDialog>
@@ -9,13 +10,13 @@
     else
     { <MudAutocomplete T="CustomerListItemModel" Label="Cliente" Variant="Variant.Outlined" SearchFunc="SearchCustomersAsync" ToStringFunc="@(x => x?.Name ?? string.Empty)" Value="_selectedCustomer" ValueChanged="SelectCustomer" Required="true" RequiredError="Selecione o cliente." /> }
     <div class="form-grid">
-        <MudTextField @bind-Value="_plate" Label="Placa" Variant="Variant.Outlined" Required="true" />
+        <MudTextField @bind-Value="_plate" Label="Placa" Variant="Variant.Outlined" Required="true" Validation="@(new Func<string, string?>(ValidatePlate))" />
         <MudTextField @bind-Value="_brand" Label="Marca" Variant="Variant.Outlined" Required="true" />
         <MudTextField @bind-Value="_model" Label="Modelo" Variant="Variant.Outlined" Required="true" />
         <MudTextField @bind-Value="_version" Label="Versão" Variant="Variant.Outlined" />
         <MudNumericField T="int" @bind-Value="_year" Label="Ano" Variant="Variant.Outlined" Min="1900" />
         <MudTextField @bind-Value="_color" Label="Cor" Variant="Variant.Outlined" />
-        <MudTextField @bind-Value="_fuel" Label="Combustível" Variant="Variant.Outlined" />
+        <MudAutocomplete T="string" @bind-Value="_fuel" Label="Combustível" Variant="Variant.Outlined" SearchFunc="SearchFuelsAsync" CoerceText="true" CoerceValue="true" />
         <MudNumericField T="int" @bind-Value="_mileage" Label="Quilometragem" Variant="Variant.Outlined" Min="0" />
     </div>
     @if (_error is not null) { <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert> }
@@ -37,6 +38,12 @@
     }
     private async Task<IEnumerable<CustomerListItemModel>> SearchCustomersAsync(string value, CancellationToken token) => (await CustomerService.ListAsync(value, 1, 20, token)).Items;
     private void SelectCustomer(CustomerListItemModel? customer) { _selectedCustomer=customer; _customerId=customer?.Id ?? Guid.Empty; }
+    private static string? ValidatePlate(string plate) => BrazilianVehiclePlate.IsValid(plate) ? null : "Informe uma placa antiga ou Mercosul válida.";
+    private static Task<IEnumerable<string>> SearchFuelsAsync(string value, CancellationToken token)
+    {
+        string[] options = ["Gasolina", "Etanol", "Flex", "Diesel", "GNV", "Elétrico", "Híbrido"];
+        return Task.FromResult(options.Where(option => string.IsNullOrWhiteSpace(value) || option.Contains(value, StringComparison.OrdinalIgnoreCase)));
+    }
     private async Task SaveAsync()
     {
         await _form!.ValidateAsync(); if (!_form.IsValid || _customerId==Guid.Empty) return;

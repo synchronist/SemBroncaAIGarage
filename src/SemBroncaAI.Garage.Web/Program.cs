@@ -17,7 +17,7 @@ builder.Services
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddMudServices(configuration =>
 {
-    configuration.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.TopRight;
+    configuration.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
     configuration.SnackbarConfiguration.ShowCloseIcon = true;
     configuration.SnackbarConfiguration.VisibleStateDuration = 4500;
 });
@@ -101,6 +101,8 @@ var apiBaseUrl = builder.Configuration["Api:BaseUrl"]
     ?? throw new InvalidOperationException("A URL da API não foi configurada.");
 builder.Services.AddHttpClient("AuthenticationApi", client =>
     client.BaseAddress = new Uri(apiBaseUrl)).AddHttpMessageHandler<CorrelationIdHandler>();
+builder.Services.AddHttpClient("PublicSignupApi", client =>
+    client.BaseAddress = new Uri(apiBaseUrl)).AddHttpMessageHandler<CorrelationIdHandler>();
 builder.Services.AddHttpClient<PlatformHealthService>(client =>
     client.BaseAddress = new Uri(apiBaseUrl)).AddHttpMessageHandler<CorrelationIdHandler>();
 
@@ -125,6 +127,7 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(15),
                 QueueLimit = 0
             }));
+    PublicSignupEndpoints.ConfigureRateLimiting(options);
 });
 
 builder.Services.AddScoped<AuthenticatedApiHttpClient>();
@@ -162,6 +165,7 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 app.MapWebAuthentication();
+app.MapPublicSignup();
 app.MapHealthChecks("/health/live", new() { ResponseWriter = MinimalHealthResponse }).AllowAnonymous();
 app.MapHealthChecks("/health/ready", new() { ResponseWriter = MinimalHealthResponse }).AllowAnonymous();
 

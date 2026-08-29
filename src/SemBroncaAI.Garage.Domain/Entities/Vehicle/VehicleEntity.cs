@@ -72,12 +72,13 @@ public sealed class VehicleEntity : Entity
         Mileage = mileage;
     }
 
-    public static string NormalizePlate(string plate) =>
-        Guard.AgainstNullOrWhiteSpace(plate, nameof(plate)).Replace("-", string.Empty).Replace(" ", string.Empty).ToUpperInvariant();
+    public static string NormalizePlate(string plate) => BrazilianVehiclePlate.Normalize(plate);
 
     private void SetDetails(string plate, string brand, string model, string version, int year, string color, string fuel, int mileage)
     {
         Plate = Guard.AgainstMaximumLength(NormalizePlate(plate), FieldLengthLimits.VehiclePlate, nameof(plate));
+        if (!BrazilianVehiclePlate.IsValid(Plate))
+            throw new ArgumentException("Informe uma placa brasileira válida.", nameof(plate));
         Brand = Guard.RequiredWithMaximumLength(brand, FieldLengthLimits.VehicleBrand, nameof(brand));
         Model = Guard.RequiredWithMaximumLength(model, FieldLengthLimits.VehicleModel, nameof(model));
         Version = Guard.OptionalWithMaximumLength(version, FieldLengthLimits.VehicleVersion, nameof(version));
