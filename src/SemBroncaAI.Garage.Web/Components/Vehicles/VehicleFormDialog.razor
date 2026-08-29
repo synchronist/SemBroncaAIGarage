@@ -10,14 +10,16 @@
     else
     { <MudAutocomplete T="CustomerListItemModel" Label="Cliente" Variant="Variant.Outlined" SearchFunc="SearchCustomersAsync" ToStringFunc="@(x => x?.Name ?? string.Empty)" Value="_selectedCustomer" ValueChanged="SelectCustomer" Required="true" RequiredError="Selecione o cliente." /> }
     <div class="form-grid">
-        <MudTextField @bind-Value="_plate" Label="Placa" Variant="Variant.Outlined" Required="true" Validation="@(new Func<string, string?>(ValidatePlate))" />
-        <MudTextField @bind-Value="_brand" Label="Marca" Variant="Variant.Outlined" Required="true" />
-        <MudTextField @bind-Value="_model" Label="Modelo" Variant="Variant.Outlined" Required="true" />
+        <MudTextField T="string" Value="_plate" ValueChanged="@(value => PlateChanged(value))" Immediate="true" Label="Placa" Variant="Variant.Outlined" Required="true" Validation="@(new Func<string, string?>(ValidatePlate))" MaxLength="8" />
+        @if (_catalogUnavailable)
+        { <MudTextField @bind-Value="_brand" Label="Marca" Variant="Variant.Outlined" Required="true" HelperText="Catálogo indisponível; informe manualmente." /><MudTextField @bind-Value="_model" Label="Modelo" Variant="Variant.Outlined" Required="true" /> }
+        else
+        { <MudAutocomplete T="string" Value="_brand" ValueChanged="@(value => BrandChanged(value))" Label="Marca" Variant="Variant.Outlined" SearchFunc="SearchBrandsAsync" Required="true" CoerceText="false" ResetValueOnEmptyText="true" /><MudAutocomplete T="string" @bind-Value="_model" Label="Modelo" Variant="Variant.Outlined" SearchFunc="SearchModelsAsync" Required="true" Disabled="@string.IsNullOrWhiteSpace(_selectedBrandCode)" CoerceText="false" ResetValueOnEmptyText="true" /> }
         <MudTextField @bind-Value="_version" Label="Versão" Variant="Variant.Outlined" />
-        <MudNumericField T="int" @bind-Value="_year" Label="Ano" Variant="Variant.Outlined" Min="1900" />
+        <MudNumericField T="int" @bind-Value="_year" Label="Ano" Variant="Variant.Outlined" Min="1900" Max="@(DateTime.UtcNow.Year + 1)" Immediate="true" />
         <MudTextField @bind-Value="_color" Label="Cor" Variant="Variant.Outlined" />
         <MudAutocomplete T="string" @bind-Value="_fuel" Label="Combustível" Variant="Variant.Outlined" SearchFunc="SearchFuelsAsync" CoerceText="true" CoerceValue="true" />
-        <MudNumericField T="int" @bind-Value="_mileage" Label="Quilometragem" Variant="Variant.Outlined" Min="0" />
+        <MudNumericField T="int" @bind-Value="_mileage" Label="Quilometragem" Variant="Variant.Outlined" Min="0" Immediate="true" />
     </div>
     @if (_error is not null) { <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert> }
 </div></MudForm></DialogContent>
@@ -28,7 +30,7 @@
     [Parameter] public Guid? PreselectedCustomerId { get; set; }
     [Parameter] public string? PreselectedCustomerName { get; set; }
     [Parameter] public VehicleDetailsModel? Vehicle { get; set; }
-    private MudForm? _form; private CustomerListItemModel? _selectedCustomer; private Guid _customerId; private string _plate="", _brand="", _model="", _version="", _color="", _fuel=""; private int _year=DateTime.Today.Year, _mileage; private string? _error; private bool _saving;
+    private MudForm? _form; private CustomerListItemModel? _selectedCustomer; private Guid _customerId; private string _plate="", _brand="", _model="", _version="", _color="", _fuel=""; private int _year=DateTime.Today.Year, _mileage; private string? _error; private bool _saving, _catalogUnavailable; private string? _selectedBrandCode; private VehicleCatalogBrandModel[]? _catalogBrands;
     protected override void OnInitialized()
     {
         _customerId = PreselectedCustomerId ?? Vehicle?.Customer.Id ?? Guid.Empty;
@@ -39,6 +41,12 @@
     private async Task<IEnumerable<CustomerListItemModel>> SearchCustomersAsync(string value, CancellationToken token) => (await CustomerService.ListAsync(value, 1, 20, token)).Items;
     private void SelectCustomer(CustomerListItemModel? customer) { _selectedCustomer=customer; _customerId=customer?.Id ?? Guid.Empty; }
     private static string? ValidatePlate(string plate) => BrazilianVehiclePlate.IsValid(plate) ? null : "Informe uma placa antiga ou Mercosul válida.";
+    private void PlateChanged(string value) => _plate = BrazilianInputFormatter.Plate(value);
+    private async Task<IEnumerable<string>> SearchBrandsAsync(string value, CancellationToken token)
+    { try { _catalogBrands ??= await VehicleService.GetCatalogBrandsAsync(token); return _catalogBrands.Where(x => string.IsNullOrWhiteSpace(value) || x.Name.Contains(value, StringComparison.OrdinalIgnoreCase)).Select(x => x.Name).Take(50); } catch { _catalogUnavailable = true; return []; } }
+    private void BrandChanged(string value) { _brand=value??string.Empty; _model=string.Empty; _selectedBrandCode=_catalogBrands?.FirstOrDefault(x=>string.Equals(x.Name,_brand,StringComparison.OrdinalIgnoreCase))?.Code; }
+    private async Task<IEnumerable<string>> SearchModelsAsync(string value, CancellationToken token)
+    { if(string.IsNullOrWhiteSpace(_selectedBrandCode)) return []; try { return (await VehicleService.GetCatalogModelsAsync(_selectedBrandCode,token)).Where(x=>string.IsNullOrWhiteSpace(value)||x.Contains(value,StringComparison.OrdinalIgnoreCase)).Take(100); } catch { _catalogUnavailable=true; return []; } }
     private static Task<IEnumerable<string>> SearchFuelsAsync(string value, CancellationToken token)
     {
         string[] options = ["Gasolina", "Etanol", "Flex", "Diesel", "GNV", "Elétrico", "Híbrido"];
@@ -47,7 +55,7 @@
     private async Task SaveAsync()
     {
         await _form!.ValidateAsync(); if (!_form.IsValid || _customerId==Guid.Empty) return;
-        try { _saving=true; _error=null; var request=new SaveVehicleRequest(_customerId,_plate,_brand,_model,_version,_year,_color,_fuel,_mileage); if(Vehicle is null) await VehicleService.CreateAsync(request); else await VehicleService.UpdateAsync(Vehicle.Id,request); Dialog.Close(DialogResult.Ok(true)); }
+        try { _saving=true; _error=null; var request=new SaveVehicleRequest(_customerId,BrazilianVehiclePlate.Normalize(_plate),_brand,_model,_version,_year,_color,_fuel,_mileage); if(Vehicle is null) await VehicleService.CreateAsync(request); else await VehicleService.UpdateAsync(Vehicle.Id,request); Dialog.Close(DialogResult.Ok(true)); }
         catch(Exception ex){_error=ex.Message;} finally{_saving=false;}
     }
     private void Cancel()=>Dialog.Cancel();

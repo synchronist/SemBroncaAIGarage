@@ -6,6 +6,14 @@ namespace SemBroncaAI.Garage.Tests.Domain.Customer;
 
 public sealed class CustomerEntityTests
 {
+    [Theory]
+    [InlineData("telefone")]
+    [InlineData("1199")]
+    [InlineData("119999999999")]
+    public void Customer_should_reject_invalid_phone_server_side(string phone)
+    {
+        Should.Throw<ArgumentException>(() => new CustomerEntity(Guid.NewGuid(), "Cliente", "", phone, "cliente@test.local"));
+    }
     [Fact]
     public void Should_Create_Valid_Customer()
     {

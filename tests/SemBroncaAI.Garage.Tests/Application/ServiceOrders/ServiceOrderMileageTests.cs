@@ -17,7 +17,7 @@ public sealed class ServiceOrderMileageTests
     public async Task Create_Should_Preserve_Order_Mileage_Update_Vehicle_And_Save_Once()
     {
         var garage = new GarageEntity("Oficina", "123", "1199", "a@b.com");
-        var customer = new CustomerEntity(garage.Id, "Cliente", "", "1188", "c@d.com");
+        var customer = new CustomerEntity(garage.Id, "Cliente", "", "11999999999", "c@d.com");
         var vehicle = new VehicleEntity(garage.Id, customer.Id, "ABC1234", "Fiat", "Uno", "", 2020, "Prata", "Flex", 30000);
         var orders = new OrderRepository();
         var unitOfWork = new UnitOfWork();
@@ -35,7 +35,7 @@ public sealed class ServiceOrderMileageTests
     public async Task GetById_Should_Return_Order_Mileage_Instead_Of_Current_Vehicle_Mileage()
     {
         var garage = new GarageEntity("Oficina", "123", "1199", "a@b.com");
-        var customer = new CustomerEntity(garage.Id, "Cliente", "", "1188", "c@d.com");
+        var customer = new CustomerEntity(garage.Id, "Cliente", "", "11999999999", "c@d.com");
         var vehicle = new VehicleEntity(garage.Id, customer.Id, "ABC1234", "Fiat", "Uno", "", 2020, "Prata", "Flex", 35000);
         SetNavigation(vehicle, "Customer", customer);
         var order = new ServiceOrderEntity(garage.Id, vehicle.Id, 1, "Revisão", 35000);
@@ -53,7 +53,7 @@ public sealed class ServiceOrderMileageTests
     public async Task GetById_Should_Represent_Historical_Order_Without_Mileage_As_Unknown()
     {
         var garage = new GarageEntity("Oficina", "123", "1199", "a@b.com");
-        var customer = new CustomerEntity(garage.Id, "Cliente", "", "1188", "c@d.com");
+        var customer = new CustomerEntity(garage.Id, "Cliente", "", "11999999999", "c@d.com");
         var vehicle = new VehicleEntity(garage.Id, customer.Id, "ABC1234", "Fiat", "Uno", "", 2020, "Prata", "Flex", 42500);
         SetNavigation(vehicle, "Customer", customer);
         var order = new ServiceOrderEntity(garage.Id, vehicle.Id, 1, "OS antiga", 0);

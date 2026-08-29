@@ -36,7 +36,7 @@ public sealed class GarageSubscriptionEntity : Entity
     }
 
     public bool IsTrialExpired(DateTime now) =>
-        Status == SubscriptionStatus.Trial && TrialEndsAt.HasValue && TrialEndsAt.Value < now;
+        Status == SubscriptionStatus.Trial && TrialEndsAt.HasValue && TrialEndsAt.Value <= now;
 
     public void ChangePlan(SubscriptionPlan plan, DateTime now)
     {

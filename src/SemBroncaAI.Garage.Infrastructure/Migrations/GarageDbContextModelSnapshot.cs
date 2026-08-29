@@ -17,7 +17,7 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.4")
+                .HasAnnotation("ProductVersion", "10.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -597,13 +597,13 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("AuthorizationStatus")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
-
-                    b.Property<int>("AuthorizationStatus")
-                        .HasColumnType("integer");
 
                     b.Property<Guid>("EstimateId")
                         .HasColumnType("uuid");
@@ -656,6 +656,430 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                     b.HasIndex("ServiceOrderId");
 
                     b.ToTable("ServiceOrderHistory", (string)null);
+                });
+
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.SiteManagement.ManagedSiteCostEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateOnly?>("NextRenewalOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("Periodicity")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Supplier")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SiteId");
+
+                    b.ToTable("ManagedSiteCosts", (string)null);
+                });
+
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.SiteManagement.ManagedSiteEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("CancellationNoticeDays")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ContactName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ContractNotes")
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly?>("ContractSignedOn")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("ContractStartOn")
+                        .HasColumnType("date");
+
+                    b.Property<int>("ContractStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ContractTermMonths")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("ContractedOn")
+                        .HasColumnType("date");
+
+                    b.Property<int>("ContractedRevisions")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CredentialReference")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("DeployNotes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DeployPlatform")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("DevelopmentContractValue")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("DevelopmentPaymentStatus")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("DevelopmentReceivedValue")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("DnsNotes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DnsProvider")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Document")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Domain")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("DomainCost")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<string>("DomainHolder")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("DomainManagedByClient")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("DomainNotes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DomainRegistrar")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateOnly?>("DomainRenewalOn")
+                        .HasColumnType("date");
+
+                    b.Property<int>("DueDay")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("EmailCost")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<int>("EmailIncludedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EmailPeriodicity")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("EmailPlan")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("EmailProvider")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateOnly?>("EmailRenewalOn")
+                        .HasColumnType("date");
+
+                    b.Property<int>("EmailStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("EstimatedRecurringCost")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<DateOnly?>("ExpectedDeliveryOn")
+                        .HasColumnType("date");
+
+                    b.Property<int>("FinancialStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("HasContract")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("HostingAdminUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal>("HostingCost")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<int>("HostingPeriodicity")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("HostingPlan")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("HostingProvider")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateOnly?>("HostingRenewalOn")
+                        .HasColumnType("date");
+
+                    b.Property<int>("HostingStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IncludedRevisions")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LegalName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("MonthlyFee")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<decimal>("MonthlySupportHours")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<DateOnly?>("NextChargeOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PaymentMethod")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("PaymentTerms")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ProductionBranch")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ProductionUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ProjectName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateOnly?>("PublishedOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("RepositoryUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Scope")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SiteType")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateOnly?>("SslExpiresOn")
+                        .HasColumnType("date");
+
+                    b.Property<int>("SslStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StagingUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateOnly?>("StartedOn")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TradeName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UsedRevisions")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("WhatsApp")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Domain")
+                        .IsUnique();
+
+                    b.HasIndex("Active", "Status");
+
+                    b.ToTable("ManagedSites", (string)null);
+                });
+
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.SiteManagement.ManagedSiteHistoryEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SiteId", "CreatedAt");
+
+                    b.ToTable("ManagedSiteHistory", (string)null);
+                });
+
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.SiteManagement.ManagedSiteMailboxEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("OwnerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SiteId");
+
+                    b.ToTable("ManagedSiteMailboxes", (string)null);
+                });
+
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.SiteManagement.ManagedSiteSupportEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AdditionalValue")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<bool>("Billable")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<decimal>("HoursSpent")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("numeric(8,2)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SiteId");
+
+                    b.ToTable("ManagedSiteSupportEntries", (string)null);
                 });
 
             modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.TeamInvitationEntity", b =>
@@ -1028,6 +1452,42 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
                     b.Navigation("ServiceOrder");
                 });
 
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.SiteManagement.ManagedSiteCostEntity", b =>
+                {
+                    b.HasOne("SemBroncaAI.Garage.Domain.Entities.SiteManagement.ManagedSiteEntity", null)
+                        .WithMany("Costs")
+                        .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.SiteManagement.ManagedSiteHistoryEntity", b =>
+                {
+                    b.HasOne("SemBroncaAI.Garage.Domain.Entities.SiteManagement.ManagedSiteEntity", null)
+                        .WithMany("History")
+                        .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.SiteManagement.ManagedSiteMailboxEntity", b =>
+                {
+                    b.HasOne("SemBroncaAI.Garage.Domain.Entities.SiteManagement.ManagedSiteEntity", null)
+                        .WithMany("Mailboxes")
+                        .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.SiteManagement.ManagedSiteSupportEntity", b =>
+                {
+                    b.HasOne("SemBroncaAI.Garage.Domain.Entities.SiteManagement.ManagedSiteEntity", null)
+                        .WithMany("SupportEntries")
+                        .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.TeamInvitationEntity", b =>
                 {
                     b.HasOne("SemBroncaAI.Garage.Infrastructure.Identity.ApplicationUser", null)
@@ -1107,6 +1567,17 @@ namespace SemBroncaAI.Garage.Infrastructure.Migrations
             modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.ServiceOrder.ServiceOrderEstimateEntity", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.SiteManagement.ManagedSiteEntity", b =>
+                {
+                    b.Navigation("Costs");
+
+                    b.Navigation("History");
+
+                    b.Navigation("Mailboxes");
+
+                    b.Navigation("SupportEntries");
                 });
 
             modelBuilder.Entity("SemBroncaAI.Garage.Domain.Entities.Vehicle.VehicleEntity", b =>

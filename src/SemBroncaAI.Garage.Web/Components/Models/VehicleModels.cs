@@ -6,3 +6,4 @@ public sealed record VehicleCustomerModel(Guid Id, string Name, string Document,
 public sealed record VehicleServiceOrderModel(Guid Id, int Number, string Status, string CustomerComplaint, int? Mileage, DateTimeOffset CreatedAt);
 public sealed record SaveVehicleRequest(Guid CustomerId, string Plate, string Brand, string Model, string Version, int Year, string Color, string Fuel, int Mileage);
 public sealed record SaveVehicleResponse(Guid Id, Guid GarageId, Guid CustomerId, string Plate, string Brand, string Model, string Version, int Year, string Color, string Fuel, int Mileage, bool Active, DateTime CreatedAt);
+public sealed record VehicleCatalogBrandModel(string Code, string Name);

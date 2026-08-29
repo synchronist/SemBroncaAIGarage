@@ -3,6 +3,7 @@
 @using SemBroncaAI.Garage.Application.Abstractions.Security
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
+@using SemBroncaAI.Garage.Domain.Common
 @inject GarageService GarageService
 @inject IConfiguration Configuration
 @inject ISnackbar Snackbar
@@ -26,8 +27,8 @@
                 <div class="card-title"><MudIcon Icon="@Icons.Material.Filled.Store"/><div><h2>Dados da oficina</h2><p>Informações usadas no atendimento e nos documentos.</p></div></div>
                 <div class="form-grid">
                     <MudTextField @bind-Value="_model.Name" Label="Nome da oficina" Required="true" RequiredError="Informe o nome da oficina." />
-                    <MudTextField @bind-Value="_model.Document" Label="Documento" Required="true" RequiredError="Informe o documento." />
-                    <MudTextField @bind-Value="_model.Phone" Label="Telefone" Required="true" RequiredError="Informe o telefone." />
+                    <MudTextField T="string" Value="_model.Document" ValueChanged="DocumentChanged" Immediate="true" Label="Documento" Required="true" Validation="@(new Func<string,string?>(ValidateDocument))" MaxLength="18" InputMode="InputMode.numeric" />
+                    <MudTextField T="string" Value="_model.Phone" ValueChanged="PhoneChanged" Immediate="true" Label="Telefone" Required="true" Validation="@(new Func<string,string?>(ValidatePhone))" MaxLength="15" InputMode="InputMode.tel" />
                     <MudTextField @bind-Value="_model.Email" Label="E-mail" Required="true" RequiredError="Informe o e-mail." InputType="InputType.Email" />
                 </div>
             </section>
@@ -72,7 +73,7 @@
     private string PreviewLocation => string.Join(" - ", new[] { _model?.City, _model?.State }.Where(x => !string.IsNullOrWhiteSpace(x)));
     protected override async Task OnInitializedAsync()
     {
-        try { _model = await GarageService.GetAsync(); }
+        try { _model = await GarageService.GetAsync(); if (_model is not null) { _model.Document=BrazilianInputFormatter.Document(_model.Document); _model.Phone=BrazilianInputFormatter.Phone(_model.Phone); } }
         catch { Snackbar.Add("Não foi possível carregar as configurações da oficina.", Severity.Error); }
         finally { _loading = false; }
     }
@@ -83,14 +84,20 @@
         try
         {
             _saving = true;
-            _model = await GarageService.UpdateAsync(new(_model.Name, _model.Document, _model.Phone, _model.Email,
+            _model = await GarageService.UpdateAsync(new(_model.Name, BrazilianDocument.Normalize(_model.Document), BrazilianPhone.Normalize(_model.Phone), _model.Email,
                 _model.PostalCode, _model.Street, _model.Number, _model.Complement, _model.Neighborhood, _model.City, _model.State, _model.PrimaryColor));
+            _model.Document = BrazilianInputFormatter.Document(_model.Document);
+            _model.Phone = BrazilianInputFormatter.Phone(_model.Phone);
             Snackbar.Add("Configurações salvas com sucesso.", Severity.Success);
         }
         catch (Exception exception) { Snackbar.Add(exception.Message, Severity.Error); }
         finally { _saving = false; }
     }
     private void ColorChanged(ChangeEventArgs args) { if (_model is not null) _model.PrimaryColor = args.Value?.ToString()?.ToUpperInvariant(); }
+    private void DocumentChanged(string value) { if (_model is not null) _model.Document=BrazilianInputFormatter.Document(value); }
+    private void PhoneChanged(string value) { if (_model is not null) _model.Phone=BrazilianInputFormatter.Phone(value); }
+    private static string? ValidateDocument(string value) => BrazilianDocument.IsValid(value) ? null : "Informe um CPF ou CNPJ válido.";
+    private static string? ValidatePhone(string value) => BrazilianPhone.IsValid(value) ? null : "Informe um telefone válido.";
     private async Task UploadLogoAsync(InputFileChangeEventArgs args)
     {
         if (_model is null || _uploading) return;

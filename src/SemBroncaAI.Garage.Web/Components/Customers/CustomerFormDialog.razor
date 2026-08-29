@@ -9,8 +9,8 @@
         <MudForm @ref="_form">
             <div class="customer-form">
                 <MudTextField T="string" @bind-Value="_name" Label="Nome" Variant="Variant.Outlined" Required="true" RequiredError="Informe o nome." MaxLength="150" />
-                <MudTextField T="string" Value="_document" ValueChanged="DocumentChanged" Label="CPF ou CNPJ (opcional)" Variant="Variant.Outlined" Validation="@(new Func<string, string?>(ValidateDocument))" MaxLength="18" InputMode="InputMode.numeric" />
-                <MudTextField T="string" @bind-Value="_phone" Label="Telefone" Variant="Variant.Outlined" Required="true" RequiredError="Informe o telefone." MaxLength="20" />
+                <MudTextField T="string" Value="_document" ValueChanged="DocumentChanged" Immediate="true" Label="CPF ou CNPJ (opcional)" Variant="Variant.Outlined" Validation="@(new Func<string, string?>(ValidateDocument))" MaxLength="18" InputMode="InputMode.numeric" />
+                <MudTextField T="string" Value="_phone" ValueChanged="PhoneChanged" Immediate="true" Label="Telefone" Variant="Variant.Outlined" Required="true" RequiredError="Informe o telefone." Validation="@(new Func<string, string?>(ValidatePhone))" MaxLength="15" InputMode="InputMode.tel" />
                 <MudTextField T="string" @bind-Value="_email" Label="E-mail" Variant="Variant.Outlined" Required="true" RequiredError="Informe o e-mail." Validation="@(new Func<string, string?>(ValidateEmail))" MaxLength="150" />
 
                 @if (!string.IsNullOrWhiteSpace(_error))
@@ -45,7 +45,7 @@
         if (Customer is null) return;
         _name = Customer.Name;
         _document = BrazilianDocument.Format(Customer.Document);
-        _phone = Customer.Phone;
+        _phone = BrazilianInputFormatter.Phone(Customer.Phone);
         _email = Customer.Email;
     }
 
@@ -58,7 +58,7 @@
         {
             _isSaving = true;
             _error = null;
-            var request = new SaveCustomerRequest(_name, BrazilianDocument.Normalize(_document), _phone, _email);
+            var request = new SaveCustomerRequest(_name, BrazilianDocument.Normalize(_document), BrazilianPhone.Normalize(_phone), _email);
             if (Customer is null)
                 await CustomerService.CreateAsync(request);
             else
@@ -82,8 +82,14 @@
     private static string? ValidateDocument(string document) =>
         BrazilianDocument.IsValid(document) ? null : "Informe um CPF ou CNPJ válido.";
 
+    private static string? ValidatePhone(string phone) =>
+        BrazilianPhone.IsValid(phone) ? null : "Informe um telefone válido.";
+
     private void DocumentChanged(string value) =>
-        _document = BrazilianDocument.Format(value);
+        _document = BrazilianInputFormatter.Document(value);
+
+    private void PhoneChanged(string value) =>
+        _phone = BrazilianInputFormatter.Phone(value);
 
     private void Cancel() => MudDialog.Cancel();
 }

@@ -1,0 +1,2 @@
+namespace SemBroncaAI.Garage.Domain.Entities.SiteManagement;
+public sealed class ManagedSiteHistoryEntity { private ManagedSiteHistoryEntity() { } public ManagedSiteHistoryEntity(Guid siteId, string text, Guid? actorId, DateTime now){Id=Guid.CreateVersion7();SiteId=siteId;Text=text.Trim();ActorId=actorId;CreatedAt=now;} public Guid Id {get;private set;} public Guid SiteId {get;private set;} public string Text {get;private set;}=""; public Guid? ActorId {get;private set;} public DateTime CreatedAt {get;private set;} }

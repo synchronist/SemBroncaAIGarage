@@ -3,6 +3,16 @@ using SemBroncaAI.Garage.Web.Models;
 namespace SemBroncaAI.Garage.Web.Services;
 public sealed class VehicleService(HttpClient client)
 {
+    public async Task<VehicleCatalogBrandModel[]> GetCatalogBrandsAsync(CancellationToken token = default)
+    {
+        using var response = await client.GetAsync("api/vehicle-catalog/brands", token); response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<VehicleCatalogBrandModel[]>(cancellationToken: token) ?? [];
+    }
+    public async Task<string[]> GetCatalogModelsAsync(string brandCode, CancellationToken token = default)
+    {
+        using var response = await client.GetAsync($"api/vehicle-catalog/brands/{Uri.EscapeDataString(brandCode)}/models", token); response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<string[]>(cancellationToken: token) ?? [];
+    }
     public async Task<VehicleListModel> ListAsync(string? search, int page, int pageSize, CancellationToken token = default) =>
         await client.GetFromJsonAsync<VehicleListModel>($"api/vehicles?search={Uri.EscapeDataString(search ?? string.Empty)}&page={page}&pageSize={pageSize}", token) ?? new(page, pageSize, 0, 0, []);
     public async Task<VehicleDetailsModel?> GetByIdAsync(Guid id, CancellationToken token = default)

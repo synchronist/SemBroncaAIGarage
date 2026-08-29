@@ -55,26 +55,42 @@ public sealed class TeamManagement(
         if (await userManager.FindByEmailAsync(command.Email.Trim()) is not null) return Conflict("email", "Este e-mail já está em uso.");
         if (await userManager.FindByNameAsync(command.UserName.Trim()) is not null) return Conflict("userName", "Este nome de usuário já está em uso.");
 
-        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-        var user = ApplicationUser.CreateGarageUser(command.Name, command.Email, command.UserName, garageId);
-        user.Deactivate(); user.EmailConfirmed = false; user.LockoutEnabled = true;
-        var created = await userManager.CreateAsync(user);
-        if (!created.Succeeded) return new(false, "invalid", new Dictionary<string, string[]> { ["form"] = ["Não foi possível preparar o convite."] });
-        if (!(await userManager.AddToRoleAsync(user, command.Role)).Succeeded) return new(false, "invalid");
+        var strategy = context.Database.CreateExecutionStrategy();
+        TeamOperationResult? operationResult = null;
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+            var user = ApplicationUser.CreateGarageUser(command.Name, command.Email, command.UserName, garageId);
+            user.Deactivate(); user.EmailConfirmed = false; user.LockoutEnabled = true;
+            var created = await userManager.CreateAsync(user);
+            if (!created.Succeeded) { operationResult = new(false, "invalid", new Dictionary<string, string[]> { ["form"] = ["Não foi possível preparar o convite."] }); return; }
+            if (!(await userManager.AddToRoleAsync(user, command.Role)).Succeeded) { operationResult = new(false, "invalid"); return; }
 
-        var token = InvitationTokens.Create();
-        var invitation = new TeamInvitationEntity(garageId, user.Id, currentUser.UserId, InvitationTokens.Hash(token), DateTime.UtcNow.AddHours(24));
-        context.TeamInvitations.Add(invitation);
-        auditWriter.Add(garageId, AuditActions.MemberInvited, "ApplicationUser", user.Id.ToString("D"),
-            $"Membro convidado para o perfil {command.Role}.");
-        await context.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-
-        var baseUrl = configuration["App:PublicBaseUrl"] ?? throw new InvalidOperationException("App:PublicBaseUrl não configurada.");
-        var link = $"{baseUrl.TrimEnd('/')}/accept-invitation?id={invitation.Id:D}&token={Uri.EscapeDataString(token)}";
-        var garageName = await context.Garages.Where(x => x.Id == garageId).Select(x => x.Name).SingleAsync(cancellationToken);
-        return await DeliverInvitationAsync(invitation,
-            new(user.Email!, garageName, command.Role, link, invitation.ExpiresAt), cancellationToken);
+            var token = InvitationTokens.Create();
+            var invitation = new TeamInvitationEntity(garageId, user.Id, currentUser.UserId, InvitationTokens.Hash(token), DateTime.UtcNow.AddHours(24));
+            context.TeamInvitations.Add(invitation);
+            auditWriter.Add(garageId, AuditActions.MemberInvited, "ApplicationUser", user.Id.ToString("D"),
+                $"Membro convidado para o perfil {command.Role}.");
+            await context.SaveChangesAsync(cancellationToken);
+            var baseUrl = configuration["App:PublicBaseUrl"] ?? throw new InvalidOperationException("App:PublicBaseUrl não configurada.");
+            var link = $"{baseUrl.TrimEnd('/')}/accept-invitation?id={invitation.Id:D}&token={Uri.EscapeDataString(token)}";
+            var garageName = await context.Garages.Where(x => x.Id == garageId).Select(x => x.Name).SingleAsync(cancellationToken);
+            try
+            {
+                await sender.SendAsync(new(user.Email!, garageName, command.Role, link, invitation.ExpiresAt), cancellationToken);
+                invitation.MarkSent(DateTime.UtcNow);
+                await context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                operationResult = new(true);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                operationResult = new(false, "delivery-failed", new Dictionary<string, string[]>
+                    { ["form"] = ["Não foi possível enviar o convite. Verifique o e-mail e tente novamente."] });
+            }
+        });
+        return operationResult ?? new(false, "invalid");
     }
 
     public async Task<TeamOperationResult> ResendInvitationAsync(Guid userId, CancellationToken cancellationToken = default)

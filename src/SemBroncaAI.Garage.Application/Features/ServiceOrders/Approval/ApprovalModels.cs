@@ -1,4 +1,5 @@
 using SemBroncaAI.Garage.Domain.Entities.ServiceOrder;
+using System.Text.Json.Serialization;
 
 namespace SemBroncaAI.Garage.Application.Features.ServiceOrders.Approval;
 
@@ -7,6 +8,7 @@ public sealed record ApprovalSummaryResponse(EstimateApprovalStatus Status, Date
     string? Token)
 {
     public decimal? ApprovedTotal { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? CustomerDocumentMasked { get; init; }
     public IReadOnlyCollection<Guid> ApprovedItemIds { get; init; } = [];
 }

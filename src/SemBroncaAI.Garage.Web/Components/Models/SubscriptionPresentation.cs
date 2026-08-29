@@ -22,7 +22,7 @@ public static class SubscriptionPresentation
     };
 
     public static bool IsTrialExpired(DateTime? trialEndsAt, DateTime now) =>
-        trialEndsAt.HasValue && trialEndsAt.Value < now;
+        trialEndsAt.HasValue && trialEndsAt.Value <= now;
 
     public static int RemainingTrialDays(DateTime? trialEndsAt, DateTime now) =>
         !trialEndsAt.HasValue || IsTrialExpired(trialEndsAt, now)

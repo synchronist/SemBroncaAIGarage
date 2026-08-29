@@ -11,6 +11,8 @@ public sealed record GaragePrintModel(string Name, string Document, string Phone
 public sealed record CustomerPrintModel(string Name, string Document, string Phone, string Email);
 public sealed record VehiclePrintModel(string Plate, string Brand, string Model, string Version, int Year, string Color, string Fuel);
 public sealed record DiagnosisPrintModel(string Description);
-public sealed record EstimatePrintModel(decimal ServicesSubtotal, decimal PartsSubtotal, decimal Total, IReadOnlyCollection<EstimateItemPrintModel> Items);
+public sealed record EstimatePrintModel(decimal ServicesSubtotal, decimal PartsSubtotal, decimal Total,
+    IReadOnlyCollection<EstimateItemPrintModel> Items, string? ApprovalStatus = null,
+    decimal? ApprovedTotal = null, bool DigitalApprovalWaived = false);
 public sealed record EstimateItemPrintModel(string Type, string Description, decimal Quantity, decimal UnitPrice,
     decimal Total, Guid? Id = null, string AuthorizationStatus = "Pending");

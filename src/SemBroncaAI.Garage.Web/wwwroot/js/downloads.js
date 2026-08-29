@@ -39,5 +39,5 @@ window.sbgCopyText = async text => {
 
 window.sbgOpenUrl = url => {
     const opened = window.open(url, "_blank", "noopener,noreferrer");
-    if (!opened) window.location.assign(url);
+    return opened !== null;
 };

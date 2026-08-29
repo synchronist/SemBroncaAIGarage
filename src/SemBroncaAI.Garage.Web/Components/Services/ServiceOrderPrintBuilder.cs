@@ -18,5 +18,6 @@ public static class ServiceOrderPrintBuilder
             order.Estimate is null ? null : new EstimatePrintModel(order.Estimate.ServicesSubtotal,
                 order.Estimate.PartsSubtotal, order.Estimate.Total, order.Estimate.Items.Select(item =>
                     new EstimateItemPrintModel(item.Type, item.Description, item.Quantity, item.UnitPrice, item.Total,
-                        item.Id, item.AuthorizationStatus)).ToArray()));
+                        item.Id, item.AuthorizationStatus)).ToArray(), order.Approval?.Status,
+                order.Approval?.ApprovedTotal, order.DigitalApprovalWaivedAt is not null));
 }

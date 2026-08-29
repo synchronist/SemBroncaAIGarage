@@ -138,6 +138,7 @@ builder.Services.AddScoped<VehicleService>(CreateAuthenticatedService<VehicleSer
 builder.Services.AddScoped<GarageService>(CreateAuthenticatedService<GarageService>);
 builder.Services.AddScoped<EstimateService>(CreateAuthenticatedService<EstimateService>);
 builder.Services.AddScoped<PlatformGarageService>(CreateAuthenticatedService<PlatformGarageService>);
+builder.Services.AddScoped<PlatformSiteService>(CreateAuthenticatedService<PlatformSiteService>);
 builder.Services.AddScoped<TeamService>(CreateAuthenticatedService<TeamService>);
 builder.Services.AddScoped<OwnerSubscriptionService>(CreateAuthenticatedService<OwnerSubscriptionService>);
 builder.Services.AddHttpClient<PublicApprovalService>(client =>

@@ -61,7 +61,9 @@ public sealed class CustomerEntity : Entity
         if (!BrazilianDocument.IsValid(document))
             throw new ArgumentException("Informe um CPF ou CNPJ válido.", nameof(document));
         Document = BrazilianDocument.Normalize(document);
-        Phone = Guard.RequiredWithMaximumLength(phone, FieldLengthLimits.Phone, nameof(phone));
+        if (!BrazilianPhone.IsValid(phone))
+            throw new ArgumentException("Informe um telefone válido.", nameof(phone));
+        Phone = BrazilianPhone.Normalize(phone);
         Email = Guard.RequiredWithMaximumLength(email, FieldLengthLimits.Email, nameof(email));
 
         if (!Email.Contains('@') || Email.StartsWith('@') || Email.EndsWith('@'))

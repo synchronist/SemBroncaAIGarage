@@ -66,6 +66,13 @@ else
     builder.Services.AddScoped<ITransactionalEmailSender, SmtpTransactionalEmailSender>();
 builder.Services.AddScoped<IPasswordResetEmailSender, PasswordResetEmailSender>();
 builder.Services.AddScoped<ITeamInvitationSender, TeamInvitationEmailSender>();
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient("BrasilApi", client =>
+{
+    client.BaseAddress = new Uri("https://brasilapi.com.br/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddScoped<VehicleCatalogService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<HttpContextCurrentUser>();
 builder.Services.AddScoped<SemBroncaAI.Garage.Application.Abstractions.Security.ICurrentUser>(sp => sp.GetRequiredService<HttpContextCurrentUser>());

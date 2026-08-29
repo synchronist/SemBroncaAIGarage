@@ -15,7 +15,7 @@ public sealed class CreateVehicleHandlerTests
     }
     [Fact] public async Task Should_Reject_Duplicate_Plate_In_Same_Garage()
     {
-        var garage=new GarageEntity("Oficina","123","1199","a@b.com");var customer=new CustomerEntity(garage.Id,"Cliente","","1188","c@d.com");var handler=new CreateVehicleHandler(new GarageRepo(garage),new CustomerRepo(customer),new VehicleRepo(true),new UnitOfWork());
+        var garage=new GarageEntity("Oficina","123","1199","a@b.com");var customer=new CustomerEntity(garage.Id,"Cliente","","11999999999","c@d.com");var handler=new CreateVehicleHandler(new GarageRepo(garage),new CustomerRepo(customer),new VehicleRepo(true),new UnitOfWork());
         var error=await Should.ThrowAsync<InvalidOperationException>(()=>handler.HandleAsync(Command(garage.Id,customer.Id)));error.Message.ShouldContain("placa");
     }
     private static CreateVehicleCommand Command(Guid garageId,Guid? customerId=null)=>new(garageId,customerId??Guid.CreateVersion7(),"abc-1234","Fiat","Uno","",2020,"Prata","Flex",0);

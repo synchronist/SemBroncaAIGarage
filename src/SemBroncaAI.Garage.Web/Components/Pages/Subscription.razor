@@ -1,4 +1,5 @@
 @page "/subscription"
+@implements IAsyncDisposable
 @attribute [Authorize(Policy = ApplicationPermissions.ViewSubscription)]
 @using SemBroncaAI.Garage.Application.Abstractions.Security
 @using SemBroncaAI.Garage.Application.Features.Subscriptions
@@ -102,6 +103,8 @@
     [SupplyParameterFromQuery(Name = "checkout")]
     private string? _checkout { get; set; }
     private DateTime _now;
+    private readonly CancellationTokenSource _clockCancellation = new();
+    private Task? _clockTask;
     private string StatusLabel => SubscriptionPresentation.StatusLabel(_subscription!.Status, _subscription.TrialEndsAt, _now);
     private string StatusDescription => SubscriptionPresentation.StatusDescription(_subscription!.Status, _subscription.TrialEndsAt, _now);
     private int RemainingDays => SubscriptionPresentation.RemainingTrialDays(_subscription!.TrialEndsAt, _now);
@@ -113,6 +116,21 @@
         try { _subscription = await SubscriptionService.GetAsync(); }
         catch { _subscription = null; }
         finally { _loading = false; }
+        _clockTask = RefreshClockAsync(_clockCancellation.Token);
+    }
+
+    private async Task RefreshClockAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
+        try { while (await timer.WaitForNextTickAsync(token)) { _now = DateTime.UtcNow; await InvokeAsync(StateHasChanged); } }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _clockCancellation.CancelAsync();
+        if (_clockTask is not null) await _clockTask;
+        _clockCancellation.Dispose();
     }
 
     private static string FormatDate(DateTime date) => date.ToString("dd/MM/yyyy");

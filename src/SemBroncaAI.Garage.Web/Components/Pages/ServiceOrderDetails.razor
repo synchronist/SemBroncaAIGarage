@@ -384,14 +384,18 @@ else
                                                  @bind-Value="item.Quantity"
                                                  Variant="Variant.Outlined"
                                                  Min="0.001m"
+                                                 Max="999999999.999m"
                                                  Step="0.1m"
+                                                 Immediate="true"
                                                  HideSpinButtons="true" />
 
                                 <MudNumericField T="decimal"
                                                  @bind-Value="item.UnitPrice"
                                                  Variant="Variant.Outlined"
                                                  Min="0.01m"
+                                                 Max="9999999999.99m"
                                                  Step="0.01m"
+                                                 Immediate="true"
                                                  HideSpinButtons="true"
                                                  Adornment="Adornment.Start"
                                                  AdornmentText="R$" />
@@ -452,7 +456,11 @@ else
                         <div class="estimate-totals">
                             <span>Serviços <strong>@FormatCurrency(_serviceOrder.Estimate.ServicesSubtotal)</strong></span>
                             <span>Peças <strong>@FormatCurrency(_serviceOrder.Estimate.PartsSubtotal)</strong></span>
-                            <span class="estimate-grand-total">Total <strong>@FormatCurrency(_serviceOrder.Estimate.Total)</strong></span>
+                            <span class="estimate-grand-total">Total do orçamento <strong>@FormatCurrency(_serviceOrder.Estimate.Total)</strong></span>
+                            @if (_serviceOrder.Approval?.Status is "Approved" or "PartiallyApproved")
+                            {
+                                <span class="estimate-grand-total authorized-total">Total autorizado <strong>@FormatCurrency(_serviceOrder.Approval.ApprovedTotal ?? _serviceOrder.Estimate.Total)</strong></span>
+                            }
                         </div>
                     </div>
                 }
@@ -837,7 +845,9 @@ else
     {
         try
         {
-            await JS.InvokeVoidAsync("sbgOpenUrl", ApprovalLink);
+            var opened = await JS.InvokeAsync<bool>("sbgOpenUrl", ApprovalLink);
+            if (!opened)
+                Snackbar.Add("O navegador bloqueou a nova aba. Permita pop-ups para abrir a página do cliente.", Severity.Warning);
         }
         catch (JSException)
         {

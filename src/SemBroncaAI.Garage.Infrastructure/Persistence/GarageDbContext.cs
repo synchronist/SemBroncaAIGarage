@@ -9,6 +9,7 @@ using SemBroncaAI.Garage.Domain.Entities.Vehicle;
 using SemBroncaAI.Garage.Domain.Interfaces;
 using SemBroncaAI.Garage.Domain.Entities;
 using Npgsql;
+using SemBroncaAI.Garage.Domain.Entities.SiteManagement;
 
 namespace SemBroncaAI.Garage.Infrastructure.Persistence;
 
@@ -37,6 +38,11 @@ public sealed class GarageDbContext : IdentityDbContext<ApplicationUser, Identit
     public DbSet<GarageSubscriptionEntity> GarageSubscriptions => Set<GarageSubscriptionEntity>();
     public DbSet<AuditEntryEntity> AuditEntries => Set<AuditEntryEntity>();
     public DbSet<ProcessedBillingEvent> ProcessedBillingEvents => Set<ProcessedBillingEvent>();
+    public DbSet<ManagedSiteEntity> ManagedSites => Set<ManagedSiteEntity>();
+    public DbSet<ManagedSiteMailboxEntity> ManagedSiteMailboxes => Set<ManagedSiteMailboxEntity>();
+    public DbSet<ManagedSiteCostEntity> ManagedSiteCosts => Set<ManagedSiteCostEntity>();
+    public DbSet<ManagedSiteSupportEntity> ManagedSiteSupportEntries => Set<ManagedSiteSupportEntity>();
+    public DbSet<ManagedSiteHistoryEntity> ManagedSiteHistory => Set<ManagedSiteHistoryEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

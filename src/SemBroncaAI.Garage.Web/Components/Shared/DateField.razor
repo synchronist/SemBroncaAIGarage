@@ -1,0 +1,2 @@
+<div class="date-field"><label>@Label</label><InputDate TValue="DateOnly?" Value="Value" ValueChanged="@(value => Changed(value))" class="date-input" /></div>
+@code{[Parameter]public string Label{get;set;}="";[Parameter]public DateOnly? Value{get;set;}[Parameter]public EventCallback<DateOnly?> ValueChanged{get;set;}private Task Changed(DateOnly? value)=>ValueChanged.InvokeAsync(value);}

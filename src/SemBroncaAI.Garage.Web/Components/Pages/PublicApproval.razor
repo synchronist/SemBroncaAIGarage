@@ -2,6 +2,7 @@
 @layout PrintLayout
 @using SemBroncaAI.Garage.Web.Models
 @using SemBroncaAI.Garage.Web.Services
+@using SemBroncaAI.Garage.Domain.Common
 @inject PublicApprovalService ApprovalService
 @inject IJSRuntime JS
 
@@ -44,13 +45,13 @@ else
             <section class="decision-form">
                 <h2>Identificação de quem está decidindo</h2>
                 <MudTextField @bind-Value="_customerName" Label="Nome completo" Variant="Variant.Outlined" Required="true" />
-                <MudTextField @bind-Value="_customerDocument" Label="CPF" Variant="Variant.Outlined" Required="true" />
-                <MudTextField @bind-Value="_customerPhone" Label="Telefone" Variant="Variant.Outlined" Required="true" />
+                <MudTextField T="string" Value="_customerDocument" ValueChanged="@(value => DocumentChanged(value))" Immediate="true" Label="CPF" Variant="Variant.Outlined" Required="true" Validation="@(new Func<string, string?>(ValidateCpf))" MaxLength="14" InputMode="InputMode.numeric" />
+                <MudTextField T="string" Value="_customerPhone" ValueChanged="@(value => PhoneChanged(value))" Immediate="true" Label="Telefone" Variant="Variant.Outlined" Required="true" Validation="@(new Func<string, string?>(ValidatePhone))" MaxLength="15" InputMode="InputMode.tel" />
                 @if (_showReject || IsPartial) { <MudTextField @bind-Value="_comment" Label="Motivo ou observação" Lines="3" Variant="Variant.Outlined" Required="@IsPartial" /> }
                 <p>Ao confirmar, declaro que revisei os itens, valores e validade apresentados e registro minha decisão sobre este orçamento.</p>
                 @if (!string.IsNullOrWhiteSpace(_error)) { <p class="error">@_error</p> }
-                <button class="approve" disabled="@(_submitting || _selectedItems.Count == 0)" @onclick="ApproveAsync">@(IsPartial ? "CONFIRMAR APROVAÇÃO PARCIAL" : "CONFIRMAR APROVAÇÃO DO ORÇAMENTO")</button>
-                <button class="reject" disabled="@_submitting" @onclick="RejectAsync">@(_showReject ? "CONFIRMAR RECUSA" : "RECUSAR")</button>
+                <button class="approve" disabled="@(_submitting || _selectedItems.Count == 0 || !IdentityValid)" @onclick="ApproveAsync">@(IsPartial ? "CONFIRMAR APROVAÇÃO PARCIAL" : "CONFIRMAR APROVAÇÃO DO ORÇAMENTO")</button>
+                <button class="reject" disabled="@(_submitting || (_showReject && !IdentityValid))" @onclick="RejectAsync">@(_showReject ? "CONFIRMAR RECUSA" : "RECUSAR")</button>
             </section>
         }
         <footer>@_model.GaragePhone · @_model.GarageEmail<br /><small>Powered by SemBroncaAI Garage</small></footer>
@@ -69,10 +70,15 @@ else
     private string DecisionDescription => _model?.Status == "Approved" ? "Este orçamento foi aprovado integralmente." : _model?.Status == "PartiallyApproved" ? $"Aprovação parcial registrada no valor de {Money(_model.ApprovedTotal ?? 0)}." : _model?.Status == "Rejected" ? "Este orçamento já foi recusado." : "Solicite um novo link à oficina.";
     private decimal SelectedTotal => _model?.Items.Where(item => _selectedItems.Contains(item.Id)).Sum(item => item.Total) ?? 0;
     private bool IsPartial => _model is not null && _selectedItems.Count < _model.Items.Count;
+    private bool IdentityValid => !string.IsNullOrWhiteSpace(_customerName) && ValidateCpf(_customerDocument ?? "") is null && ValidatePhone(_customerPhone ?? "") is null;
     protected override async Task OnParametersSetAsync() { _loading = true; _model = await ApprovalService.GetAsync(Token); _selectedItems.Clear(); if (_model?.Status == "Pending") foreach (var item in _model.Items) _selectedItems.Add(item.Id); _loading = false; }
     private void ToggleItem(Guid id, bool selected) { if (selected) _selectedItems.Add(id); else _selectedItems.Remove(id); }
-    private async Task ApproveAsync() { if (IsPartial && string.IsNullOrWhiteSpace(_comment)) { _error="Informe o motivo da aprovação parcial."; return; } var message=$"Confirme os dados e a decisão:\n\nNome: {_customerName}\nCPF: {_customerDocument}\nTelefone: {_customerPhone}\nItens aprovados: {_selectedItems.Count} de {_model?.Items.Count}\nTotal original: {Money(_model?.Total ?? 0)}\nTotal aprovado: {Money(SelectedTotal)}\nValidade: {_model?.ExpiresAt.ToLocalTime():dd/MM/yyyy HH:mm}"; if (!await JS.InvokeAsync<bool>("confirm", message)) return; await RespondAsync(true); }
+    private async Task ApproveAsync() { if (!IdentityValid) { _error="Revise nome, CPF e telefone."; return; } if (IsPartial && string.IsNullOrWhiteSpace(_comment)) { _error="Informe o motivo da aprovação parcial."; return; } var message=$"Confirme os dados e a decisão:\n\nNome: {_customerName}\nCPF: {_customerDocument}\nTelefone: {_customerPhone}\nItens aprovados: {_selectedItems.Count} de {_model?.Items.Count}\nTotal original: {Money(_model?.Total ?? 0)}\nTotal aprovado: {Money(SelectedTotal)}\nValidade: {_model?.ExpiresAt.ToLocalTime():dd/MM/yyyy HH:mm}"; if (!await JS.InvokeAsync<bool>("confirm", message)) return; await RespondAsync(true); }
     private async Task RejectAsync() { if (!_showReject) { _showReject = true; return; } if (!await JS.InvokeAsync<bool>("confirm", "Confirma a recusa deste orçamento?")) return; await RespondAsync(false); }
-    private async Task RespondAsync(bool approve) { try { _submitting = true; _error = null; await ApprovalService.RespondAsync(Token, approve, new(_customerName ?? "", _customerDocument ?? "", _customerPhone ?? "", approve ? _selectedItems.ToArray() : [], _comment)); _model = await ApprovalService.GetAsync(Token); } catch (Exception ex) { _error = ex.Message; } finally { _submitting = false; } }
+    private async Task RespondAsync(bool approve) { try { _submitting = true; _error = null; await ApprovalService.RespondAsync(Token, approve, new(_customerName ?? "", BrazilianDocument.Normalize(_customerDocument), BrazilianPhone.Normalize(_customerPhone), approve ? _selectedItems.ToArray() : [], _comment)); _model = await ApprovalService.GetAsync(Token); } catch (Exception ex) { _error = ex.Message; } finally { _submitting = false; } }
+    private void DocumentChanged(string value) => _customerDocument = BrazilianInputFormatter.Cpf(value);
+    private void PhoneChanged(string value) => _customerPhone = BrazilianInputFormatter.Phone(value);
+    private static string? ValidateCpf(string value) => BrazilianDocument.Normalize(value).Length == 11 && BrazilianDocument.IsValid(value) ? null : "Informe um CPF válido.";
+    private static string? ValidatePhone(string value) => BrazilianPhone.IsValid(value) ? null : "Informe um telefone válido.";
     private static string Money(decimal value) => value.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"));
 }

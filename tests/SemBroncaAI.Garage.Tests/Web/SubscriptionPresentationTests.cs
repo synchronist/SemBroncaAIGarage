@@ -27,6 +27,25 @@ public sealed class SubscriptionPresentationTests
             .ShouldBe("Restam 2 dias do seu período gratuito.");
     }
 
+    [Theory]
+    [InlineData(0, 90)]
+    [InlineData(1, 89)]
+    [InlineData(45, 45)]
+    [InlineData(89, 1)]
+    [InlineData(90, 0)]
+    [InlineData(91, 0)]
+    public void Remaining_days_should_be_derived_from_persisted_end_and_current_time(int elapsedDays, int expected) =>
+        SubscriptionPresentation.RemainingTrialDays(Now.AddDays(90), Now.AddDays(elapsedDays)).ShouldBe(expected);
+
+    [Fact]
+    public void Trial_expires_exactly_at_end_timestamp()
+    {
+        var end = Now.AddDays(90);
+        SubscriptionPresentation.IsTrialExpired(end, end.AddTicks(-1)).ShouldBeFalse();
+        SubscriptionPresentation.IsTrialExpired(end, end).ShouldBeTrue();
+        SubscriptionPresentation.RemainingTrialDays(end, end).ShouldBe(0);
+    }
+
     [Fact]
     public void Expired_trial_should_be_explicit_without_blocking_logic()
     {

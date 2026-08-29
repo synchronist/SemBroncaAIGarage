@@ -18,6 +18,9 @@ public sealed class ServiceOrderPrintBuilderTests
         document.Estimate.ServicesSubtotal.ShouldBe(150m);
         document.Estimate.PartsSubtotal.ShouldBe(80m);
         document.Estimate.Total.ShouldBe(230m);
+        document.Estimate.ApprovalStatus.ShouldBeNull();
+        document.Estimate.ApprovedTotal.ShouldBeNull();
+        document.Estimate.DigitalApprovalWaived.ShouldBeFalse();
         document.Garage.Name.ShouldBe("Oficina do João");
         document.Garage.City.ShouldBe("Boituva");
         document.Garage.State.ShouldBe("SP");
@@ -40,6 +43,32 @@ public sealed class ServiceOrderPrintBuilderTests
         var document = ServiceOrderPrintBuilder.Build(Order(false, false), garage, "https://api/logo");
         document.Garage.LogoUrl.ShouldBe("https://api/logo");
         document.Garage.PrimaryColor.ShouldBe("#123ABC");
+    }
+
+    [Theory]
+    [InlineData("Approved", 230, false)]
+    [InlineData("PartiallyApproved", 150, false)]
+    public void Build_should_distinguish_original_and_authorized_totals(string status, decimal approvedTotal, bool waiver)
+    {
+        var order = Order(true, true) with
+        {
+            Approval = new ServiceOrderApprovalModel(status, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(1), DateTimeOffset.UtcNow, "Cliente", null, null) { ApprovedTotal = approvedTotal },
+            DigitalApprovalWaivedAt = waiver ? DateTimeOffset.UtcNow : null
+        };
+        var estimate = ServiceOrderPrintBuilder.Build(order, Garage()).Estimate!;
+        estimate.Total.ShouldBe(230m);
+        estimate.ApprovedTotal.ShouldBe(approvedTotal);
+        estimate.ApprovalStatus.ShouldBe(status);
+    }
+
+    [Fact]
+    public void Build_should_keep_waiver_separate_from_customer_approval()
+    {
+        var order = Order(true, true) with { DigitalApprovalWaivedAt = DateTimeOffset.UtcNow };
+        var estimate = ServiceOrderPrintBuilder.Build(order, Garage()).Estimate!;
+        estimate.DigitalApprovalWaived.ShouldBeTrue();
+        estimate.ApprovalStatus.ShouldBeNull();
+        estimate.ApprovedTotal.ShouldBeNull();
     }
 
     private static GarageSettingsModel Garage() => new()

@@ -80,6 +80,7 @@ public static class DependencyInjection
         services.AddScoped<ApplicationIdentityRoleInitializer>();
         services.AddScoped<PlatformAdminBootstrapper>();
         services.AddScoped<IPlatformGarageAdministration, PlatformGarageAdministration>();
+        services.AddScoped<SemBroncaAI.Garage.Application.Features.SiteManagement.IManagedSiteAdministration, ManagedSiteAdministration>();
         services.AddScoped<IPublicGarageSignup>(provider =>
             (PlatformGarageAdministration)provider.GetRequiredService<IPlatformGarageAdministration>());
         services.AddOptions<ProductFeaturesOptions>()

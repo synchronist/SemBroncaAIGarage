@@ -69,7 +69,6 @@ window.sbgMaskBrazilianPhone = function (input) {
 };
 
 window.sbgMaskDocument = function (input) {
-    if (/[^\d.\/-]/.test(input.value)) return;
     const digits = input.value.replace(/\D/g, "").slice(0, 14);
     if (digits.length <= 11) {
         input.value = digits.replace(/^(\d{3})(\d)/, "$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3").replace(/\.(\d{3})(\d)/, ".$1-$2");

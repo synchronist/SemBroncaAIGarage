@@ -369,6 +369,10 @@
     font-size: 16px;
 }
 
+.estimate-totals .authorized-total {
+    color: var(--sbg-success-text, #166534);
+}
+
 .estimate-readonly-row {
     display: grid;
     grid-template-columns: 90px minmax(0, 1fr) 120px;
